@@ -1,0 +1,3 @@
+[submodule "RegexParser"]
+	path = RegexParser
+	url = https://github.com/DanieleParravicini/RegexParser
