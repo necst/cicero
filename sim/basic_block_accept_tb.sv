@@ -2,7 +2,7 @@
 
 import instruction::*;
 
-module basic_split_test();
+module basic_block_accept_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
     parameter  PC_WIDTH          = 8;
@@ -54,7 +54,7 @@ module basic_split_test();
         #CLOCK_SEMI_PERIOD clk = ~ clk;
     end
 
-    task load_pc(  input reg[PC_WIDTH-1    :0] pc);
+   task load_pc(  input reg[PC_WIDTH-1    :0] pc);
     begin
         if(input_pc_ready !== 1'b1)
         begin
@@ -104,43 +104,7 @@ module basic_split_test();
     end
     endtask
 
-    task wait_pc_output( input reg[MEMORY_ADDR_WIDTH-1:0] expected_pc,
-                         input reg                        expected_is_directed_to_current,
-                         input reg                        wait_immediately_after );
-    begin
-        @(posedge clk);
-        output_pc_ready    <= 1'b1;
-
-        @(negedge clk);
-        if( output_pc_valid !== 1'b1)
-        begin
-            $display("basic block didn't need to produce pc!");
-            $stop();
-        end
-        if(output_pc !== expected_pc)
-        begin
-            $display("basic block output pc %h != %h", output_pc, expected_pc);
-            $stop();
-        end
-        if(output_pc_is_directed_to_current !== expected_is_directed_to_current)
-        begin
-            $display("basic block output pc %h != %h", output_pc_is_directed_to_current, expected_is_directed_to_current);
-            $stop();
-        end
-        @(posedge clk);
-        output_pc_ready    <=1'b0;
-        @(posedge clk);
-        if(output_pc_valid == 1'b1 && wait_immediately_after == 1'b0)
-        begin
-            $display("basic block outputted a pc immediately after having outputted one!");
-            $stop();
-        end
-        
-        
-    end
-    endtask
-
-
+    
     initial begin
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -154,14 +118,35 @@ module basic_split_test();
         repeat(30) @(posedge clk);
 
         current_character <= 8'h00;
-        load_pc(8'hAB);
-        supply_memory({SPLIT,8'h11 } ,11'h0AB);
-        wait_pc_output(8'hAB+8'h01, 1'b1, 1'b1);
-        wait_pc_output(8'hAB+8'h11, 1'b1, 1'b0);
+        load_pc(8'hEF);
+        supply_memory({ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}} } ,11'h0EF);
+        @(posedge clk);
+        if(accepts !== 1'b1)
+        begin
+            $display("didn't accept even if was supposed to!");
+            $stop;
+        end
+        else
+        begin
+            $display("accepted correctly");
+        end
+        repeat(30) @(posedge clk);
+        current_character <= 8'h01;
+        load_pc(8'hAD);
+        supply_memory({ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} },11'h0AD);
+        @(posedge clk);
+        if(accepts !== 1'b0)
+        begin
+            $display("accepted even if was supposed to not accept!");
+            $stop;
+        end
+         else
+        begin
+            $display("did not accept correctly");
+        end
 
         $display("OK");
         $finish();
 
-    end
-
-endmodule
+        end
+    endmodule

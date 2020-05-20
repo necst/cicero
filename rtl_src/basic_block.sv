@@ -29,8 +29,8 @@ module basic_block #(
 
     output  logic                       accepts
 );
-
-    typedef enum logic [2:0] {  S_IDLE  , 
+    localparam BITS_STATES = 3;
+    typedef enum logic [BITS_STATES-1 : 0] {  S_IDLE  , 
                                 S_FETCH_SEND ,
                                 S_FETCH_REC  ,
                                 S_EXEC_1     ,
@@ -75,8 +75,8 @@ module basic_block #(
             ACCEPT:
             begin
                 if( current_character == { (CHARACTER_WIDTH){1'b0}} ) begin
-                    accepts_fromInstruction      = 1'b1;
-                    nextState_fromInstruction   = S_IDLE;
+                    accepts_fromInstruction         = 1'b1;
+                    nextState_fromInstruction       = S_IDLE;
                 end
             end
             SPLIT:
@@ -114,7 +114,7 @@ module basic_block #(
             end
             END_WITHOUT_ACCEPTING:
             begin
-                nextState_fromInstruction                           = S_IDLE;
+                nextState_fromInstruction                            = S_IDLE;
             end
         endcase
     end
@@ -151,7 +151,7 @@ module basic_block #(
             
             if(memory_ready)
             begin
-                nextState       = S_FETCH_REC;
+                nextState   = S_FETCH_REC;
             end
         end
         S_FETCH_REC:
