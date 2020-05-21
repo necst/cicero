@@ -91,7 +91,7 @@ module basic_block #(
                 else if(curState == S_EXEC_2)
                 begin
                     output_pc_fromInstruction_valid                  = 1'b1;
-                    output_pc_fromInstruction                        = currPc + currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                    output_pc_fromInstruction                        = currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
                     output_pc_fromInstruction_is_directed_to_current = 1'b1;
                     nextState_fromInstruction                        = S_IDLE;
                 end
@@ -108,7 +108,7 @@ module basic_block #(
             JMP:
             begin
                 output_pc_fromInstruction_valid                      = 1'b1;
-                output_pc_fromInstruction                            = currPc + currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                output_pc_fromInstruction                            = currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
                 output_pc_fromInstruction_is_directed_to_current     = 1'b1;
                 nextState_fromInstruction                            = S_IDLE;
             end

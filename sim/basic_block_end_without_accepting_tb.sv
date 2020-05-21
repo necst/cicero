@@ -2,7 +2,7 @@
 
 import instruction::*;
 
-module basic_block_end_without_accpeting();
+module basic_block_end_without_accepting();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
     parameter  PC_WIDTH          = 8;

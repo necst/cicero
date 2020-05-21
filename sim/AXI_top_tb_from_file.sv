@@ -9,6 +9,8 @@ module AXI_top_tb_from_file();
     logic                             reset; 
     logic [REG_WIDTH-1:0]  data_in_register;
     logic [REG_WIDTH-1:0]  address_register;
+    //logic [REG_WIDTH-1:0]  start_pc_register;
+    logic [REG_WIDTH-1:0]  start_cc_pointer_register;
     logic [REG_WIDTH-1:0]      cmd_register;
     logic [REG_WIDTH-1:0]   status_register;
     logic [REG_WIDTH-1:0]   data_o_register;
@@ -18,9 +20,14 @@ module AXI_top_tb_from_file();
     .reset(                        reset),
     .data_in_register( data_in_register ),
     .address_register( address_register ),
+    //.start_pc_register( start_pc_register),
+    .start_cc_pointer_register(start_cc_pointer_register),
     .cmd_register(     cmd_register     ),
     .status_register(  status_register  ),
     .data_o_register(  data_o_register  )
+
+    
+
     );
 
     // clock generator  
@@ -63,10 +70,10 @@ module AXI_top_tb_from_file();
     endtask
 
     task write_file( int fp,
-                     input reg [REG_WIDTH-1:0] start_address );
+                     input  reg [REG_WIDTH-1:0] start_address ,
+                     output reg [REG_WIDTH-1:0] address);
     begin
         int c;
-        reg [REG_WIDTH-1:0] address;
         reg [7:0]           itype0, idata0, itype1,idata1;
         reg [REG_WIDTH:0]   data;
         reg                 flag;
@@ -105,10 +112,10 @@ module AXI_top_tb_from_file();
     endtask
 
     task read_and_compare_with_file( int fp,
-                    input reg [REG_WIDTH-1:0] start_address );
+                    input  reg [REG_WIDTH-1:0] start_address);
     begin
-        int c;
         reg [REG_WIDTH-1:0] address;
+        int c;
         reg [7:0]           itype0, idata0;
         reg [REG_WIDTH:0]   data;
         reg                 flag;
@@ -145,10 +152,47 @@ module AXI_top_tb_from_file();
     end
     endtask
 
+    task start( //input reg [REG_WIDTH-1:0] start_code_address, 
+                input reg [REG_WIDTH-1:0] start_string_address 
+    );
+    begin
+        //@(posedge clk);
+        //start_pc_register         <= start_code_address;
+        @(posedge clk);
+        start_cc_pointer_register <= start_string_address;
+        @(posedge clk);
+        cmd_register              <= CMD_START;
+        while( status_register !== STATUS_RUNNING )
+        begin
+            @(posedge clk);
+        end
+        cmd_register              <= CMD_NOP;
+    end
+    endtask;
+
+    task wait_result(output logic accept);
+    begin
+        while( status_register == STATUS_RUNNING)
+        begin
+            @(posedge clk);
+        end
+        if( status_register !== STATUS_ACCEPTED && status_register !== STATUS_REJECTED)
+        begin
+            $display("KO: neither rejected or accepted");
+            $stop();
+        end
+        if( status_register == STATUS_ACCEPTED) accept = 1'b1;
+        else                                    accept = 1'b0;
+    end
+    endtask
+
     initial
     begin
-        int fin_pointer;
+        int fp_code , fp_string;
         int ok;
+        reg [REG_WIDTH-1:0] start_code  ,   end_code;
+        reg [REG_WIDTH-1:0] start_string,   end_string;
+        reg                 res;
 
         clk          = 1'b0;
         reset       <= 1'b0;
@@ -160,21 +204,42 @@ module AXI_top_tb_from_file();
         repeat(30)
             @(posedge clk);
 
-        fin_pointer= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\RegexParser\\code.csv","r");
-        if (fin_pointer==0)
+        //1.write code
+        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\RegexParser\\code.csv","r");
+        if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
             $stop;     
         end
+        start_code = 32'h0000_0000;
+        write_file(fp_code, start_code , end_code );
         
+        //2, write string
+        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\RegexParser\\string.csv","r");
+        if (fp_code==0)
+        begin
+            $display("Could not open file '%s' for reading","string.csv");
+            $stop;     
+        end
+        //write string
+        $display("%h",end_code);
+       if (end_code %2 == 0)  start_string = end_code + 2;
+       else                   start_string = end_code + 1;
 
-        write_file(fin_pointer, 32'h0000_0000 );
-        ok = $rewind(fin_pointer);
-        read_and_compare_with_file(fin_pointer, 32'h0000_0000);
-        
-        $fclose(fin_pointer);
-       
-        $display("OK");
+        write_file(fp_string, start_string, end_string  );
+        ok = $rewind(fp_code);
+        ok = $rewind(fp_string);
+        read_and_compare_with_file(fp_code, start_code);
+        $display("code : OK");
+        read_and_compare_with_file(fp_string, start_string);
+        $display("string : OK");
+        $fclose(fp_code);
+        $fclose(fp_string);
+
+        start(/*start_code,*/ start_string);
+        wait_result(res);
+
+        $display("%d", res);
         $finish(0);
     end
 

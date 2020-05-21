@@ -10,6 +10,7 @@ parameter  CMD_RESET        = 'h0004 ;
 
 parameter  STATUS_IDLE      = 'h0000 ;
 parameter  STATUS_RUNNING   = 'h0001 ;
-parameter  STATUS_COMPLETE  = 'h0002 ;
+parameter  STATUS_ACCEPTED  = 'h0002 ;
+parameter  STATUS_REJECTED  = 'h0003 ;
 
 endpackage : AXI_package

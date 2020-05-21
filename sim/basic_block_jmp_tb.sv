@@ -161,7 +161,7 @@ module basic_block_jmp_tb();
 
         load_pc(a_pc);
         supply_memory({JMP, a_jmp_amount } ,a_pc);
-        wait_pc_output(a_pc+a_jmp_amount, 1'b1, 1'b0);
+        wait_pc_output(a_jmp_amount, 1'b1, 1'b0);
         $display("OK");
 
         repeat(30) @(posedge clk);
@@ -172,7 +172,7 @@ module basic_block_jmp_tb();
 
         load_pc(a_pc);
         supply_memory({JMP,a_jmp_amount } ,a_pc);
-        wait_pc_output(a_pc+a_jmp_amount, 1'b1, 1'b0);
+        wait_pc_output(a_jmp_amount, 1'b1, 1'b0);
 
         $display("OK");
         $finish();

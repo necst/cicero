@@ -141,6 +141,8 @@ module basic_block_split_tb();
 
 
     initial begin
+        reg [PC_WIDTH-1:0] a_pc, another_pc;
+        
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -153,10 +155,12 @@ module basic_block_split_tb();
         repeat(30) @(posedge clk);
 
         current_character <= 8'h00;
-        load_pc(8'hAB);
-        supply_memory({SPLIT,8'h11 } ,11'h0AB);
-        wait_pc_output(8'hAB+8'h01, 1'b1, 1'b1);
-        wait_pc_output(8'hAB+8'h11, 1'b1, 1'b0);
+        a_pc       = 8'hAB;
+        another_pc = 8'h11;
+        load_pc(a_pc);
+        supply_memory({SPLIT,another_pc } ,a_pc);
+        wait_pc_output(a_pc+8'h01, 1'b1, 1'b1);
+        wait_pc_output(another_pc, 1'b1, 1'b0);
 
         $display("OK");
         $finish();
