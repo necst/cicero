@@ -111,6 +111,55 @@ module AXI_top_tb_from_file();
     end
     endtask
 
+    task write_string_file( int fp,
+                     input  reg [REG_WIDTH-1:0] start_address ,
+                     output reg [REG_WIDTH-1:0] address);
+    begin
+        reg [REG_WIDTH-1:0] address;
+        int bytes_read;
+        reg [7:0]           c [3:0];
+        reg [REG_WIDTH:0]   data;
+        reg                 flag;
+        flag    = 1'b1;  
+        address = start_address;
+        
+        while (! $feof(fp)) 
+        begin
+            for(int i = 0; i < 4 ; i++)
+            begin
+                if( ! $feof(fp))
+                begin
+                    bytes_read = $fscanf(fp,"%d\n", c[i]);
+                   
+                    if(bytes_read == -1)begin
+                        c[i] = {8{1'b0}};
+                    end
+                end
+                else
+                begin
+                    c[i]       = {8{1'b0}};
+                end
+            end
+                
+            $display("%d,%d,%d,%d",c[3], c[2], c[1], c[0]);
+            data                = {c[3], c[2], c[1], c[0]};
+            @(posedge clk);
+            address_register  <= address;
+            @(posedge clk);
+            data_in_register  <= data;
+            if(flag)
+            begin
+                @(posedge clk);
+                cmd_register  <= CMD_WRITE;
+                flag           = 1'b0;
+            end
+            address += 2;
+        end
+        @(posedge clk);
+        cmd_register  <= CMD_NOP;
+    end
+    endtask
+
     task read_and_compare_with_file( int fp,
                     input  reg [REG_WIDTH-1:0] start_address);
     begin
@@ -142,6 +191,55 @@ module AXI_top_tb_from_file();
             if ( data_o_register  !== { {16{1'b0}}, itype0, idata0})
             begin
                 $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , itype0, idata0);
+                $stop;
+            end
+
+            address += 1;
+        end
+        @(posedge clk);
+        cmd_register  <= CMD_NOP;
+    end
+    endtask
+
+     task read_and_compare_with_string_file( int fp,
+                    input  reg [REG_WIDTH-1:0] start_address);
+    begin
+        reg [REG_WIDTH-1:0] address;
+        int bytes_read;
+        reg [7:0]           c [1:0];
+        reg [REG_WIDTH:0]   data;
+        reg                 flag;
+        flag    = 1'b1;  
+        address = start_address;
+        
+        while (! $feof(fp)) 
+        begin
+            for(int i = 0; i < 2 ; i++)
+            begin
+                if( ! $feof(fp))
+                    bytes_read = $fscanf(fp,"%d\n", c[i]);
+                else
+                    c[i]       = {8{1'b0}};
+            end
+                
+            $display("%d,%d", c[1], c[0]);
+            data          = { c[1], c[0]};
+            
+            address_register  <= address;
+            @(posedge clk);
+            if(flag)
+            begin
+                
+                cmd_register  <= CMD_READ;
+                flag           = 1'b0;
+                @(posedge clk);
+            end
+            
+           
+            @(posedge clk);
+            if ( data_o_register  !== { {16{1'b0}}, c[1], c[0] })
+            begin
+                $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , c[1], c[0]);
                 $stop;
             end
 
@@ -197,6 +295,64 @@ module AXI_top_tb_from_file();
         clk          = 1'b0;
         reset       <= 1'b0;
         cmd_register<= CMD_NOP;
+        $display("Starting test for accepting");
+        @(posedge clk);
+        reset       <= 1'b1;
+        @(posedge clk);
+        reset       <= 1'b0;
+        repeat(30)
+            @(posedge clk);
+        
+        //1.write code
+        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a(bORc)start.csv","r");
+        if (fp_code==0)
+        begin
+            $display("Could not open file '%s' for reading","code.csv");
+            $stop;     
+        end
+        start_code = 32'h0000_0000;
+        //write string
+        $display("writing code from %h",start_code);
+        write_file(fp_code, start_code , end_code );
+        
+        //2, write string
+        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\string_ok.csv","r");
+        if (fp_string==0)
+        begin
+            $display("Could not open file '%s' for reading","string_ok.csv");
+            $stop;     
+        end
+        
+        //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
+        if (end_code %2 == 0)  start_string = end_code + 2;
+        else                   start_string = end_code + 1;
+        //write string
+        $display("writing string from %h",start_string);
+        write_string_file(fp_string, start_string, end_string  );
+        $display("wrote string and code");
+        $display("verify phase");
+        ok = $rewind(fp_code);
+        ok = $rewind(fp_string);
+        read_and_compare_with_file(fp_code, start_code);
+        $display("code : OK");
+        read_and_compare_with_string_file(fp_string, start_string);
+        $display("string : OK");
+        $fclose(fp_code);
+        $fclose(fp_string);
+
+        start(/*start_code,*/ start_string);
+        wait_result(res);
+        if( res == 1)
+        begin
+            $display("OK: string accepted");
+        end
+        else
+        begin
+            $display("NOK: string rejected");
+        end 
+
+        //test with a different string
+        $display("Starting test for rejecting");
         @(posedge clk);
         reset       <= 1'b1;
         @(posedge clk);
@@ -205,41 +361,53 @@ module AXI_top_tb_from_file();
             @(posedge clk);
 
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\RegexParser\\code.csv","r");
+        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a(bORc)start.csv","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
             $stop;     
         end
         start_code = 32'h0000_0000;
+        //write string
+        $display("writing code from %h",start_code);
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\RegexParser\\string.csv","r");
-        if (fp_code==0)
+        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\string_nok.csv","r");
+        if (fp_string==0)
         begin
-            $display("Could not open file '%s' for reading","string.csv");
+            $display("Could not open file '%s' for reading","string_nok.csv");
             $stop;     
         end
+        
+        //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
+        if (end_code %2 == 0)  start_string = end_code + 2;
+        else                   start_string = end_code + 1;
         //write string
-        $display("%h",end_code);
-       if (end_code %2 == 0)  start_string = end_code + 2;
-       else                   start_string = end_code + 1;
-
-        write_file(fp_string, start_string, end_string  );
+        $display("writing string from %h",start_string);
+        write_string_file(fp_string, start_string, end_string  );
+        $display("wrote string and code");
+        $display("verify phase");
         ok = $rewind(fp_code);
         ok = $rewind(fp_string);
         read_and_compare_with_file(fp_code, start_code);
         $display("code : OK");
-        read_and_compare_with_file(fp_string, start_string);
+        read_and_compare_with_string_file(fp_string, start_string);
         $display("string : OK");
         $fclose(fp_code);
         $fclose(fp_string);
 
         start(/*start_code,*/ start_string);
         wait_result(res);
-
-        $display("%d", res);
+        if( res == 1)
+        begin
+            $display("NOK: string accepted");
+        end
+        else
+        begin
+            $display("OK: string rejected");
+        end
+        
         $finish(0);
     end
 
