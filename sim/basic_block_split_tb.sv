@@ -142,6 +142,10 @@ module basic_block_split_tb();
 
     initial begin
         reg [PC_WIDTH-1:0] a_pc, another_pc;
+        reg [PC_WIDTH-1:0] max_pc, max_another_pc;
+        
+        max_pc          = 64;
+        max_another_pc  = 64; 
         
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -154,13 +158,33 @@ module basic_block_split_tb();
         reset          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        current_character <= 8'h00;
-        a_pc       = 8'hAB;
-        another_pc = 8'h11;
-        load_pc(a_pc);
-        supply_memory({SPLIT,another_pc } ,a_pc);
-        wait_pc_output(a_pc+8'h01, 1'b1, 1'b1);
-        wait_pc_output(another_pc, 1'b1, 1'b0);
+        for ( a_pc = 0 ; a_pc < max_pc ; a_pc+=1 ) begin
+            for(another_pc = 0 ; another_pc < max_another_pc; another_pc+=1)begin
+                current_character <= 8'h00;
+                
+                load_pc(a_pc);
+                supply_memory({SPLIT,another_pc } ,a_pc);
+                wait_pc_output(a_pc+8'h01, 1'b1, 1'b1);
+                wait_pc_output(another_pc, 1'b1, 1'b0);
+                $display("OK %h -> %h,%h", a_pc, a_pc+1, another_pc);
+                
+                repeat (10)
+                    begin
+                        @(posedge clk);
+                        if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+                        if( input_pc_ready != 1'b1)
+                        begin
+                            $display("basic block didn't expect a new pc to be executed!");
+                            $stop();
+                        end
+                    end
+            end
+        end
+        
 
         $display("OK");
         $finish();

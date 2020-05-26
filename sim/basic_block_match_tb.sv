@@ -143,6 +143,13 @@ module basic_block_match_test();
     initial begin
         reg [CHARACTER_WIDTH-1:0]   a_character, a_different_character;
         reg [PC_WIDTH-1:0]          a_pc;
+        reg [CHARACTER_WIDTH-1:0]   max_character;
+        reg [CHARACTER_WIDTH-1:0]   max_character_difference;
+        reg [PC_WIDTH-1:0]          max_pc;
+        max_character               = 254;
+        max_character_difference    = 32;
+        max_pc                      = 127;
+
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -153,20 +160,62 @@ module basic_block_match_test();
         @(posedge clk);
         reset          <= 1'b0;
         repeat(30) @(posedge clk);
-        a_character               = 8'hEF;
-        a_different_character     = 8'hEE;
-        a_pc                      = 8'h12;
-        current_character <= a_character;
-        //expected match
-        load_pc(a_pc);
-        supply_memory({MATCH,a_character } ,a_pc);
-        wait_pc_output(a_pc+8'h01, 1'b0, 1'b0);
+
+        for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
+            for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
+                current_character <= a_character;
+                //expected match
+                load_pc(a_pc);
+                supply_memory({MATCH,a_character } ,a_pc);
+                wait_pc_output(a_pc+8'h01, 1'b0, 1'b0);
+                //ensure it can wait other instructions
+                repeat (10)
+                    begin
+                        @(posedge clk);
+                        if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+                        if( input_pc_ready != 1'b1)
+                        begin
+                            $display("basic block didn't expect a new pc to be executed!");
+                            $stop();
+                        end
+                    end
+                $display("%h %c ok", a_pc, a_character);
+                //test non match
+                for (logic [CHARACTER_WIDTH-1:0] character_difference=1  ; character_difference < max_character_difference && a_character+character_difference < {CHARACTER_WIDTH{1'b1}} ; character_difference+=1 ) begin
+                    //expect a non match no output and wait for another instruction raised.
+                    a_different_character  <= a_character+character_difference;
+                    current_character      <= a_character;
+
+                    load_pc(a_pc);
+                    supply_memory({MATCH,a_different_character } ,a_pc);
+                    @(posedge clk);
+                    $display("%h %c ok", a_pc, a_different_character);
+                    repeat (10)
+                    begin
+                        @(posedge clk);
+                        if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+                        if( input_pc_ready != 1'b1)
+                        begin
+                            $display("basic block didn't expect a new pc to be executed!");
+                            $stop();
+                        end
+                    end
+                end
+            end
+        end
+ 
+       
         
         repeat (10) @(posedge clk);
-        //expect a non match no output and wait for another instruction raised.
-        current_character <= a_character;
-        load_pc(a_pc);
-        supply_memory({MATCH,a_different_character } ,a_pc);
+        
 
         @(posedge clk);
         if( output_pc_valid == 1'b1)

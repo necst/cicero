@@ -144,6 +144,11 @@ module basic_block_jmp_tb();
         reg [PC_WIDTH-1:0               ] a_pc;
         reg [CHARACTER_WIDTH-1:0        ] a_character;
         reg [INSTRUCTION_DATA_WIDTH-1:0 ] a_jmp_amount;
+        reg [PC_WIDTH-1:0               ] max_pc;
+        reg [INSTRUCTION_DATA_WIDTH-1:0 ] max_jmp_amount;
+        max_pc          = 255;
+        max_jmp_amount  = 255;
+
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -154,25 +159,35 @@ module basic_block_jmp_tb();
         @(posedge clk);
         reset          <= 1'b0;
         repeat(30) @(posedge clk);
-        a_character = 8'h00;
-        a_pc        = 8'hCC;
-        a_jmp_amount= 8'h0F;
-        current_character <= a_character;
 
-        load_pc(a_pc);
-        supply_memory({JMP, a_jmp_amount } ,a_pc);
-        wait_pc_output(a_jmp_amount, 1'b1, 1'b0);
-        $display("OK");
+        for ( a_pc = 0; a_pc < max_pc ; a_pc +=1 ) begin
+            for ( a_jmp_amount=0 ;a_jmp_amount<max_jmp_amount ;a_jmp_amount+=1 ) begin
+                a_character = 8'h00;
+                current_character <= a_character;
 
-        repeat(30) @(posedge clk);
-        a_character = 8'h01;
-        a_pc        = 8'hCD;
-        a_jmp_amount= 8'h00;
-        current_character <= a_character;
+                load_pc(a_pc);
+                supply_memory({JMP, a_jmp_amount } ,a_pc);
+                wait_pc_output(a_jmp_amount, 1'b1, 1'b0);
+                $display("OK jmp for %d", a_jmp_amount);
+    
+                repeat (10)
+                    begin
+                        @(posedge clk);
+                        if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+                        if( input_pc_ready != 1'b1)
+                        begin
+                            $display("basic block didn't expect a new pc to be executed!");
+                            $stop();
+                        end
+                    end
 
-        load_pc(a_pc);
-        supply_memory({JMP,a_jmp_amount } ,a_pc);
-        wait_pc_output(a_jmp_amount, 1'b1, 1'b0);
+            end
+        end
+        
 
         $display("OK");
         $finish();

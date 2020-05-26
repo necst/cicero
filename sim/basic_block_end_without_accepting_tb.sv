@@ -142,8 +142,14 @@ module basic_block_end_without_accepting();
 
      initial begin
         reg [PC_WIDTH-1:0               ] a_pc;
+        reg [PC_WIDTH-1:0               ] max_pc;
         reg [CHARACTER_WIDTH-1:0        ] a_character;
+        reg [CHARACTER_WIDTH-1:0        ] max_character;
         reg [INSTRUCTION_DATA_WIDTH-1:0 ] a_random_payload;
+        reg [INSTRUCTION_DATA_WIDTH-1:0 ] max_random_payload;
+        max_pc          = 'd128;
+        max_character   = 'd64;
+        a_random_payload= 'd32;
 
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -156,35 +162,40 @@ module basic_block_end_without_accepting();
         reset          <= 1'b0;
 
         repeat(30) @(posedge clk);
-        a_character     = 8'h00;
-        a_pc            = 8'hCC;
-        a_random_payload= 8'h0F;
-        current_character <= a_character;
 
-        load_pc(a_pc);
-        supply_memory({END_WITHOUT_ACCEPTING, a_random_payload } ,a_pc);
-        @(posedge clk);
-        if( output_pc_valid == 1'b1)
-            begin
-                $display("basic block didn't need to produce pc!");
-                $stop();
-            end
+        for ( a_pc=0 ; a_pc < max_pc ; a_pc+=1) begin
+            for ( a_character=0 ; a_character<max_character ; a_character+=1) begin
+                for ( a_random_payload=0 ; a_random_payload < max_random_payload; a_random_payload+=1 ) begin
+                    
+                    current_character <= a_character;
 
-        repeat (10)
-        begin
-            @(posedge clk);
-            if( output_pc_valid == 1'b1)
-            begin
-                $display("basic block didn't need to produce pc!");
-                $stop();
-            end
-            if( input_pc_ready != 1'b1)
-            begin
-                $display("basic block didn't expect a new pc to be executed!");
-                $stop();
+                    load_pc(a_pc);
+                    supply_memory({END_WITHOUT_ACCEPTING, a_random_payload } ,a_pc);
+                    @(posedge clk);
+                    if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+
+                    repeat (10)
+                    begin
+                        @(posedge clk);
+                        if( output_pc_valid == 1'b1)
+                        begin
+                            $display("basic block didn't need to produce pc!");
+                            $stop();
+                        end
+                        if( input_pc_ready != 1'b1)
+                        begin
+                            $display("basic block didn't expect a new pc to be executed!");
+                            $stop();
+                        end
+                    end
+                    
+                end
             end
         end
-        
 
         $display("OK");
         $finish();

@@ -106,6 +106,9 @@ module basic_block_accept_tb();
 
     
     initial begin
+        logic [PC_WIDTH-1:0] max_pc;
+
+        max_pc          = (1<<(PC_WIDTH-1))-1;
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -117,34 +120,43 @@ module basic_block_accept_tb();
         reset          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        current_character <= 8'h00;
-        load_pc(8'hEF);
-        supply_memory({ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}} } ,11'h0EF);
-        @(posedge clk);
-        if(accepts !== 1'b1)
-        begin
-            $display("didn't accept even if was supposed to!");
-            $stop;
-        end
-        else
-        begin
-            $display("accepted correctly");
-        end
-        repeat(30) @(posedge clk);
-        current_character <= 8'h01;
-        load_pc(8'hAD);
-        supply_memory({ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} },11'h0AD);
-        @(posedge clk);
-        if(accepts !== 1'b0)
-        begin
-            $display("accepted even if was supposed to not accept!");
-            $stop;
-        end
-         else
-        begin
-            $display("did not accept correctly");
+        for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
+            current_character <= 8'h00;
+            load_pc(pc);
+            supply_memory({ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}} } ,pc);
+            @(posedge clk);
+            if(accepts !== 1'b1)
+            begin
+                $display("%h didn't accept even if was supposed to!", pc);
+                $stop;
+            end
+            else
+            begin
+                $display("%h accepted correctly", pc );
+            end
+            @(posedge clk);
         end
 
+        repeat(30) @(posedge clk);
+        for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
+            for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
+            begin
+                current_character <= non_terminator;
+                load_pc(pc);
+                supply_memory({ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} },pc);
+                @(posedge clk);
+                if(accepts !== 1'b0)
+                begin
+                    $display("pc: %h cc: %c accepted even if was supposed to not accept!",pc,  current_character);
+                    $stop;
+                end
+                else
+                begin
+                    $display("pc: %h cc: %c correctly did not accept ", pc,  current_character);
+                end
+                @(posedge clk);
+            end
+        end
         $display("OK");
         $finish();
 
