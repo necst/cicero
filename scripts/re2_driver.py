@@ -122,6 +122,20 @@ class re2_driver(DefaultIP):
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_RESET)
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_NOP)
 
+    def run(self, code_filename, string):
+        with open(code_filename) as f:
+            code = f.readlines()
+            code_address_end        = self.load_code(code)
+            string_address_start    = code_address_end
+            _                       = self.load_string(string,string_address_start)
+            print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
+            print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
+            self.start(string_address_start)
+            has_accepted = self.wait_complete()
+            print("re2 coprocesssor has ", "accepted" if has_accepted == 1 else "rejected")
+            return has_accepted
+    
+
 if __name__ == "__main__":
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
@@ -130,16 +144,14 @@ if __name__ == "__main__":
     print('test:',re2_coprocessor.reset())
     time.sleep(1)
     
-    code_filename = "code.csv"
-    string        = "abcbcbcbcbc"
-    with open(code_filename) as f:
-        code = f.readlines()
-        code_address_end        = re2_coprocessor.re2_copro_0.load_code(code)
-        string_address_start    = code_address_end
-        re2_coprocessor.re2_copro_0.load_string(string,string_address_start)
-        print("Verifying code..."   , 'OK' if re2_coprocessor.re2_copro_0.verify_code(code)                          else 'KO')
-        print("Verifying string..." , 'OK' if re2_coprocessor.re2_copro_0.verify_string(string, string_address_start)else 'KO')
-        re2_coprocessor.re2_copro_0.start(string_address_start)
-        has_accepted = re2_coprocessor.re2_copro_0.wait_complete()
-        print("re2 coprocesssor has ", "accepted" if has_accepted == 1 else "rejected")
+    code_filename       = "code.csv" #the code represent a(b|c)*
+    string_to_accept    = "abcbcbcbcbc"
+    string_to_reject    = "abcbcbcbcbcd"
+    #test to accept
+    has_accepted = re2_coprocessor.re2_copro_0.run(code_filename, string_to_accept)
+    assert has_accepted == True, 'test failed'
+    re2_coprocessor.re2_copro_0.reset()
+    has_accepted = re2_coprocessor.re2_copro_0.run(code_filename, string_to_reject)
+    assert has_accepted == False, 'test failed'
+    
 
