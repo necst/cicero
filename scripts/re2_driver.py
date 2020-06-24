@@ -2,6 +2,7 @@ import pynq
 from pynq import Overlay
 from pynq import MMIO
 from pynq import DefaultIP
+
 import re
 import time
 
@@ -22,7 +23,7 @@ class re2_driver(DefaultIP):
     STATUS_RUNNING                      = 0x0000_0001 
     STATUS_ACCEPTED                     = 0x0000_0002 
     STATUS_REJECTED                     = 0x0000_0003 
-    debug                               = False
+    debug                               = True
 
     def __init__(self, description):
         super().__init__(description=description)
@@ -32,9 +33,13 @@ class re2_driver(DefaultIP):
     def __code_to_bytes(self, code):
         list_bytes_big_endian = []
         for line in code:
-            tmp = re.findall(r'(\d+) ; (\d+)\n',line)
+            tmp = re.findall(r'(\d+) ; (\d+)\n?',line)
+            
             if self.debug:
-                print(tmp[0])
+                print(line, tmp)
+            if len(tmp) < 1:
+                continue
+
             assert all( int(x)<=255 for x in tmp[0])
             list_bytes_big_endian += bytes([int(tmp[0][1])]) + bytes([int(tmp[0][0])])
         return list_bytes_big_endian
@@ -121,37 +126,71 @@ class re2_driver(DefaultIP):
     def reset(self):
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_RESET)
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_NOP)
+        return True
+
+    def compile_and_run(self, regex_string, string, double_check =True):
+        
+        try:
+            import sys
+            sys.path.append('../re2compiler')
+            import re2compiler
+            print('start compilation')
+            code = re2compiler.compile(data=regex_string)
+            print('end compilation')
+            code = code.split('\n')
+            res  = self.load_and_run( code , string)
+            if double_check:
+                import re
+                regex            = re.compile(regex_string)
+                golden_model_res = not(regex.fullmatch(string, pos=0) is None)
+                assert golden_model_res == res, 'Mismatch between golden model {golden_model_res} and regex coprocessor {res}!'
+                if self.debug:
+                    print('golden model agrees')
+            return res
+        except Exception as exc:
+            print(exc)
+            raise exc
+        
+        
 
     def run(self, code_filename, string):
+        code = None
+        
         with open(code_filename) as f:
             code = f.readlines()
-            code_address_end        = self.load_code(code)
-            string_address_start    = code_address_end
-            _                       = self.load_string(string,string_address_start)
-            print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
-            print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
-            self.start(string_address_start)
-            has_accepted = self.wait_complete()
-            print("re2 coprocesssor has ", "accepted" if has_accepted == 1 else "rejected")
-            return has_accepted
+        if code :
+            return self.load_and_run(code, string )
+
+    def load_and_run(self, code, string):
+        code_address_end        = self.load_code(code)
+        string_address_start    = code_address_end
+        _                       = self.load_string(string,string_address_start)
+        print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
+        print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
+        self.start(string_address_start)
+        has_accepted = self.wait_complete()
+        print("re2 coprocesssor has ", "accepted" if has_accepted == 1 else "rejected")
+        return has_accepted   
     
 
 if __name__ == "__main__":
+    debug = False
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
     re2_coprocessor = Overlay('design_1.bit')
-    print('test:',re2_coprocessor.ip_dict)
-    print('test:',re2_coprocessor.reset())
+    if debug :
+        print('test:',re2_coprocessor.ip_dict)
+    print('reset:',re2_coprocessor.reset())
     time.sleep(1)
     
-    code_filename       = "code.csv" #the code represent a(b|c)*
-    string_to_accept    = "abcbcbcbcbc"
-    string_to_reject    = "abcbcbcbcbcd"
+    regex_string        = "(a?a*a)" 
+    string_to_accept    = "aaaaaa"
+    string_to_reject    = "ab"
     #test to accept
-    has_accepted = re2_coprocessor.re2_copro_0.run(code_filename, string_to_accept)
+    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
     assert has_accepted == True, 'test failed'
     re2_coprocessor.re2_copro_0.reset()
-    has_accepted = re2_coprocessor.re2_copro_0.run(code_filename, string_to_reject)
+    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
     assert has_accepted == False, 'test failed'
     
 
