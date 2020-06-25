@@ -32,7 +32,8 @@ logic     [   BRAM_WE_WIDTH-1:0] bram_we;
 logic                            bram_valid_in;
 
 assign bram_payload     = {bram_out[15+1:8+1],bram_out[7:0]};
-assign data_o_register  = { {(32-BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY){1'b0}},bram_payload};
+logic     [       REG_WIDTH-1:0] bram_o_register;
+assign bram_o_register  = { {(REG_WIDTH-BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY){1'b0}},bram_payload};
 ///// Coprocessor
 localparam PC_WIDTH                  = 8;
 localparam CHARACTER_WIDTH           = 8;
@@ -45,7 +46,8 @@ logic                            start_valid, finish, accept;
 logic     [ BRAM_ADDR_WIDTH-1:0] start_cc_pointer;
 logic                            start_ready;
 
-/////
+/////performace counter
+logic     [REG_WIDTH-1:0]        elapsed_cc, elapsed_cc_next;        
 
 ///// Sequential logic 
 always_ff @(posedge clk) 
@@ -53,20 +55,28 @@ begin
     if(reset || cmd_register == CMD_RESET)
     begin
         status_register <= STATUS_IDLE;
+        elapsed_cc      <= {(REG_WIDTH){1'b0}};
     end
     else
     begin
         status_register <= status_register_next;
+        elapsed_cc      <= elapsed_cc_next;
     end
 end
 
 //// Combinational logic
+
 always_comb 
 begin
     if(reset)   reset_master           = 1'b1;
     else        reset_master           = 1'b0;
 
     status_register_next               = status_register;
+
+    elapsed_cc_next                    = elapsed_cc;
+
+    data_o_register                    = bram_o_register;
+
     bram_addr                          = { (BRAM_ADDR_WIDTH) {1'b0} };
     bram_in                            = { (BRAM_WRITE_WIDTH){1'b0} };
     bram_valid_in                      = 1'b0;
@@ -78,7 +88,7 @@ begin
     start_cc_pointer                   = { (BRAM_ADDR_WIDTH){1'b0} }; 
 
     case(status_register)
-    STATUS_IDLE:
+    STATUS_IDLE, STATUS_ACCEPTED, STATUS_REJECTED:
     begin   
         case(cmd_register)
         CMD_WRITE: // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
@@ -94,6 +104,7 @@ begin
             bram_addr     = address_register[0+:BRAM_ADDR_WIDTH]; //use low
             bram_valid_in = 1'b1;
             memory_addr_from_coprocessor_ready = 1'b0;
+
         end
         CMD_RESET:
         begin
@@ -112,6 +123,10 @@ begin
                 status_register_next = STATUS_RUNNING;
             end
         end
+        CMD_READ_ELAPSED_CLOCK:
+        begin
+            data_o_register     = elapsed_cc;
+        end
         endcase
     end
     STATUS_RUNNING:
@@ -125,6 +140,11 @@ begin
             if(accept)  status_register_next = STATUS_ACCEPTED;
             else        status_register_next = STATUS_REJECTED;
         end
+
+        if (&elapsed_cc == 1'b0)   
+        begin //if counter has not saturated
+            elapsed_cc_next = elapsed_cc + 1;
+        end                             
     end
     endcase
 
@@ -149,6 +169,7 @@ bram #(
     .data_o(  bram_out      )
 );
 
+
 regex_coprocessor_single_bb #(
     .PC_WIDTH         (PC_WIDTH         ),
     .CHARACTER_WIDTH  (CHARACTER_WIDTH  ),
@@ -169,5 +190,28 @@ regex_coprocessor_single_bb #(
     .accept             (accept)
 );
 
+/*
+regex_coprocessor_two_bb #(
+    .PC_WIDTH               (PC_WIDTH         ),
+    .CHARACTER_WIDTH        (CHARACTER_WIDTH  ),
+    .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
+    .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH  ), 
+    .LATENCY_COUNT_WIDTH    (7),
+    .FIFO_COUNT_WIDTH       (6),
+    .BB_N                   (2)
+)a_regex_coprocessor (
+    .clk                (clk),
+    .reset              (reset_master),
+    .memory_ready       (memory_addr_from_coprocessor_ready ),
+    .memory_addr        (memory_addr_from_coprocessor       ),
+    .memory_data        (bram_payload),
+    .memory_valid       (memory_addr_from_coprocessor_valid ),
+    .start_ready        (start_ready),
+    //.start_pc           (start_pc),
+    .start_cc_pointer   (start_cc_pointer),
+    .start_valid        (start_valid),
+    .finish             (finish),
+    .accept             (accept)
+);*/
 
 endmodule

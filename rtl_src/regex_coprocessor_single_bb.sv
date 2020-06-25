@@ -44,7 +44,7 @@ module regex_coprocessor_single_bb #(
     logic                           memory_valid_for_cc ;
     //FIFO
     
-    localparam FIFO_COUNT_WIDTH = 3;
+    localparam FIFO_COUNT_WIDTH = 6;
     logic                   fifos_reset                 ;
     logic                   fifo_even_data_in_ready     ;
     logic                   fifo_even_data_in_not_ready ;
@@ -224,12 +224,12 @@ module regex_coprocessor_single_bb #(
     assign memory_data_for_bb = memory_data;
     assign memory_data_for_cc = memory_data;
 
-    basic_block #(
+    regex_cpu #(
         .PC_WIDTH          (PC_WIDTH            ),
         .CHARACTER_WIDTH   (CHARACTER_WIDTH     ),
         .MEMORY_WIDTH      (MEMORY_WIDTH        ),
         .MEMORY_ADDR_WIDTH (MEMORY_ADDR_WIDTH   )
-    ) abb (
+    ) aregex_cpu (
         .clk                                (clk    ),
         .reset                              (reset  ), 
         .current_character                  (cur_cc ),

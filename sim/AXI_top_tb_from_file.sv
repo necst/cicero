@@ -284,12 +284,23 @@ module AXI_top_tb_from_file();
     end
     endtask
 
+    task get_cc_elapsed(output logic[REG_WIDTH-1:0] cc);
+    begin
+        cmd_register              <= CMD_READ_ELAPSED_CLOCK;
+        @(posedge clk);
+        cc                        = data_o_register;
+        @(posedge clk);
+        cmd_register              <= CMD_NOP;
+    end
+    endtask
+
     initial
     begin
         int fp_code , fp_string;
         int ok;
         reg [REG_WIDTH-1:0] start_code  ,   end_code;
         reg [REG_WIDTH-1:0] start_string,   end_string;
+        reg [REG_WIDTH-1:0] cc_taken;
         reg                 res;
 
         clk          = 1'b0;
@@ -350,7 +361,12 @@ module AXI_top_tb_from_file();
         begin
             $display("NOK: string rejected");
         end 
+        get_cc_elapsed(cc_taken);
+        $display("cc taken: %d", cc_taken);
 
+        repeat(10)
+            @(posedge clk);
+        
         //test with a different string
         $display("Starting test for rejecting");
         @(posedge clk);
@@ -408,6 +424,10 @@ module AXI_top_tb_from_file();
             $display("OK: string rejected");
         end
         
+        get_cc_elapsed(cc_taken);
+        $display("cc taken: %d", cc_taken);
+        
+
         $finish(0);
     end
 

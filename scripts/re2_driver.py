@@ -19,11 +19,13 @@ class re2_driver(DefaultIP):
     CMD_READ                            = 0x0000_0002 
     CMD_START                           = 0x0000_0003 
     CMD_RESET                           = 0x0000_0004 
+    CMD_READ_ELAPSED_CC                 = 0x0000_0005
+
     STATUS_IDLE                         = 0x0000_0000 
     STATUS_RUNNING                      = 0x0000_0001 
     STATUS_ACCEPTED                     = 0x0000_0002 
     STATUS_REJECTED                     = 0x0000_0003 
-    debug                               = True
+    debug                               = False
 
     def __init__(self, description):
         super().__init__(description=description)
@@ -115,13 +117,19 @@ class re2_driver(DefaultIP):
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_NOP          )
 
     def wait_complete(self):
-        while(self.read(self.RE2_COPRO_STATUS_REGISTER_OFFSET) == self.STATUS_RUNNING):
+        while(self.get_status() == self.STATUS_RUNNING):
             pass
 
-        return self.read(self.RE2_COPRO_STATUS_REGISTER_OFFSET) == self.STATUS_ACCEPTED
+        return self.get_status() == self.STATUS_ACCEPTED
     
     def get_status(self):
         return self.read(self.RE2_COPRO_STATUS_REGISTER_OFFSET)
+
+    def read_elapsed_clock_cycles(self):
+        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET,  self.CMD_READ_ELAPSED_CC)
+        cc = self.read(self.RE2_COPRO_DATA_O_REGISTER_OFFSET)
+        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET,  self.CMD_NOP)
+        return cc
     
     def reset(self):
         self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_RESET)
@@ -169,7 +177,7 @@ class re2_driver(DefaultIP):
         print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
         self.start(string_address_start)
         has_accepted = self.wait_complete()
-        print("re2 coprocesssor has ", "accepted" if has_accepted == 1 else "rejected")
+        print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
         return has_accepted   
     
 
@@ -177,20 +185,29 @@ if __name__ == "__main__":
     debug = False
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
-    re2_coprocessor = Overlay('design_1.bit')
+    re2_coprocessor = Overlay('re2_coprocessor.bit')
     if debug :
         print('test:',re2_coprocessor.ip_dict)
-    print('reset:',re2_coprocessor.reset())
+
+    
+    re2_coprocessor.re2_copro_0.reset()
     time.sleep(1)
     
-    regex_string        = "(a?a*a)" 
-    string_to_accept    = "aaaaaa"
-    string_to_reject    = "ab"
+    regex_string        = "a?a?a?a*" 
+    string_to_accept    = "aaaaa"
+    string_to_reject    = "aaaaab"
     #test to accept
+    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+
     has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
     assert has_accepted == True, 'test failed'
+    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+    print('clock cycles taken: ', cc_number)
+
     re2_coprocessor.re2_copro_0.reset()
+
     has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
     assert has_accepted == False, 'test failed'
-    
+    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+    print('clock cycles taken: ', cc_number)
 

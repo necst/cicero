@@ -1,4 +1,4 @@
-
+`timescale 1ns/1ps
 
 module arbiter_fixed #(
     parameter DWITDH      = 8 ,
