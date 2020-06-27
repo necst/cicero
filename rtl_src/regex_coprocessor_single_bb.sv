@@ -152,8 +152,8 @@ module regex_coprocessor_single_bb #(
         S_FETCH_NEXT_CC:
         begin
             next_state = S_EXEC;
-            if(cur_cc[0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                  next_cc    = memory_data[15:8];
+            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
+            else                          next_cc    = memory_data[15:8];
         end
         S_EXEC:
         begin
@@ -195,10 +195,12 @@ module regex_coprocessor_single_bb #(
         begin
             finish = 1'b1;
             accept = 1'b1;
+            next_state = S_IDLE;
         end
         S_COMPLETED_WITHOUT_ACCEPTING:
         begin
             finish = 1'b1;
+            next_state = S_IDLE;
         end
         endcase
     end
@@ -206,7 +208,7 @@ module regex_coprocessor_single_bb #(
     /// Moduleinstances
 
     arbiter_fixed #(
-        .DWITDH(MEMORY_ADDR_WIDTH),
+        .DWIDTH(MEMORY_ADDR_WIDTH),
         .PRIORITY_0(1)
     ) arbiter_for_memory_contention (
         .in_0_valid( memory_valid_for_cc ),
