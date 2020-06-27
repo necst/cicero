@@ -27,39 +27,14 @@ module basic_block #(
     output  logic                           output_pc_valid,
     output  logic[PC_WIDTH-1+1:0]           output_pc_and_current,
     input   logic                           output_pc_ready,
-    output  logic[LATENCY_COUNT_WIDTH-1:0]  output_pc_latency
+    input   logic[LATENCY_COUNT_WIDTH-1:0]  output_pc_latency
 
 );
-
-    /////////////////////////////////////////////////////////////////////////////
-    // Computing part of the basic block
-    /////////////////////////////////////////////////////////////////////////////
-
-    logic [PC_WIDTH-1:0] input_pc;
-    logic [PC_WIDTH-1:0] output_pc;
-
-    regex_cpu #(
-        .PC_WIDTH                           (PC_WIDTH                           ),
-        .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
-        .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
-        .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
-    ) aregex_cpu (
-        .clk                                (clk                                ),
-        .reset                              (reset                              ), 
-        .current_character                  (current_character                  ),
-        .input_pc_ready                     (fifo_cur_char_data_out_ready                     ), 
-        .input_pc                           (fifo_cur_char_data_out                           ), 
-        .input_pc_valid                     (fifo_cur_char_data_out_valid                     ),
-        .memory_ready                       (memory_ready                       ),
-        .memory_addr                        (memory_addr                        ),
-        .memory_data                        (memory_data                        ),   
-        .memory_valid                       (memory_valid                       ),
-        .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
-        .output_pc_ready                    (output_pc_ready                    ),
-        .output_pc                          (output_pc                          ),
-        .output_pc_valid                    (output_pc_valid                    ),
-        .accepts                            (accept                             )
-    );
+    wire [LATENCY_COUNT_WIDTH-1:0] output_pc_latency_unused;
+    assign output_pc_latency_unused = output_pc_latency;
+    
+    logic [PC_WIDTH-1:0]        output_pc, input_pc;
+    logic                       input_pc_is_directed_to_current, output_pc_is_directed_to_current;
 
     //storage part of the basic block
     //FIFO even signal 
@@ -209,16 +184,42 @@ module basic_block #(
     end
 
     //compute the approximate latency seen outside
-    always_comb begin : latency_computation
-        if( fifo_odd_data_count > fifo_even_data_count)  input_pc_latency = fifo_odd_data_count  + 1; 
-        else                                             input_pc_latency = fifo_even_data_count + 1;      
-    end
-
+    //always_comb begin : latency_computation
+    //    if( fifo_odd_data_count > fifo_even_data_count)  input_pc_latency = fifo_odd_data_count  + 1; 
+    //    else                                             input_pc_latency = fifo_even_data_count + 1;      
+    //end
+    assign input_pc_latency = fifo_cur_char_data_count + 1 ;
     //running if regex_cpu has taken some instruction and the data_out_ready=0
     //        or some instructions are saved in curr character fifo
-    always_comb begin : running
+    always_comb begin : running_definition
         running = fifo_cur_char_data_out_valid || ~fifo_cur_char_data_out_ready;
     end
-    
 
+
+    /////////////////////////////////////////////////////////////////////////////
+    // Computing part of the basic block
+    /////////////////////////////////////////////////////////////////////////////
+
+    regex_cpu #(
+        .PC_WIDTH                           (PC_WIDTH                           ),
+        .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
+        .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
+        .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
+    ) aregex_cpu (
+        .clk                                (clk                                ),
+        .reset                              (reset                              ), 
+        .current_character                  (current_character                  ),
+        .input_pc_ready                     (fifo_cur_char_data_out_ready       ), 
+        .input_pc                           (fifo_cur_char_data_out             ), 
+        .input_pc_valid                     (fifo_cur_char_data_out_valid       ),
+        .memory_ready                       (memory_ready                       ),
+        .memory_addr                        (memory_addr                        ),
+        .memory_data                        (memory_data                        ),   
+        .memory_valid                       (memory_valid                       ),
+        .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
+        .output_pc_ready                    (output_pc_ready                    ),
+        .output_pc                          (output_pc                          ),
+        .output_pc_valid                    (output_pc_valid                    ),
+        .accepts                            (accepts                            )
+    );
 endmodule

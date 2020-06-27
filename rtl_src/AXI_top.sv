@@ -49,10 +49,13 @@ logic                            start_ready;
 /////performace counter
 logic     [REG_WIDTH-1:0]        elapsed_cc, elapsed_cc_next;        
 
+
+assign reset_master = reset || (cmd_register==CMD_RESET);
+
 ///// Sequential logic 
 always_ff @(posedge clk) 
 begin 
-    if(reset || cmd_register == CMD_RESET)
+    if(reset_master == 1'b1)
     begin
         status_register <= STATUS_IDLE;
         elapsed_cc      <= {(REG_WIDTH){1'b0}};
@@ -68,14 +71,11 @@ end
 
 always_comb 
 begin
-    if(reset)   reset_master           = 1'b1;
-    else        reset_master           = 1'b0;
-
     status_register_next               = status_register;
 
     elapsed_cc_next                    = elapsed_cc;
 
-    data_o_register                    = bram_o_register;
+    data_o_register                    = {(REG_WIDTH        ){1'b0} };
 
     bram_addr                          = { (BRAM_ADDR_WIDTH) {1'b0} };
     bram_in                            = { (BRAM_WRITE_WIDTH){1'b0} };
@@ -90,27 +90,23 @@ begin
     case(status_register)
     STATUS_IDLE, STATUS_ACCEPTED, STATUS_REJECTED:
     begin   
-        case(cmd_register)
-        CMD_WRITE: // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
+        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
         begin      // addr_1, data_1, ..., cmd_nop.
             
-            bram_addr     = address_register[0+:BRAM_ADDR_WIDTH]; //use low
-            bram_in       = { ^(data_in_register[31:24]),data_in_register[31:24], ^(data_in_register[23:16]), data_in_register[23:16], ^(data_in_register[15:8]), data_in_register[15:8],  ^(data_in_register[7:0]), data_in_register[7:0] };
-            bram_valid_in = 1'b1;
-            bram_we       = { (BRAM_WE_WIDTH){1'b1}};
+            bram_addr           = address_register[0+:BRAM_ADDR_WIDTH]; //use low
+            bram_in             = { ^(data_in_register[31:24]),data_in_register[31:24], ^(data_in_register[23:16]), data_in_register[23:16], ^(data_in_register[15:8]), data_in_register[15:8],  ^(data_in_register[7:0]), data_in_register[7:0] };
+            bram_valid_in       = 1'b1;
+            bram_we             = { (BRAM_WE_WIDTH) {1'b1} };
+            data_o_register     = bram_o_register;
         end
-        CMD_READ:
+        else if(cmd_register == CMD_READ)
         begin      
-            bram_addr     = address_register[0+:BRAM_ADDR_WIDTH]; //use low
-            bram_valid_in = 1'b1;
+            bram_addr           = address_register[0+:BRAM_ADDR_WIDTH]; //use low
+            bram_valid_in       = 1'b1;
             memory_addr_from_coprocessor_ready = 1'b0;
-
+            data_o_register     = bram_o_register;
         end
-        CMD_RESET:
-        begin
-            reset_master = 1'b1;
-        end
-        CMD_START:
+        else if(cmd_register == CMD_START)
         begin
             start_cc_pointer    = start_cc_pointer_register[0+:BRAM_ADDR_WIDTH];
             //start_pc            = start_pc_register[0+:PC_WIDTH];
@@ -118,16 +114,17 @@ begin
             bram_addr           = memory_addr_from_coprocessor;
             bram_valid_in       = memory_addr_from_coprocessor_valid;
             memory_addr_from_coprocessor_ready = 1'b1;
+            
             if( start_valid )
             begin
                 status_register_next = STATUS_RUNNING;
             end
         end
-        CMD_READ_ELAPSED_CLOCK:
+        else if(cmd_register == CMD_READ_ELAPSED_CLOCK)
         begin
             data_o_register     = elapsed_cc;
         end
-        endcase
+        
     end
     STATUS_RUNNING:
     begin 
@@ -155,21 +152,21 @@ end
 //////////////////////////
 
 bram #(
-    .READ_WIDTH ( BRAM_READ_WIDTH ),            
-    .WRITE_WIDTH( BRAM_WRITE_WIDTH),          
-    .ADDR_WIDTH ( BRAM_ADDR_WIDTH ),            
-    .WE_WIDTH   ( BRAM_WE_WIDTH   )           
+    .READ_WIDTH ( BRAM_READ_WIDTH   ),            
+    .WRITE_WIDTH( BRAM_WRITE_WIDTH  ),          
+    .ADDR_WIDTH ( BRAM_ADDR_WIDTH   ),            
+    .WE_WIDTH   ( BRAM_WE_WIDTH     )           
 ) abram (
-    .clk(     clk           ),
-    .reset(   reset_master  ),
-    .addr_i(  bram_addr     ),
-    .data_i(  bram_in       ),
-    .we(      bram_we       ),
-    .valid_i( bram_valid_in ),
-    .data_o(  bram_out      )
+    .clk(         clk               ),
+    .reset(       reset_master      ),
+    .addr_i(      bram_addr         ),
+    .data_i(      bram_in           ),
+    .we(          bram_we           ),
+    .valid_i(     bram_valid_in     ),
+    .data_o(      bram_out          )
 );
 
-
+/*
 regex_coprocessor_single_bb #(
     .PC_WIDTH         (PC_WIDTH         ),
     .CHARACTER_WIDTH  (CHARACTER_WIDTH  ),
@@ -189,16 +186,16 @@ regex_coprocessor_single_bb #(
     .finish             (finish),
     .accept             (accept)
 );
+*/
 
-/*
-regex_coprocessor_two_bb #(
+regex_coprocessor_n_bb #(
     .PC_WIDTH               (PC_WIDTH         ),
     .CHARACTER_WIDTH        (CHARACTER_WIDTH  ),
     .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
     .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH  ), 
     .LATENCY_COUNT_WIDTH    (7),
     .FIFO_COUNT_WIDTH       (6),
-    .BB_N                   (2)
+    .BB_N                   (1)
 )a_regex_coprocessor (
     .clk                (clk),
     .reset              (reset_master),
@@ -207,11 +204,10 @@ regex_coprocessor_two_bb #(
     .memory_data        (bram_payload),
     .memory_valid       (memory_addr_from_coprocessor_valid ),
     .start_ready        (start_ready),
-    //.start_pc           (start_pc),
     .start_cc_pointer   (start_cc_pointer),
     .start_valid        (start_valid),
     .finish             (finish),
     .accept             (accept)
-);*/
+);
 
 endmodule

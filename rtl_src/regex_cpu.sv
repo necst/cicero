@@ -168,7 +168,7 @@ module regex_cpu #(
             output_pc                           = output_pc_fromInstruction;
             output_pc_is_directed_to_current    = output_pc_fromInstruction_is_directed_to_current;
        
-            
+            // if (output_pc_fromInstruction_valid) return output_pc_ready
             if( ~output_pc_fromInstruction_valid  || output_pc_ready )
             begin
                 nextState                       = nextState_fromInstruction;

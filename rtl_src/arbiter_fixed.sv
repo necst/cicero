@@ -1,19 +1,19 @@
 `timescale 1ns/1ps
 
 module arbiter_fixed #(
-    parameter DWITDH      = 8 ,
+    parameter DWIDTH      = 8 ,
     parameter PRIORITY_0  = 1 
 )(
     input  logic               in_0_valid,
-    input  logic [DWITDH-1:0]  in_0_data,
+    input  logic [DWIDTH-1:0]  in_0_data,
     output logic               in_0_ready,
 
     input  logic               in_1_valid,
-    input  logic [DWITDH-1:0]  in_1_data,
+    input  logic [DWIDTH-1:0]  in_1_data,
     output logic               in_1_ready,
  
     output logic              out_valid,
-    output logic [DWITDH-1:0] out_data,
+    output logic [DWIDTH-1:0] out_data,
     input  logic              out_ready
 );
 
@@ -21,7 +21,7 @@ always_comb begin
     in_0_ready = 1'b0;
     in_1_ready = 1'b0;
     out_valid  = 1'b0;
-    out_data   = {(DWITDH){1'b0}};
+    out_data   = {(DWIDTH){1'b0}};
 
     
     if(PRIORITY_0 == 1)
