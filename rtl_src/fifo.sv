@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
-
+//This module implements a parametric queue
+//It provides also an output which signals how many values have been 
+//stored inside the queue. 
 module fifo #(
-    parameter DWIDTH         = 16,
+    parameter DWIDTH          = 16,
     parameter COUNT_WIDTH     = 5
 )(
   input  logic                  clk,
@@ -16,9 +18,9 @@ module fifo #(
 );
 
 logic [COUNT_WIDTH-1:0] head; 
-logic [COUNT_WIDTH  :0] head_incremented;
+logic [COUNT_WIDTH-1:0] head_incremented;
 logic [COUNT_WIDTH-1:0] tail;
-logic [COUNT_WIDTH  :0] tail_incremented;
+logic [COUNT_WIDTH-1:0] tail_incremented;
 logic [DWIDTH-1:0]      content [(1<<COUNT_WIDTH)-1:0];
 
 always_ff @( posedge clk ) begin 
@@ -33,7 +35,7 @@ always_ff @( posedge clk ) begin
         if(wr_en == 1'b1 && full == 1'b0 )
         begin
             content[tail] <= din; 
-            tail          <= tail_incremented[0+:COUNT_WIDTH];
+            tail          <= tail_incremented;
         end 
         else
         begin
@@ -43,7 +45,7 @@ always_ff @( posedge clk ) begin
         if(rd_en == 1'b1 && empty == 1'b0 )
         begin
             //content[head] <= { DWIDTH {1'b0} }; 
-            head          <= head_incremented[0+:COUNT_WIDTH];
+            head          <= head_incremented;
         end 
         else
         begin
@@ -61,11 +63,11 @@ always_comb begin
     //for fall through
     dout = content[head];
     //empty
-    if( head == tail ) empty = 1'b1;
-    else               empty = 1'b0;
+    if( head == tail )            empty = 1'b1;
+    else                          empty = 1'b0;
     //full
-    if( head == tail_incremented[0+:COUNT_WIDTH]) full = 1'b1;
-    else                                          full = 1'b0;
+    if( head == tail_incremented) full = 1'b1;
+    else                          full = 1'b0;
 
 end
 

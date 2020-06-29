@@ -2,35 +2,70 @@ import pynq
 from pynq import Overlay
 from pynq import MMIO
 from pynq import DefaultIP
-
+from enum import Enum
 import re
 import time
 
+class RE2_COPROCESSOR_COMMANDS(Enum):
+    NOP                             = 0x0000_0000 
+    WRITE                           = 0x0000_0001 
+    READ                            = 0x0000_0002 
+    START                           = 0x0000_0003 
+    RESET                           = 0x0000_0004 
+    READ_ELAPSED_CC                 = 0x0000_0005
+    RESTART                         = 0x0000_0006
+
+class RE2_COPROCESSOR_STATUS(Enum):
+    IDLE                         = 0x0000_0000 
+    RUNNING                      = 0x0000_0001 
+    ACCEPTED                     = 0x0000_0002 
+    REJECTED                     = 0x0000_0003 
+
+class RE2_COPROCESSOR_REGISTER_OFFSET(Enum):
+    DATA_IN   = 0
+    ADDRESS   = 4
+    START_CC  = 8
+    CMD       = 12
+    STATUS    = 16
+    DATA_O    = 20
+
 class re2_driver(DefaultIP):
-    RE2_COPRO_DATA_IN_REGISTER_OFFSET   = 0
-    RE2_COPRO_ADDRESS_REGISTER_OFFSET   = 4
-    RE2_COPRO_START_CC_REGISTER_OFFSET  = 8
-    RE2_COPRO_CMD_REGISTER_OFFSET       = 12
-    RE2_COPRO_STATUS_REGISTER_OFFSET    = 16
-    RE2_COPRO_DATA_O_REGISTER_OFFSET    = 20
-
-    CMD_NOP                             = 0x0000_0000 
-    CMD_WRITE                           = 0x0000_0001 
-    CMD_READ                            = 0x0000_0002 
-    CMD_START                           = 0x0000_0003 
-    CMD_RESET                           = 0x0000_0004 
-    CMD_READ_ELAPSED_CC                 = 0x0000_0005
-
-    STATUS_IDLE                         = 0x0000_0000 
-    STATUS_RUNNING                      = 0x0000_0001 
-    STATUS_ACCEPTED                     = 0x0000_0002 
-    STATUS_REJECTED                     = 0x0000_0003 
     debug                               = False
 
     def __init__(self, description):
         super().__init__(description=description)
 
     bindto = ['xilinx.com:user:re2_copro:2']
+
+    def write_data_in(self, i):
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_IN.value, i)
+
+    def read_data_in(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_IN.value)
+
+    def write_address(self, i):
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.ADDRESS.value, i)
+
+    def read_address(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.ADDRESS.value)
+
+    def write_start_cc(self, i):
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.START_CC.value, i)
+    
+    def read_start_cc(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.START_CC.value)
+    
+    def write_cmd(self, i:RE2_COPROCESSOR_COMMANDS):
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.CMD.value, i.value)
+    
+    def read_cmd(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.CMD.value)
+
+    def read_status(self):
+        return RE2_COPROCESSOR_STATUS(self.read(RE2_COPROCESSOR_REGISTER_OFFSET.STATUS.value))
+    
+    def read_data_o(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_O.value)
 
     def __code_to_bytes(self, code):
         list_bytes_big_endian = []
@@ -70,15 +105,15 @@ class re2_driver(DefaultIP):
             to_write_int    = int.from_bytes(to_write, byteorder=byteorder, signed=False) 
             if self.debug:
                 print('@ ', address,' written ',to_write,'->', to_write_int)
-            self.write(self.RE2_COPRO_ADDRESS_REGISTER_OFFSET, address)
-            self.write(self.RE2_COPRO_DATA_IN_REGISTER_OFFSET, to_write_int )
+            self.write_address(address       )
+            self.write_data_in(to_write_int  )
             if(flag):
                 flag = False
-                self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET, self.CMD_WRITE)
+                self.write_cmd(RE2_COPROCESSOR_COMMANDS.WRITE)
 
             address+=2
         
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET, self.CMD_NOP)
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return address
     
     def verify_code(self, code):
@@ -98,53 +133,63 @@ class re2_driver(DefaultIP):
             expected_to_read    = bytes_list[string_offset: string_offset+read_width]
             #byteorder start with Least Significant Bytes
             expected_to_read_int= int.from_bytes(expected_to_read, byteorder=byteorder, signed=False) 
-            self.write(self.RE2_COPRO_ADDRESS_REGISTER_OFFSET, address)
+            self.write_address(address)
             if(flag):
                 flag = False
-                self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET, self.CMD_READ)
-            read = self.read(self.RE2_COPRO_DATA_O_REGISTER_OFFSET)
+                self.write_cmd(RE2_COPROCESSOR_COMMANDS.READ)
+            read = self.read_data_o()
             if self.debug:
                 print('@ ', address,' read ', read,' expected ', expected_to_read_int)
             assert read == expected_to_read_int, ("@ "+str(address)+" data mismatch "+str(read)+" !== "+str(expected_to_read_int))
             address+=1
         
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET, self.CMD_NOP)
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return 1
 
     def start(self, start_string_address):
-        self.write(self.RE2_COPRO_START_CC_REGISTER_OFFSET  , start_string_address  )
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_START        )
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_NOP          )
+        self.write_start_cc( start_string_address      )
+        self.write_cmd( RE2_COPROCESSOR_COMMANDS.START )
+        self.write_cmd( RE2_COPROCESSOR_COMMANDS.NOP   )
 
     def wait_complete(self):
-        while(self.get_status() == self.STATUS_RUNNING):
+        while(self.read_status() == RE2_COPROCESSOR_STATUS.RUNNING):
             pass
 
-        return self.get_status() == self.STATUS_ACCEPTED
+        return self.read_status() == RE2_COPROCESSOR_STATUS.ACCEPTED
     
     def get_status(self):
-        return self.read(self.RE2_COPRO_STATUS_REGISTER_OFFSET)
+        return self.read_status()
 
     def read_elapsed_clock_cycles(self):
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET,  self.CMD_READ_ELAPSED_CC)
-        cc = self.read(self.RE2_COPRO_DATA_O_REGISTER_OFFSET)
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET,  self.CMD_NOP)
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.READ_ELAPSED_CC)
+        cc = self.read_data_o()
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return cc
     
     def reset(self):
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_RESET)
-        self.write(self.RE2_COPRO_CMD_REGISTER_OFFSET       , self.CMD_NOP)
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.RESET)
+        self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return True
 
     def compile_and_run(self, regex_string, string, double_check =True):
         
         try:
-            import sys
-            sys.path.append('../re2compiler')
-            import re2compiler
-            print('start compilation')
-            code = re2compiler.compile(data=regex_string)
-            print('end compilation')
+            
+            import os.path
+            code_output_file = regex_string+'.out'
+
+            if os.path.exists(code_output_file):
+                print('reusing previously compilation')
+                code = ''
+                with open(code_output_file,'r') as f:
+                    code = f.read()
+            else:
+                import sys
+                sys.path.append('../re2compiler')
+                import re2compiler
+                print('start compilation')
+                code = re2compiler.compile(data=regex_string,o=code_output_file, O1=True)
+                print('end compilation')
             code = code.split('\n')
             res  = self.load_and_run( code , string)
             if double_check:
@@ -170,6 +215,11 @@ class re2_driver(DefaultIP):
             return self.load_and_run(code, string )
 
     def load_and_run(self, code, string):
+        if ( self.get_status() in [RE2_COPROCESSOR_STATUS.REJECTED, RE2_COPROCESSOR_STATUS.ACCEPTED]):
+            self.write_cmd(RE2_COPROCESSOR_COMMANDS.RESTART)
+            if debug:
+                print('restart sent')
+
         code_address_end        = self.load_code(code)
         string_address_start    = code_address_end
         _                       = self.load_string(string,string_address_start)
@@ -189,25 +239,25 @@ if __name__ == "__main__":
     if debug :
         print('test:',re2_coprocessor.ip_dict)
 
-    
-    re2_coprocessor.re2_copro_0.reset()
+    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+    print('status:', re2_coprocessor.re2_copro_0.get_status())
     time.sleep(1)
     
-    regex_string        = "a?a?a?a*" 
-    string_to_accept    = "aaaaa"
-    string_to_reject    = "aaaaab"
+    regex_string        = "(a|b|c|d)aaaa" 
+    string_to_accept    = "aaaa"
+    string_to_reject    = "aaaab"
     #test to accept
-    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
 
     has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
     assert has_accepted == True, 'test failed'
     cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
-    print('clock cycles taken: ', cc_number)
-
-    re2_coprocessor.re2_copro_0.reset()
-
+    print('clock cycles taken:', cc_number)
+    print('status:', re2_coprocessor.re2_copro_0.get_status())
+    
+    #re2_coprocessor.re2_copro_0.reset()
+    
     has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
     assert has_accepted == False, 'test failed'
     cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
     print('clock cycles taken: ', cc_number)
-
+    print('status:', re2_coprocessor.re2_copro_0.get_status())

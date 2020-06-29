@@ -2,9 +2,13 @@
 
 import AXI_package::*;
 
+//component intended to decouple the regex_coprocessor and the AXI interface.
+//It contains the memory of the regex_coprocessor so that is possible to show outside the contetn of the memory
+//It implements some commands that are intended to drive the regex_coprocessor and other component from software. 
+
 module AXI_top(
     input  logic                               clk,
-    input  logic                             reset, //reset has to be implemented using cmd_register?
+    input  logic                             reset,
     input  logic [REG_WIDTH-1:0]  data_in_register,
     input  logic [REG_WIDTH-1:0]  address_register,
 //  input  logic [REG_WIDTH-1:0] start_pc_register,
@@ -88,7 +92,7 @@ begin
     start_cc_pointer                   = { (BRAM_ADDR_WIDTH){1'b0} }; 
 
     case(status_register)
-    STATUS_IDLE, STATUS_ACCEPTED, STATUS_REJECTED:
+    STATUS_IDLE:
     begin   
         if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
         begin      // addr_1, data_1, ..., cmd_nop.
@@ -114,11 +118,40 @@ begin
             bram_addr           = memory_addr_from_coprocessor;
             bram_valid_in       = memory_addr_from_coprocessor_valid;
             memory_addr_from_coprocessor_ready = 1'b1;
-            
+            elapsed_cc_next     = {(REG_WIDTH){1'b0}};
+
             if( start_valid )
             begin
                 status_register_next = STATUS_RUNNING;
             end
+        end
+        else if(cmd_register == CMD_READ_ELAPSED_CLOCK)
+        begin
+            data_o_register     = elapsed_cc;
+        end
+        
+    end
+    STATUS_ACCEPTED, STATUS_REJECTED:
+    begin   
+        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
+        begin      // addr_1, data_1, ..., cmd_nop.
+            
+            bram_addr           = address_register[0+:BRAM_ADDR_WIDTH]; //use low
+            bram_in             = { ^(data_in_register[31:24]),data_in_register[31:24], ^(data_in_register[23:16]), data_in_register[23:16], ^(data_in_register[15:8]), data_in_register[15:8],  ^(data_in_register[7:0]), data_in_register[7:0] };
+            bram_valid_in       = 1'b1;
+            bram_we             = { (BRAM_WE_WIDTH) {1'b1} };
+            data_o_register     = bram_o_register;
+        end
+        else if(cmd_register == CMD_READ)
+        begin      
+            bram_addr           = address_register[0+:BRAM_ADDR_WIDTH]; //use low
+            bram_valid_in       = 1'b1;
+            memory_addr_from_coprocessor_ready = 1'b0;
+            data_o_register     = bram_o_register;
+        end
+        else if(cmd_register == CMD_RESTART)
+        begin
+            status_register_next = STATUS_IDLE;
         end
         else if(cmd_register == CMD_READ_ELAPSED_CLOCK)
         begin
@@ -180,7 +213,6 @@ regex_coprocessor_single_bb #(
     .memory_data        (bram_payload),
     .memory_valid       (memory_addr_from_coprocessor_valid ),
     .start_ready        (start_ready),
-    //.start_pc           (start_pc),
     .start_cc_pointer   (start_cc_pointer),
     .start_valid        (start_valid),
     .finish             (finish),
@@ -195,7 +227,7 @@ regex_coprocessor_n_bb #(
     .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH  ), 
     .LATENCY_COUNT_WIDTH    (7),
     .FIFO_COUNT_WIDTH       (6),
-    .BB_N                   (1)
+    .BB_N                   (5)
 )a_regex_coprocessor (
     .clk                (clk),
     .reset              (reset_master),

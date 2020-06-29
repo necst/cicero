@@ -1,7 +1,9 @@
 `timescale 1ns/1ps
 
 import instruction::*;
-
+//A simple processor of reg2_instructions
+// It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
+// the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
 module regex_cpu #(
     parameter  PC_WIDTH          = 8 ,
     parameter  CHARACTER_WIDTH   = 8 ,

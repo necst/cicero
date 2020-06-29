@@ -1,5 +1,47 @@
 `timescale 1ns/1ps
-
+//The regex_coprocessor_nn_bb is in charge of :
+// - supplying control signal for the underlying basic clock (e.g. current_character,cur_is_even_character,.. )
+// - reading output signals from a basic block  (e.g. running, accepts, )
+// - implementing the logic to move from current character to the next character.
+// - expose control signals to control the overal logic of the coprocessor
+//                      +----------------------------------------------------------------------------------------------------------------+
+//                      | Regex_coprocessor                                                                                              |
+//                      |         +-------------------------------------------+                                                          |
+//                      |         |                                           |                                                          |
+//                      |         |                                          ....                                                        |
+//                      |         |                              +------------------+                                                    |
+//                      |         |                              |     arbiter rr   |                                                    |
+//                      |         |                              -------------------+                                                    |
+//                      |         |                                -/            \------------------------------                         |
+//                      |         |                       +-------/----+                                        \-----------------+      |
+//                      |         |                       | arbiter rr |                                             | arbiter rr |      |
+//                      |         |                       +------|-----+                                             +------|-----+      |
+//                      |         |              memory_*_for_bb |                                                          |            |
+//                      |         |                       +------|-----+                                             +------|-----+      |
+//                      |         |                       |Basic block |                                             |Basic block |      |
+//                      |         |                       |            |                                             |            |      |
+//                      |         |                       +---|-----^--+                                             +---|-----^--+      |
+//                      |         |                           |     |                                                    |     |         |
+//                      | arbiter |                           v     |                 +--------------------------+       v     |         |
+//                      | with    |                       +---------|--+              |       +----------------+ |   +---------|--+      |
+//                      | fixed   |         +--------+    |  I0     O0 |    data      |   /---| fifo    |      ---   |  I0     O0 |      |
+//         +----------+ | priority|   +-----|channel ----->            -------------------    +-------/-|------+ |\-->            ----+  |
+//         |          | | +-----+ |   | +---|        <-----  I1     O1 <--------------<---\   +---------v------+ | ---  I1     O1 <-+ |  |
+//         |memory    | | |     | |   | |   +--------+    |   switch   |    latency   |    ---| latency update <--/  |   switch   | | |  |
+//         |          ----|     --+   | |                 |  (station) |              |channel+----------------+ |   |  (station) | | |  |
+//         |          | | |     --+   | |                 +------------+              +--------------------------+   +------------+ | |  |
+//         |          | | +-----+ |   | +------------------------------------->-----------------------------------------------------+ |  |
+//         |          | |         |   |              +------------+                                                                   |  |
+//         +----------+ |         |   |              |  arbiter   |                                                                   |  |
+//                      |         |   +---------------  fixed prio<-------------------------------------------------------------------+  |
+//                      |         |                  +------------+                                                                      |
+//       control signals|         +---------------------+   |                                                                            |
+//                 -------------------------------> +---|---+--------+                                                                   |
+// finish/accept signals|                           |FSM of regex    |                                                                   |
+//                 <--------------------------------|coprocessor     |                                                                   |
+//                      |                           +----------------+                                                                   |
+//                      +----------------------------------------------------------------------------------------------------------------
+//
 module regex_coprocessor_n_bb #(
     parameter  PC_WIDTH            = 8 ,
     parameter  LATENCY_COUNT_WIDTH = 8 ,
@@ -19,7 +61,6 @@ module regex_coprocessor_n_bb #(
     output  logic                           memory_valid,
 
     input   logic                           start_ready,
-    //input   logic[PC_WIDTH-1:0]             start_pc,
     input   logic[MEMORY_ADDR_WIDTH-1:0]    start_cc_pointer,
     output  logic                           start_valid,
     output  logic                           finish,
@@ -32,23 +73,26 @@ module regex_coprocessor_n_bb #(
     logic                              cur_is_even_character   , next_is_even_character;
     localparam nr_bits_states = 3;
     typedef enum logic[nr_bits_states-1 : 0] {
-                                                S_IDLE                      , S_FETCH_NEXT_CC       , S_EXEC, 
-                                                S_COMPLETED_WITHOUT_ACCEPTING , S_COMPLETE_ACCEPTING  , S_ERROR
+                                                S_IDLE                        , S_FETCH_1ST_CC  ,
+                                                S_FETCH_NEXT_CC               , S_EXEC          , 
+                                                S_COMPLETED_WITHOUT_ACCEPTING , S_COMPLETE_ACCEPTING,  
+                                                S_ERROR
                                             } State;
     
     //MEMORY
+    //1. provide memory access for FSM outside the basic block
     logic                           memory_ready_for_cc ;
     logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_cc  ;
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_cc  ;
     logic                           memory_valid_for_cc ;
-    //memory access for BB note that we need 2*#BB -1 (we have to build a battery of arbiters)
+    //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
     logic                           memory_ready_for_bb     [2*BB_N-2:0];
     logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [2*BB_N-2:0];
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb      [2*BB_N-2:0];
     logic                           memory_valid_for_bb     [2*BB_N-2:0];
 
 
-    //basic blocks
+    //signals for basic blocks
     logic                           bb_running              [BB_N-1:0];
     logic                           bb_accepts              [BB_N-1:0];
     logic                           bb_input_pc_valid       [BB_N-1:0];
@@ -60,16 +104,16 @@ module regex_coprocessor_n_bb #(
     logic                           bb_output_pc_ready      [BB_N-1:0];
     logic[LATENCY_COUNT_WIDTH-1:0]  bb_output_pc_latency    [BB_N-1:0];
 
-    //basic block 0
+    //to fill basic block 0 with first instruction
     logic                           override_pc_ready;
     logic [PC_WIDTH-1:0]            override_pc;
     logic                           override_pc_current;
-    logic [PC_WIDTH-1+1:0]          override_pc_and_current;
+    logic [PC_WIDTH:0]          override_pc_and_current;
     logic                           override_pc_valid;
-    assign override_pc_current     = 1'b1;
-    assign override_pc_and_current = {override_pc, override_pc_current};
+    assign override_pc_directed_to_current  = 1'b1;
+    assign override_pc_and_current          = {override_pc, override_pc_directed_to_current};
 
-    //station 1 for each bb.
+    //1 station for each bb.
     logic                           station_input_pc_valid       [BB_N-1:0];
     logic[PC_WIDTH-1+1:0]           station_input_pc_and_current [BB_N-1:0]; 
     logic                           station_input_pc_ready       [BB_N-1:0];
@@ -78,7 +122,7 @@ module regex_coprocessor_n_bb #(
     logic[PC_WIDTH-1+1:0]           station_output_pc_and_current[BB_N-1:0];
     logic                           station_output_pc_ready      [BB_N-1:0];
     logic[LATENCY_COUNT_WIDTH-1:0]  station_output_pc_latency    [BB_N-1:0];
-    //interconnection (note that there are BBN+1!)
+    //interconnection
     logic                           channel_input_pc_valid       [BB_N-1:0];
     logic[PC_WIDTH-1+1:0]           channel_input_pc_and_current [BB_N-1:0]; 
     logic                           channel_input_pc_ready       [BB_N-1:0];
@@ -92,6 +136,7 @@ module regex_coprocessor_n_bb #(
     logic                   any_bb_running;
     logic                   subcomponent_reset;
 
+    //FSM surpevisioning the basic block
     State cur_state, next_state;
     always_ff @( posedge clk ) begin
          
@@ -111,7 +156,8 @@ module regex_coprocessor_n_bb #(
         end
     end
 
-    always_comb begin 
+    always_comb 
+    begin //realize next state function
         next_state              = cur_state;
         next_cc_pointer         = cur_cc_pointer;
         next_cc                 = cur_cc;
@@ -126,64 +172,85 @@ module regex_coprocessor_n_bb #(
         //for pc override
         override_pc            = { (PC_WIDTH){1'b0}           };
         override_pc_valid      = 1'b0;
-        //fifos
+        //reset subcomponents is a reset is given
         if (reset == 1'b1)   subcomponent_reset = 1'b1;
         else                 subcomponent_reset = 1'b0;
-        //default signals fifos
-        
 
         case(cur_state)
         S_IDLE:
         begin
+            //prepare signals to fetch first character at the next clock cycle
+            
             memory_addr_for_cc  = start_cc_pointer;
             memory_valid_for_cc = 1'b1;
-            override_pc         = start_pc;
             
-            if(memory_ready_for_cc && start_ready  ) 
+            //if memory answer affirmatively and start signal is raised start
+            if(start_ready && memory_ready_for_cc ) 
             begin
-                next_state          = S_FETCH_NEXT_CC;
+                next_state          = S_FETCH_1ST_CC;
+                //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
+                //dual-word address. we have to concatenate a bit. 
+                //First char of the string is assumed to be allineated to 32 bits  
                 next_cc_pointer     = {start_cc_pointer, 1'b0};
-                override_pc_valid   = 1'b1;
                 start_valid         = 1'b1;
             end
         end
+        S_FETCH_1ST_CC:
+        begin
+            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
+            else                          next_cc    = memory_data[15:8];
+            
+            override_pc         = start_pc; 
+            override_pc_valid   = 1'b1;
+            if(override_pc_ready)
+            begin
+                next_state      = S_EXEC;
+            end
+            
+        end
         S_FETCH_NEXT_CC:
         begin
-            next_state = S_EXEC;
-            if(cur_cc_pointer [0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                           next_cc    = memory_data[15:8];
-
-            if(~any_bb_running)begin
-                next_state = S_COMPLETED_WITHOUT_ACCEPTING;
-            end
+            //at the previous clock cycle the memory has been requested to issue the next
+            //current character
+            
+            //memory is 2B width
+            // TODO: parametrize in function of MEMORY_WIDTH
+            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
+            else                          next_cc    = memory_data[15:8];
+            //if the basic block immediately show not to have any work to do
+            //for the current character
+            //means that the regular expression does not match the string.
+            if(any_bb_running)  next_state = S_EXEC;
+            else                next_state = S_COMPLETED_WITHOUT_ACCEPTING;
+              
         end
         S_EXEC:
         begin
             if(any_bb_accept)
-            begin // if one raise accept: done!
+            begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = S_COMPLETE_ACCEPTING;
-                
             end
-            else if( ~any_bb_running ) 
-            begin // if all basic blocks are not running
-
+            else if( ~ any_bb_running ) 
+            begin // if all basic blocks have finished to execute instructions related to current char it's time to move to the next character
                 if( cur_cc == CHARACTER_TERMINATOR)
                 begin //if we reach the end of the string (i.e. current char is terminator) 
                     next_state = S_COMPLETED_WITHOUT_ACCEPTING;
                 end
-                else  //if we have still work to do
+                else  // otherwise we have still work to do
                 begin // ask for new current character
                     //TODO: avoid asking character if tmp_cur_cc[0] == 1
                     logic [MEMORY_ADDR_WIDTH:0] tmp_cur_cc_increment ;
                     tmp_cur_cc_increment= cur_cc_pointer + 1;
                     memory_valid_for_cc = 1'b1;
+                    //memory with 2B width support only even aligned adresses
                     memory_addr_for_cc  = tmp_cur_cc_increment [1+: MEMORY_ADDR_WIDTH];
                    
                     if( memory_ready_for_cc)
                     begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
+                          //update is_even_character ff 
                         next_state              = S_FETCH_NEXT_CC;
-                        next_is_even_character  = ~ cur_is_even_character;
                         next_cc_pointer         = tmp_cur_cc_increment;
+                        next_is_even_character  = ~ cur_is_even_character;
                     end
                 end
                 
@@ -198,14 +265,15 @@ module regex_coprocessor_n_bb #(
             finish = 1'b1;
             accept = 1'b1;
             next_state = S_IDLE;
-            //flush fifos
+            //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
         end
         S_COMPLETED_WITHOUT_ACCEPTING:
         begin
             finish = 1'b1;
+            accept = 1'b0;
             next_state = S_IDLE;
-            //flush fifos
+            //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
         end
         endcase
@@ -317,6 +385,7 @@ module regex_coprocessor_n_bb #(
             //5 connect channel input[i] with channel output [i-1]
             if(i==0)
             begin
+                //add a way to supply an instruction
                 //5.a for the first station close the loop and add a way to supply an instruction
                 arbiter_fixed #(
                     .DWIDTH(PC_WIDTH+1),
@@ -346,6 +415,7 @@ module regex_coprocessor_n_bb #(
         end
     endgenerate
     
+    //temporary signals to create a single bit any_bb_accept/any_bb_running
     logic [BB_N-1:0] tmp_bb_accepts;
     logic [BB_N-1:0] tmp_bb_running;
     logic [BB_N-1:0] tmp_station_not_empty;
@@ -358,8 +428,9 @@ module regex_coprocessor_n_bb #(
             assign tmp_station_not_empty[i] = station_input_pc_valid[i];
         end
     endgenerate
-    
+    //accept signal is simply or reduction of bb_accepts
     assign any_bb_accept  =  |tmp_bb_accepts;
+    //running signal is defined high if any bb/channel contain an instruction
     assign any_bb_running = (|tmp_bb_running ) || (|tmp_station_not_empty) ;
     
     genvar j;
