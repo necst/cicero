@@ -81,6 +81,7 @@ module regex_coprocessor_single_bb #(
     logic                           memory_valid_for_bb ;
 
     //signals for basic block
+    logic                           bb_go                   ;
     logic                           bb_running              ;
     logic                           bb_accepts              ;
     logic                           bb_input_pc_valid       ;
@@ -140,7 +141,8 @@ module regex_coprocessor_single_bb #(
         //reset subcomponents is a reset is given
         if (reset == 1'b1)   subcomponent_reset = 1'b1;
         else                 subcomponent_reset = 1'b0;
-
+        //basic bock computation default disabled
+        bb_go                  = 1'b0;
         case(cur_state)
         S_IDLE:
         begin
@@ -191,6 +193,8 @@ module regex_coprocessor_single_bb #(
         end
         S_EXEC:
         begin
+            //basic bock computation enable
+            bb_go                  = 1'b1;
             if(bb_accepts)
             begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = S_COMPLETE_ACCEPTING;
@@ -256,12 +260,14 @@ module regex_coprocessor_single_bb #(
         .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH               ),
         .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
         .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
-        .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              )
+        .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
+        .CACHE_WIDTH_BITS       (0                              )
     ) abb (
         .clk                    (clk                            ),
         .reset                  (subcomponent_reset             ), 
         .cur_is_even_character  (cur_is_even_character          ),
         .current_character      (cur_cc                         ),
+        .go                     (bb_go                          ),
         .running                (bb_running                     ),
         .accepts                (bb_accepts                     ),
         .memory_ready           (memory_ready_for_bb            ),

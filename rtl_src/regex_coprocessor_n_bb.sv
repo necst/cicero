@@ -49,7 +49,8 @@ module regex_coprocessor_n_bb #(
     parameter  CHARACTER_WIDTH     = 8 ,
     parameter  MEMORY_WIDTH        = 16,
     parameter  MEMORY_ADDR_WIDTH   = 11,
-    parameter  BB_N                = 4
+    parameter  BB_N                = 4,
+    parameter  CACHE_WIDTH_BITS    = 5
 )
 (
     input   logic                           clk,
@@ -93,6 +94,7 @@ module regex_coprocessor_n_bb #(
 
 
     //signals for basic blocks
+    logic                           bbs_go                            ;
     logic                           bb_running              [BB_N-1:0];
     logic                           bb_accepts              [BB_N-1:0];
     logic                           bb_input_pc_valid       [BB_N-1:0];
@@ -175,7 +177,8 @@ module regex_coprocessor_n_bb #(
         //reset subcomponents is a reset is given
         if (reset == 1'b1)   subcomponent_reset = 1'b1;
         else                 subcomponent_reset = 1'b0;
-
+        //basic bock computation default disabled
+        bbs_go                 = 1'b0;
         case(cur_state)
         S_IDLE:
         begin
@@ -226,6 +229,8 @@ module regex_coprocessor_n_bb #(
         end
         S_EXEC:
         begin
+            //basic bock computation enable
+            bbs_go          = 1'b1;
             if(any_bb_accept)
             begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = S_COMPLETE_ACCEPTING;
@@ -298,12 +303,14 @@ module regex_coprocessor_n_bb #(
                 .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH               ),
                 .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
                 .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
-                .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              )
+                .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
+                .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               )
             ) abb (
                 .clk                    (clk                            ),
                 .reset                  (subcomponent_reset             ), 
                 .cur_is_even_character  (cur_is_even_character          ),
                 .current_character      (cur_cc                         ),
+                .go                     (bbs_go                         ),
                 .running                (bb_running                 [i] ),
                 .accepts                (bb_accepts                 [i] ),
                 .memory_ready           (memory_ready_for_bb        [i] ),

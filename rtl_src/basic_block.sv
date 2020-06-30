@@ -9,7 +9,11 @@
 //                                   +------------------------------------------>memory_valid         
 //+----------------------------------|------------------------+             \---<memory_ready         
 //|                     Basic block  |                        |                                       
-//|                                  |                        |                                       
+//|                          +- - - - - - - +                 | 
+//|                            cache                          | 
+//|                          | (optional)   |                 | 
+//|                                                           | 
+//|                          +- - - - - - - +                 |                                       
 //|                                  |                        |                                       
 //|                          +-------|------+                 |                                       
 //|                          | Regex_cpu    |                 |             /--->output_pc_valid      
@@ -17,12 +21,12 @@
 //|                  |       |              |                 |             \---<output_pc_ready      
 //|                  |       +--------------+                 |                                       
 //|                  |                             input_pc_and_current[0]                            
-//|                  |   +------------------+     +-----+     |                                       
-//|                  +----  curr_char_fifo  <-----|--+  |     |                                       
+//|                  |   +------------------+ 1   +-----+     |                                       
+//|                  +----  curr_char_fifo  <--+--+--+  |     |                                       
 //|                      +------------------+  |demux|  |     |             /---<input_pc_valid       
-//|                      +------------------+  |     <--------------------------<input_pc_and_current 
-//| 0<--data_out_ready---|  next_char_fifo  <--------+  +----------------------->input_pc_ready       
-//|                      +------------------+           |     |                                       
+//|                      +------------------+  |     <--+-----------------------<input_pc_and_current 
+//| 0 --data_out_ready-->|  next_char_fifo  <--+-----+  +----------------------->input_pc_ready       
+//|                      +------------------+ 0         |     |                                       
 //|                                                     |     |                                       
 //|                            even_in_ready            |     |                                       
 //|                            and ---------------------+     |                                       
@@ -41,14 +45,16 @@ module basic_block #(
     parameter  FIFO_COUNT_WIDTH    = 6 ,
     parameter  CHARACTER_WIDTH     = 8 ,
     parameter  MEMORY_WIDTH        = 16,
-    parameter  MEMORY_ADDR_WIDTH   = 11
+    parameter  MEMORY_ADDR_WIDTH   = 11,
+    parameter  CACHE_WIDTH_BITS    = 0
 )(
     input   wire                            clk,
     input   wire                            reset, 
+    output  logic                           accepts,
     output  logic                           running,
+    input   logic                           go,
     input   logic                           cur_is_even_character,
     input   logic[CHARACTER_WIDTH-1:0]      current_character,
-    output  logic                           accepts,
 
     input   logic                           memory_ready,
     output  logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr,
@@ -72,8 +78,14 @@ module basic_block #(
     //sub signals of input_pc_and_current, output_pc_and_current
     logic [PC_WIDTH-1:0]        output_pc, input_pc;
     logic                       input_pc_is_directed_to_current, output_pc_is_directed_to_current;
-
+    //signals fior regex_cpu
+    logic regex_cpu_input_pc_ready,regex_cpu_input_pc_valid;
     //storage part of the basic block
+    //cache wires
+    wire                        regex_cpu_memory_ready      ;
+    wire [MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr       ;
+    wire [MEMORY_WIDTH-1     :0]regex_cpu_memory_data       ;
+    wire                        regex_cpu_memory_valid      ;
     //FIFO even signal 
     logic                       fifo_even_data_in_ready     ;
     logic                       fifo_even_data_in_not_ready ;
@@ -242,7 +254,9 @@ module basic_block #(
     /////////////////////////////////////////////////////////////////////////////
     // Computing part of the basic block
     /////////////////////////////////////////////////////////////////////////////
-
+    // go signal enable dequeue process from fifo_cur_char and plays the role of an enabler regex_cpu 
+    assign fifo_cur_char_data_out_ready = go && regex_cpu_input_pc_ready    ; 
+    assign regex_cpu_input_pc_valid     = go && fifo_cur_char_data_out_valid;
     regex_cpu #(
         .PC_WIDTH                           (PC_WIDTH                           ),
         .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
@@ -252,17 +266,45 @@ module basic_block #(
         .clk                                (clk                                ),
         .reset                              (reset                              ), 
         .current_character                  (current_character                  ),
-        .input_pc_ready                     (fifo_cur_char_data_out_ready       ), 
+        .input_pc_ready                     (regex_cpu_input_pc_ready           ), 
         .input_pc                           (fifo_cur_char_data_out             ), 
-        .input_pc_valid                     (fifo_cur_char_data_out_valid       ),
-        .memory_ready                       (memory_ready                       ),
-        .memory_addr                        (memory_addr                        ),
-        .memory_data                        (memory_data                        ),   
-        .memory_valid                       (memory_valid                       ),
+        .input_pc_valid                     (regex_cpu_input_pc_valid           ),
+        .memory_ready                       (regex_cpu_memory_ready             ),
+        .memory_addr                        (regex_cpu_memory_addr              ),
+        .memory_data                        (regex_cpu_memory_data              ),   
+        .memory_valid                       (regex_cpu_memory_valid             ),
         .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
         .output_pc_ready                    (output_pc_ready                    ),
         .output_pc                          (output_pc                          ),
         .output_pc_valid                    (output_pc_valid                    ),
         .accepts                            (accepts                            )
     );
+
+    //depending on CACHE_WIDTH_BITS
+    if (CACHE_WIDTH_BITS <= 0)
+    begin
+        assign memory_addr              = regex_cpu_memory_addr ;
+        assign memory_valid             = regex_cpu_memory_valid;  
+        assign regex_cpu_memory_ready   = memory_ready          ;
+        assign regex_cpu_memory_data    = memory_data           ;   
+    end
+    else
+    begin
+        cache_directly_mapped #(          
+            .DWIDTH             (MEMORY_WIDTH           ),
+            .CACHE_WIDTH_BITS   (CACHE_WIDTH_BITS       ),
+            .ADDR_WIDTH         (MEMORY_ADDR_WIDTH      )
+        ) a_cache (
+            .clk                (clk                    ),
+            .reset              (reset                  ),
+            .addr_in_valid      (regex_cpu_memory_valid ),
+            .addr_in            (regex_cpu_memory_addr  ),
+            .addr_in_ready      (regex_cpu_memory_ready ),
+            .data_out           (regex_cpu_memory_data  ),
+            .addr_out_valid     (memory_valid           ),
+            .addr_out           (memory_addr            ),
+            .addr_out_ready     (memory_ready           ),
+            .data_in            (memory_data            )
+        );
+    end
 endmodule

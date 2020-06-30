@@ -199,47 +199,54 @@ bram #(
     .data_o(      bram_out          )
 );
 
-/*
-regex_coprocessor_single_bb #(
-    .PC_WIDTH         (PC_WIDTH         ),
-    .CHARACTER_WIDTH  (CHARACTER_WIDTH  ),
-    .MEMORY_WIDTH     (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
-    .MEMORY_ADDR_WIDTH(BRAM_ADDR_WIDTH  )
-) a_regex_coprocessor (
-    .clk                (clk),
-    .reset              (reset_master),
-    .memory_ready       (memory_addr_from_coprocessor_ready ),
-    .memory_addr        (memory_addr_from_coprocessor       ),
-    .memory_data        (bram_payload),
-    .memory_valid       (memory_addr_from_coprocessor_valid ),
-    .start_ready        (start_ready),
-    .start_cc_pointer   (start_cc_pointer),
-    .start_valid        (start_valid),
-    .finish             (finish),
-    .accept             (accept)
-);
-*/
-
-regex_coprocessor_n_bb #(
-    .PC_WIDTH               (PC_WIDTH         ),
-    .CHARACTER_WIDTH        (CHARACTER_WIDTH  ),
-    .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
-    .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH  ), 
-    .LATENCY_COUNT_WIDTH    (7),
-    .FIFO_COUNT_WIDTH       (6),
-    .BB_N                   (5)
-)a_regex_coprocessor (
-    .clk                (clk),
-    .reset              (reset_master),
-    .memory_ready       (memory_addr_from_coprocessor_ready ),
-    .memory_addr        (memory_addr_from_coprocessor       ),
-    .memory_data        (bram_payload),
-    .memory_valid       (memory_addr_from_coprocessor_valid ),
-    .start_ready        (start_ready),
-    .start_cc_pointer   (start_cc_pointer),
-    .start_valid        (start_valid),
-    .finish             (finish),
-    .accept             (accept)
-);
-
+localparam BB_N             = 6;
+localparam FIFO_COUNT_WIDTH = 6;
+localparam CACHE_WIDTH_BITS = 0;
+if (BB_N == 1)
+begin
+    regex_coprocessor_single_bb #(
+        .PC_WIDTH               (PC_WIDTH                              ),
+        .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
+        .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
+        .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH                       ),
+        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      )
+    ) a_regex_coprocessor (
+        .clk                (clk),
+        .reset              (reset_master),
+        .memory_ready       (memory_addr_from_coprocessor_ready ),
+        .memory_addr        (memory_addr_from_coprocessor       ),
+        .memory_data        (bram_payload),
+        .memory_valid       (memory_addr_from_coprocessor_valid ),
+        .start_ready        (start_ready),
+        .start_cc_pointer   (start_cc_pointer),
+        .start_valid        (start_valid),
+        .finish             (finish),
+        .accept             (accept)
+    );
+end
+else
+begin
+    regex_coprocessor_n_bb #(
+        .PC_WIDTH               (PC_WIDTH                              ),
+        .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
+        .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
+        .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH                       ), 
+        .LATENCY_COUNT_WIDTH    (8                                     ),
+        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
+        .BB_N                   (BB_N                                  ),
+        .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                      )
+    )a_regex_coprocessor (
+        .clk                (clk),
+        .reset              (reset_master),
+        .memory_ready       (memory_addr_from_coprocessor_ready ),
+        .memory_addr        (memory_addr_from_coprocessor       ),
+        .memory_data        (bram_payload),
+        .memory_valid       (memory_addr_from_coprocessor_valid ),
+        .start_ready        (start_ready),
+        .start_cc_pointer   (start_cc_pointer),
+        .start_valid        (start_valid),
+        .finish             (finish),
+        .accept             (accept)
+    );
+end
 endmodule
