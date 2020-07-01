@@ -73,7 +73,7 @@ module regex_cpu #(
         nextState_fromInstruction                        = S_IDLE;
         output_pc_fromInstruction_is_directed_to_current = 1'b1;
 
-        case(currInstr[15:8])
+        case(currInstr[INSTRUCTION_TYPE_START:INSTRUCTION_TYPE_END])
             ACCEPT:
             begin
                 if( current_character == { (CHARACTER_WIDTH){1'b0}} ) begin

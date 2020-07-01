@@ -55,6 +55,7 @@ module regex_coprocessor_single_bb #(
     output  logic                           finish,
     output  logic                           accept
 );
+    localparam BASIC_BLOCK_PIPELINED       = 0;
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
     localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
     logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
@@ -261,7 +262,8 @@ module regex_coprocessor_single_bb #(
         .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
         .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
         .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
-        .CACHE_WIDTH_BITS       (0                              )
+        .CACHE_WIDTH_BITS       (0                              ),
+        .PIPELINED              (BASIC_BLOCK_PIPELINED          )
     ) abb (
         .clk                    (clk                            ),
         .reset                  (subcomponent_reset             ), 

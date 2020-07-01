@@ -67,6 +67,9 @@ module regex_coprocessor_n_bb #(
     output  logic                           finish,
     output  logic                           accept
 );
+    localparam BASIC_BLOCK_PIPELINED       = 0;
+    localparam BASIC_BLOCK_PIPELINE_STAGES = 4;
+
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
     localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
     logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
@@ -304,7 +307,8 @@ module regex_coprocessor_n_bb #(
                 .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
                 .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
                 .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
-                .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               )
+                .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               ),
+                .PIPELINED              (BASIC_BLOCK_PIPELINED          )
             ) abb (
                 .clk                    (clk                            ),
                 .reset                  (subcomponent_reset             ), 
@@ -375,10 +379,20 @@ module regex_coprocessor_n_bb #(
             //3.2. compute ~estimated number of clock cycles the data is going to wait
             //     before being served on this channel.
             assign channel_input_pc_latency[i] = channel_count + tmp_channel_input_latency;
-            always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
+            if (BASIC_BLOCK_PIPELINED )
+            begin
+                always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
                 if(subcomponent_reset)  tmp_channel_input_latency   <= 0;
-                else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +1;
+                else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +BASIC_BLOCK_PIPELINE_STAGES;
             end 
+            end
+            else
+            begin
+                always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
+                    if(subcomponent_reset)  tmp_channel_input_latency   <= 0;
+                    else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +1;
+                end 
+            end
             //always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
             //    if(subcomponent_reset)  channel_input_pc_latency[i]   <= 0;
             //    else                    channel_input_pc_latency[i]   <= station_input_pc_latency[i] + channel_count + 1;

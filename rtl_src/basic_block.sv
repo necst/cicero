@@ -46,7 +46,8 @@ module basic_block #(
     parameter  CHARACTER_WIDTH     = 8 ,
     parameter  MEMORY_WIDTH        = 16,
     parameter  MEMORY_ADDR_WIDTH   = 11,
-    parameter  CACHE_WIDTH_BITS    = 0
+    parameter  CACHE_WIDTH_BITS    = 0, 
+    parameter  PIPELINED           = 0
 )(
     input   wire                            clk,
     input   wire                            reset, 
@@ -79,6 +80,7 @@ module basic_block #(
     logic [PC_WIDTH-1:0]        output_pc, input_pc;
     logic                       input_pc_is_directed_to_current, output_pc_is_directed_to_current;
     //signals fior regex_cpu
+    logic regex_cpu_running                                ;
     logic regex_cpu_input_pc_ready,regex_cpu_input_pc_valid;
     //storage part of the basic block
     //cache wires
@@ -247,7 +249,7 @@ module basic_block #(
     //running if regex_cpu has taken some instruction and hence the data_out_ready=0
     //        or some instructions are saved in curr character fifo and hence fifo_cur_char_data_out_valid=1
     always_comb begin : running_definition
-        running = fifo_cur_char_data_out_valid || ~fifo_cur_char_data_out_ready;
+        running = fifo_cur_char_data_out_valid || regex_cpu_running;
     end
 
 
@@ -257,28 +259,58 @@ module basic_block #(
     // go signal enable dequeue process from fifo_cur_char and plays the role of an enabler regex_cpu 
     assign fifo_cur_char_data_out_ready = go && regex_cpu_input_pc_ready    ; 
     assign regex_cpu_input_pc_valid     = go && fifo_cur_char_data_out_valid;
-    regex_cpu #(
-        .PC_WIDTH                           (PC_WIDTH                           ),
-        .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
-        .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
-        .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
-    ) aregex_cpu (
-        .clk                                (clk                                ),
-        .reset                              (reset                              ), 
-        .current_character                  (current_character                  ),
-        .input_pc_ready                     (regex_cpu_input_pc_ready           ), 
-        .input_pc                           (fifo_cur_char_data_out             ), 
-        .input_pc_valid                     (regex_cpu_input_pc_valid           ),
-        .memory_ready                       (regex_cpu_memory_ready             ),
-        .memory_addr                        (regex_cpu_memory_addr              ),
-        .memory_data                        (regex_cpu_memory_data              ),   
-        .memory_valid                       (regex_cpu_memory_valid             ),
-        .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
-        .output_pc_ready                    (output_pc_ready                    ),
-        .output_pc                          (output_pc                          ),
-        .output_pc_valid                    (output_pc_valid                    ),
-        .accepts                            (accepts                            )
-    );
+    if(PIPELINED)
+    begin
+        regex_cpu_pipelined #(
+            .PC_WIDTH                           (PC_WIDTH                           ),
+            .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
+            .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
+            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
+        ) aregex_cpu (
+            .clk                                (clk                                ),
+            .reset                              (reset                              ), 
+            .current_character                  (current_character                  ),
+            .input_pc_ready                     (regex_cpu_input_pc_ready           ), 
+            .input_pc                           (fifo_cur_char_data_out             ), 
+            .input_pc_valid                     (regex_cpu_input_pc_valid           ),
+            .memory_ready                       (regex_cpu_memory_ready             ),
+            .memory_addr                        (regex_cpu_memory_addr              ),
+            .memory_data                        (regex_cpu_memory_data              ),   
+            .memory_valid                       (regex_cpu_memory_valid             ),
+            .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
+            .output_pc_ready                    (output_pc_ready                    ),
+            .output_pc                          (output_pc                          ),
+            .output_pc_valid                    (output_pc_valid                    ),
+            .accepts                            (accepts                            ),
+            .running                            (regex_cpu_running                  )
+        );
+    end
+    else
+    begin
+        regex_cpu #(
+            .PC_WIDTH                           (PC_WIDTH                           ),
+            .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
+            .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
+            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
+        ) aregex_cpu (
+            .clk                                (clk                                ),
+            .reset                              (reset                              ), 
+            .current_character                  (current_character                  ),
+            .input_pc_ready                     (regex_cpu_input_pc_ready           ), 
+            .input_pc                           (fifo_cur_char_data_out             ), 
+            .input_pc_valid                     (regex_cpu_input_pc_valid           ),
+            .memory_ready                       (regex_cpu_memory_ready             ),
+            .memory_addr                        (regex_cpu_memory_addr              ),
+            .memory_data                        (regex_cpu_memory_data              ),   
+            .memory_valid                       (regex_cpu_memory_valid             ),
+            .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
+            .output_pc_ready                    (output_pc_ready                    ),
+            .output_pc                          (output_pc                          ),
+            .output_pc_valid                    (output_pc_valid                    ),
+            .accepts                            (accepts                            )
+        );
+        assign regex_cpu_running =  ~fifo_cur_char_data_out_ready ;
+    end
 
     //depending on CACHE_WIDTH_BITS
     if (CACHE_WIDTH_BITS <= 0)
