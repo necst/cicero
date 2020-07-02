@@ -81,6 +81,11 @@ module regex_cpu #(
                     nextState_fromInstruction       = S_IDLE;
                 end
             end
+            ACCEPT_PARTIAL:
+            begin
+                accepts_fromInstruction         = 1'b1;
+                nextState_fromInstruction       = S_IDLE;
+            end
             SPLIT:
             begin
                 if (curState == S_EXEC_1 ) 
@@ -107,6 +112,15 @@ module regex_cpu #(
                     nextState_fromInstruction                        = S_IDLE;
                 end
             end
+            MATCH_ANY:
+            begin
+                
+                output_pc_fromInstruction_valid                  = 1'b1;
+                output_pc_fromInstruction                        = currPc + 1;
+                output_pc_fromInstruction_is_directed_to_current = 1'b0;
+                nextState_fromInstruction                        = S_IDLE;
+                
+            end
             JMP:
             begin
                 output_pc_fromInstruction_valid                      = 1'b1;
@@ -118,6 +132,7 @@ module regex_cpu #(
             begin
                 nextState_fromInstruction                            = S_IDLE;
             end
+
         endcase
     end
 

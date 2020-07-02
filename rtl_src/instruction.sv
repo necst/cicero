@@ -14,7 +14,7 @@
         parameter INSTRUCTION_DATA_START    = 7;
         parameter INSTRUCTION_DATA_END      = 0;
 
-        typedef enum logic[7:0] {ACCEPT, SPLIT,MATCH,JMP,END_WITHOUT_ACCEPTING} instr_type;
+        typedef enum logic[7:0] {ACCEPT, SPLIT,MATCH,JMP,END_WITHOUT_ACCEPTING, MATCH_ANY, ACCEPT_PARTIAL} instr_type;
         
         typedef struct packed{
             instr_type itype;

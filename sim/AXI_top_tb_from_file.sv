@@ -260,9 +260,14 @@ module AXI_top_tb_from_file();
         start_cc_pointer_register <= start_string_address;
         @(posedge clk);
         cmd_register              <= CMD_START;
-        while( status_register !== STATUS_RUNNING )
-        begin
+        
+        repeat(2)
             @(posedge clk);
+        
+        if( status_register !== STATUS_RUNNING )
+        begin
+            $display("status_register not running");
+            $stop;
         end
         cmd_register              <= CMD_NOP;
     end
@@ -315,7 +320,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a(bORc)start.csv","r");
+        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a.out","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -351,7 +356,10 @@ module AXI_top_tb_from_file();
         $fclose(fp_code);
         $fclose(fp_string);
 
+        repeat(10)
+            @(posedge clk);
         start(/*start_code,*/ start_string);
+        
         wait_result(res);
         if( res == 1)
         begin
@@ -360,9 +368,14 @@ module AXI_top_tb_from_file();
         else
         begin
             $display("NOK: string rejected");
+            $stop(1);
         end 
         get_cc_elapsed(cc_taken);
         $display("cc taken: %d", cc_taken);
+        cmd_register<= CMD_RESET;
+        @(posedge clk);
+        cmd_register<= CMD_NOP;
+        @(posedge clk);
 
         repeat(10)
             @(posedge clk);
@@ -377,7 +390,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
 
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a(bORc)start.csv","r");
+        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a.out","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -418,10 +431,12 @@ module AXI_top_tb_from_file();
         if( res == 1)
         begin
             $display("NOK: string accepted");
+            $stop;    
         end
         else
         begin
             $display("OK: string rejected");
+            
         end
         
         get_cc_elapsed(cc_taken);

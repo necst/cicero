@@ -243,8 +243,11 @@ module basic_block #(
     //    if( fifo_odd_data_count > fifo_even_data_count)  input_pc_latency = fifo_odd_data_count  + 1; 
     //    else                                             input_pc_latency = fifo_even_data_count + 1;      
     //end
-    assign input_pc_latency = fifo_cur_char_data_count + 1 ;
-    
+    always_comb
+    begin
+        if( &fifo_cur_char_data_count == 1'b1) input_pc_latency =  fifo_cur_char_data_count;
+        else                                   input_pc_latency = fifo_cur_char_data_count + 1 ;
+    end
     
     //running if regex_cpu has taken some instruction and hence the data_out_ready=0
     //        or some instructions are saved in curr character fifo and hence fifo_cur_char_data_out_valid=1

@@ -42,15 +42,18 @@
 //                      |                           +----------------+                                                                   |
 //                      +----------------------------------------------------------------------------------------------------------------
 //
+import Regex_coprocessor_package::*;
+
 module regex_coprocessor_n_bb #(
-    parameter  PC_WIDTH            = 8 ,
-    parameter  LATENCY_COUNT_WIDTH = 8 ,
-    parameter  FIFO_COUNT_WIDTH    = 6 ,
-    parameter  CHARACTER_WIDTH     = 8 ,
-    parameter  MEMORY_WIDTH        = 16,
-    parameter  MEMORY_ADDR_WIDTH   = 11,
-    parameter  BB_N                = 4,
-    parameter  CACHE_WIDTH_BITS    = 5
+    parameter  PC_WIDTH              = 8 ,
+    parameter  LATENCY_COUNT_WIDTH   = 8 ,
+    parameter  FIFO_COUNT_WIDTH      = 6 ,
+    parameter  CHARACTER_WIDTH       = 8 ,
+    parameter  MEMORY_WIDTH          = 16,
+    parameter  MEMORY_ADDR_WIDTH     = 11,
+    parameter  BB_N                  = 4,
+    parameter  CACHE_WIDTH_BITS      = 5,
+    parameter  BASIC_BLOCK_PIPELINED = 0
 )
 (
     input   logic                           clk,
@@ -65,9 +68,9 @@ module regex_coprocessor_n_bb #(
     input   logic[MEMORY_ADDR_WIDTH-1:0]    start_cc_pointer,
     output  logic                           start_valid,
     output  logic                           finish,
-    output  logic                           accept
+    output  logic                           accept,
+    output  logic                           error
 );
-    localparam BASIC_BLOCK_PIPELINED       = 0;
     localparam BASIC_BLOCK_PIPELINE_STAGES = 4;
 
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
@@ -75,13 +78,7 @@ module regex_coprocessor_n_bb #(
     logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
     logic      [CHARACTER_WIDTH-1:0]   cur_cc                   , next_cc;
     logic                              cur_is_even_character   , next_is_even_character;
-    localparam nr_bits_states = 3;
-    typedef enum logic[nr_bits_states-1 : 0] {
-                                                S_IDLE                        , S_FETCH_1ST_CC  ,
-                                                S_FETCH_NEXT_CC               , S_EXEC          , 
-                                                S_COMPLETED_WITHOUT_ACCEPTING , S_COMPLETE_ACCEPTING,  
-                                                S_ERROR
-                                            } State;
+    
     
     //MEMORY
     //1. provide memory access for FSM outside the basic block
@@ -147,7 +144,7 @@ module regex_coprocessor_n_bb #(
          
         if(reset)
         begin
-            cur_state               <= S_IDLE;
+            cur_state               <= REGEX_COPRO_S_IDLE;
             cur_cc_pointer          <= { (PC_WIDTH+1){1'b0}      };
             cur_cc                  <= { (CHARACTER_WIDTH){1'b0} };
             cur_is_even_character   <= 1'b1;
@@ -171,6 +168,7 @@ module regex_coprocessor_n_bb #(
         start_valid             = 1'b0;
         finish                  = 1'b0;
         accept                  = 1'b0;
+        error                   = 1'b0;
         //for memory req override
         memory_addr_for_cc     = { (MEMORY_ADDR_WIDTH) {1'b0} };
         memory_valid_for_cc    = 1'b0;
@@ -183,7 +181,7 @@ module regex_coprocessor_n_bb #(
         //basic bock computation default disabled
         bbs_go                 = 1'b0;
         case(cur_state)
-        S_IDLE:
+        REGEX_COPRO_S_IDLE:
         begin
             //prepare signals to fetch first character at the next clock cycle
             
@@ -193,7 +191,7 @@ module regex_coprocessor_n_bb #(
             //if memory answer affirmatively and start signal is raised start
             if(start_ready && memory_ready_for_cc ) 
             begin
-                next_state          = S_FETCH_1ST_CC;
+                next_state          = REGEX_COPRO_S_FETCH_1ST_CC;
                 //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
                 //dual-word address. we have to concatenate a bit. 
                 //First char of the string is assumed to be allineated to 32 bits  
@@ -201,7 +199,7 @@ module regex_coprocessor_n_bb #(
                 start_valid         = 1'b1;
             end
         end
-        S_FETCH_1ST_CC:
+        REGEX_COPRO_S_FETCH_1ST_CC:
         begin
             if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
             else                          next_cc    = memory_data[15:8];
@@ -210,11 +208,11 @@ module regex_coprocessor_n_bb #(
             override_pc_valid   = 1'b1;
             if(override_pc_ready)
             begin
-                next_state      = S_EXEC;
+                next_state      = REGEX_COPRO_S_EXEC;
             end
             
         end
-        S_FETCH_NEXT_CC:
+        REGEX_COPRO_S_FETCH_NEXT_CC:
         begin
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
@@ -226,23 +224,23 @@ module regex_coprocessor_n_bb #(
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
-            if(any_bb_running)  next_state = S_EXEC;
-            else                next_state = S_COMPLETED_WITHOUT_ACCEPTING;
+            if(any_bb_running)  next_state = REGEX_COPRO_S_EXEC;
+            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
               
         end
-        S_EXEC:
+        REGEX_COPRO_S_EXEC:
         begin
             //basic bock computation enable
             bbs_go          = 1'b1;
             if(any_bb_accept)
             begin // if during execution phase one basic block raise accept: end computations!
-                next_state  = S_COMPLETE_ACCEPTING;
+                next_state  = REGEX_COPRO_S_COMPLETE_ACCEPTING;
             end
             else if( ~ any_bb_running ) 
             begin // if all basic blocks have finished to execute instructions related to current char it's time to move to the next character
                 if( cur_cc == CHARACTER_TERMINATOR)
                 begin //if we reach the end of the string (i.e. current char is terminator) 
-                    next_state = S_COMPLETED_WITHOUT_ACCEPTING;
+                    next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
                 end
                 else  // otherwise we have still work to do
                 begin // ask for new current character
@@ -256,40 +254,51 @@ module regex_coprocessor_n_bb #(
                     if( memory_ready_for_cc)
                     begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
                           //update is_even_character ff 
-                        next_state              = S_FETCH_NEXT_CC;
+                        next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
                         next_cc_pointer         = tmp_cur_cc_increment;
                         next_is_even_character  = ~ cur_is_even_character;
                     end
                 end
                 
             end
-            //else if ( ~fifo_cur_char_data_in_ready && fifo_cur_char_data_in_valid) //TODO: make something similar
-            //begin // if there's an instruction that should be saved but no one is able to save it 
-            //    next_state = S_ERROR;
-            //end
+            else if ( (|tmp_bb_input_pc_ready) == 1'b0 && ( (|tmp_channel_not_empty) == 1'b1)) 
+            begin // if there's an instruction that should be saved but no one is able to save it 
+                next_state = REGEX_COPRO_S_ERROR;
+            end
         end
-        S_COMPLETE_ACCEPTING:
+        REGEX_COPRO_S_COMPLETE_ACCEPTING:
         begin
             finish = 1'b1;
             accept = 1'b1;
-            next_state = S_IDLE;
+            next_state = REGEX_COPRO_S_IDLE;
             //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
         end
-        S_COMPLETED_WITHOUT_ACCEPTING:
+        REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING:
         begin
             finish = 1'b1;
             accept = 1'b0;
-            next_state = S_IDLE;
+            next_state = REGEX_COPRO_S_IDLE;
             //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
+        end
+        REGEX_COPRO_S_ERROR:
+        begin
+            error = 1'b1;
         end
         endcase
     end
 
     /// Moduleinstances
-
     genvar i;
+    logic [BB_N-1:0] tmp_bb_input_pc_ready;
+    generate
+        for (i=0; i < BB_N; i++) 
+        begin
+            assign tmp_bb_input_pc_ready        [i] = bb_input_pc_ready            [i];
+        end
+    endgenerate
+
     generate
         for (i=0; i < BB_N; i++) 
         begin
@@ -411,7 +420,7 @@ module regex_coprocessor_n_bb #(
                 arbiter_fixed #(
                     .DWIDTH(PC_WIDTH+1),
                     .PRIORITY_0(1)
-                ) arbiter_to_overide_pc_at_bb_0_input (
+                ) arbiter_to_override_pc_at_bb_0_input (
                     .in_0_ready( override_pc_ready                      ),
                     .in_0_data ( override_pc_and_current                ),
                     .in_0_valid( override_pc_valid                      ),
@@ -439,20 +448,20 @@ module regex_coprocessor_n_bb #(
     //temporary signals to create a single bit any_bb_accept/any_bb_running
     logic [BB_N-1:0] tmp_bb_accepts;
     logic [BB_N-1:0] tmp_bb_running;
-    logic [BB_N-1:0] tmp_station_not_empty;
+    logic [BB_N-1:0] tmp_channel_not_empty;
     
     generate
         for (i=0; i < BB_N; i++) 
         begin
             assign tmp_bb_accepts       [i] = bb_accepts            [i];
             assign tmp_bb_running       [i] = bb_running            [i];
-            assign tmp_station_not_empty[i] = station_input_pc_valid[i];
+            assign tmp_channel_not_empty[i] = station_input_pc_valid[i];
         end
     endgenerate
     //accept signal is simply or reduction of bb_accepts
     assign any_bb_accept  =  |tmp_bb_accepts;
     //running signal is defined high if any bb/channel contain an instruction
-    assign any_bb_running = (|tmp_bb_running ) || (|tmp_station_not_empty) ;
+    assign any_bb_running = (|tmp_bb_running ) || (|tmp_channel_not_empty) ;
     
     genvar j;
     generate //we have to create a heap of arbiters to regulate access to memory 

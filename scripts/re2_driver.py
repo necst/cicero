@@ -20,6 +20,7 @@ class RE2_COPROCESSOR_STATUS(Enum):
     RUNNING                      = 0x0000_0001 
     ACCEPTED                     = 0x0000_0002 
     REJECTED                     = 0x0000_0003 
+    ERROR                        = 0x0000_0004 
 
 class RE2_COPROCESSOR_REGISTER_OFFSET(Enum):
     DATA_IN   = 0
@@ -196,7 +197,7 @@ class re2_driver(DefaultIP):
                 import re
                 regex            = re.compile(regex_string)
                 golden_model_res = not(regex.fullmatch(string, pos=0) is None)
-                assert golden_model_res == res, 'Mismatch between golden model {golden_model_res} and regex coprocessor {res}!'
+                assert golden_model_res == res, f'Mismatch between golden model {golden_model_res} and regex coprocessor {res}!'
                 if self.debug:
                     print('golden model agrees')
             return res
@@ -243,21 +244,23 @@ if __name__ == "__main__":
     print('status:', re2_coprocessor.re2_copro_0.get_status())
     time.sleep(1)
     
-    regex_string        = "(a|b|c|d)aaaa" 
-    string_to_accept    = "aaaa"
-    string_to_reject    = "aaaab"
+    regex_string        = 'a?a?a?a?aaaa'
+    string              = 'b'+'a'*8
+    
+    string_to_accept    = "a"*16
+    string_to_reject    = "a"*15+"bQ"
     #test to accept
 
-    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
-    assert has_accepted == True, 'test failed'
+    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string)
+    #assert has_accepted == True, 'test failed'
     cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
     print('clock cycles taken:', cc_number)
     print('status:', re2_coprocessor.re2_copro_0.get_status())
     
     #re2_coprocessor.re2_copro_0.reset()
-    
-    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
-    assert has_accepted == False, 'test failed'
-    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
-    print('clock cycles taken: ', cc_number)
-    print('status:', re2_coprocessor.re2_copro_0.get_status())
+    #
+    #has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
+    #assert has_accepted == False, 'test failed'
+    #cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+    #print('clock cycles taken: ', cc_number)
+    #print('status:', re2_coprocessor.re2_copro_0.get_status())

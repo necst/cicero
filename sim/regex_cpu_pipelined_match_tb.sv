@@ -168,7 +168,7 @@ module regex_cpu_pipelined_match_tb();
                 load_pc_and_supply_memory(a_pc,{MATCH,a_character } );
                 wait_pc_output(a_pc+8'h01, 1'b0, 1'b0);
                 //ensure it can wait other instructions
-                repeat (10)
+                repeat (3)
                     begin
                         @(posedge clk);
                         if( running == 1'b1)
@@ -200,7 +200,7 @@ module regex_cpu_pipelined_match_tb();
                         @(posedge clk);
                     end
                     $display("%h %c ok", a_pc, a_different_character);
-                    repeat (10)
+                    repeat (3)
                     begin
                         @(posedge clk);
                         if( running == 1'b1)

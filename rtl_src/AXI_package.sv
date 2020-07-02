@@ -16,5 +16,5 @@ parameter  STATUS_IDLE              = 'h0000_0000 ;
 parameter  STATUS_RUNNING           = 'h0000_0001 ;
 parameter  STATUS_ACCEPTED          = 'h0000_0002 ;
 parameter  STATUS_REJECTED          = 'h0000_0003 ;
-
+parameter  STATUS_ERROR             = 'h0000_0004 ;
 endpackage : AXI_package

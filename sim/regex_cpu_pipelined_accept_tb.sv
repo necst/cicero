@@ -116,7 +116,7 @@ module regex_cpu_pipelined_accept_tb();
         for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
             current_character <= 8'h00;
             load_pc_and_supply_memory(pc,{ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}}} );
-            
+            @(posedge clk);
             if(accepts !== 1'b1)
             begin
                 $display("%h didn't accept even if was supposed to!", pc);
@@ -140,7 +140,7 @@ module regex_cpu_pipelined_accept_tb();
             begin
                 current_character <= non_terminator;
                 load_pc_and_supply_memory(pc,{ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} });
-                
+                @(posedge clk);
                 if(accepts !== 1'b0)
                 begin
                     $display("pc: %h cc: %c accepted even if was supposed to not accept!",pc,  current_character);

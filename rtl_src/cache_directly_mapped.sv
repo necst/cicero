@@ -82,30 +82,26 @@ always_comb begin
     data_out_saved_next      =  {(DWIDTH)   {1'b0}};
     cache_line_in_saved_next = cache_line_in_saved ;
     tag_in_saved_next        = tag_in_saved        ;             
-    case(curState)
-    S_IDLE:
-    begin
-        data_out_saved_next   =  content[cache_line_in];
-        if( addr_in_valid && ~hit)  
-        begin
-
-            
-            if(addr_out_ready)
-            begin
-                tag_in_saved_next        = tag_in       ;
-                cache_line_in_saved_next = cache_line_in;
-                nextState = S_WRITE;
-            end
-        end
-    end
-    S_WRITE:
+    if(curState==S_WRITE)
     begin
         nextState           = S_IDLE    ;
         is_present_i_next   = 1'b1      ;
         content_i_next      = data_in   ;
 
     end
-    endcase
+
+    data_out_saved_next   =  content[cache_line_in];
+    if( addr_in_valid && ~hit)  
+    begin
+
+        
+        if(addr_out_ready)
+        begin
+            tag_in_saved_next        = tag_in       ;
+            cache_line_in_saved_next = cache_line_in;
+            nextState = S_WRITE;
+        end
+    end
 end
 
 //output function
@@ -117,24 +113,22 @@ always_comb begin
     addr_out            = {(ADDR_WIDTH){1'b0}}     ;
     addr_out_valid      = 1'b0                     ;
     data_out            = data_out_saved           ;
-    case(curState)
-    S_IDLE:
+
+    if( addr_in_valid && ~hit)  
     begin
-        if( addr_in_valid && ~hit)  
+        addr_out          = addr_in ;
+        addr_out_valid    = 1'b1    ;
+        if(addr_out_ready)
         begin
-            addr_out          = addr_in ;
-            addr_out_valid    = 1'b1    ;
-            if(addr_out_ready)
-            begin
-                addr_in_ready = 1'b1    ;
-            end
+            addr_in_ready = 1'b1    ;
         end
     end
-    S_WRITE:
+
+    if(curState==S_WRITE)
     begin
         data_out              = data_in ;
     end
-    endcase
+    
 end
 
 endmodule

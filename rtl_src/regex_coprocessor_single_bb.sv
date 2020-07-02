@@ -32,13 +32,15 @@
 //                        |                                                                                         |
 //                        |                                                                                         |
 //                        +-----------------------------------------------------------------------------------------+
+import Regex_coprocessor_package::*;
 
 module regex_coprocessor_single_bb #(
-    parameter PC_WIDTH          = 8,
-    parameter FIFO_COUNT_WIDTH  = 6 ,
-    parameter CHARACTER_WIDTH   = 8,
-    parameter MEMORY_WIDTH      = 16,
-    parameter MEMORY_ADDR_WIDTH = 11
+    parameter PC_WIDTH              = 8,
+    parameter FIFO_COUNT_WIDTH      = 6 ,
+    parameter CHARACTER_WIDTH       = 8,
+    parameter MEMORY_WIDTH          = 16,
+    parameter MEMORY_ADDR_WIDTH     = 11,
+    parameter BASIC_BLOCK_PIPELINED = 0
 )
 (
     input   logic                           clk,
@@ -53,21 +55,16 @@ module regex_coprocessor_single_bb #(
     input   logic[MEMORY_ADDR_WIDTH-1:0]    start_cc_pointer,
     output  logic                           start_valid,
     output  logic                           finish,
-    output  logic                           accept
+    output  logic                           accept,
+    output  logic                           error
 );
-    localparam BASIC_BLOCK_PIPELINED       = 0;
+    
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
     localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
     logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
     logic      [CHARACTER_WIDTH-1:0]   cur_cc                   , next_cc;
     logic                              cur_is_even_character   , next_is_even_character;
-    localparam nr_bits_states = 3;
-    typedef enum logic[nr_bits_states-1 : 0] {
-                                                S_IDLE                        , S_FETCH_1ST_CC  ,
-                                                S_FETCH_NEXT_CC               , S_EXEC          , 
-                                                S_COMPLETED_WITHOUT_ACCEPTING , S_COMPLETE_ACCEPTING,  
-                                                S_ERROR
-                                            } State;
+    
     
     //MEMORY
     //1. provide memory access for FSM outside the basic block
@@ -109,7 +106,7 @@ module regex_coprocessor_single_bb #(
          
         if(reset)
         begin
-            cur_state               <= S_IDLE;
+            cur_state               <= REGEX_COPRO_S_IDLE;
             cur_cc_pointer          <= { (PC_WIDTH+1){1'b0}      };
             cur_cc                  <= { (CHARACTER_WIDTH){1'b0} };
             cur_is_even_character   <= 1'b1;
@@ -133,6 +130,7 @@ module regex_coprocessor_single_bb #(
         start_valid             = 1'b0;
         finish                  = 1'b0;
         accept                  = 1'b0;
+        error                   = 1'b0;
         //for memory req override
         memory_addr_for_cc     = { (MEMORY_ADDR_WIDTH) {1'b0} };
         memory_valid_for_cc    = 1'b0;
@@ -145,7 +143,7 @@ module regex_coprocessor_single_bb #(
         //basic bock computation default disabled
         bb_go                  = 1'b0;
         case(cur_state)
-        S_IDLE:
+        REGEX_COPRO_S_IDLE:
         begin
             //prepare signals to fetch first character at the next clock cycle
             
@@ -155,7 +153,7 @@ module regex_coprocessor_single_bb #(
             //if memory answer affirmatively and start signal is raised start
             if(start_ready && memory_ready_for_cc ) 
             begin
-                next_state          = S_FETCH_1ST_CC;
+                next_state          = REGEX_COPRO_S_FETCH_1ST_CC;
                 //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
                 //dual-word address. we have to concatenate a bit. 
                 //First char of the string is assumed to be allineated to 32 bits  
@@ -163,7 +161,7 @@ module regex_coprocessor_single_bb #(
                 start_valid         = 1'b1;
             end
         end
-        S_FETCH_1ST_CC:
+        REGEX_COPRO_S_FETCH_1ST_CC:
         begin
             if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
             else                          next_cc    = memory_data[15:8];
@@ -172,11 +170,11 @@ module regex_coprocessor_single_bb #(
             override_pc_valid   = 1'b1;
             if(override_pc_ready)
             begin
-                next_state      = S_EXEC;
+                next_state      = REGEX_COPRO_S_EXEC;
             end
             
         end
-        S_FETCH_NEXT_CC:
+        REGEX_COPRO_S_FETCH_NEXT_CC:
         begin
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
@@ -188,23 +186,23 @@ module regex_coprocessor_single_bb #(
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
-            if(bb_running)  next_state = S_EXEC;
-            else            next_state = S_COMPLETED_WITHOUT_ACCEPTING;
+            if(bb_running)  next_state = REGEX_COPRO_S_EXEC;
+            else            next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
                    
         end
-        S_EXEC:
+        REGEX_COPRO_S_EXEC:
         begin
             //basic bock computation enable
             bb_go                  = 1'b1;
             if(bb_accepts)
             begin // if during execution phase one basic block raise accept: end computations!
-                next_state  = S_COMPLETE_ACCEPTING;
+                next_state  = REGEX_COPRO_S_COMPLETE_ACCEPTING;
             end
             else if( ~ bb_running )
             begin // if basic block has finished to execute instructions related to current char it's time to move to the next character
                 if( cur_cc == CHARACTER_TERMINATOR)
                 begin //if we reach the end of the string (i.e. current char is terminator) 
-                    next_state = S_COMPLETED_WITHOUT_ACCEPTING;
+                    next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
                 end
                 else  // otherwise we have still work to do
                 begin // ask for new current character
@@ -218,7 +216,7 @@ module regex_coprocessor_single_bb #(
                     if( memory_ready_for_cc)
                     begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
                           //update is_even_character ff 
-                        next_state              = S_FETCH_NEXT_CC;
+                        next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
                         next_cc_pointer         = tmp_cur_cc_increment;
                         next_is_even_character  = ~ cur_is_even_character;
                     end
@@ -229,24 +227,28 @@ module regex_coprocessor_single_bb #(
             begin // if bb want to produce an isntruction but does not have space to save it
                   // go into an error state
                   // TODO: signal outside error 
-                next_state = S_ERROR;
+                next_state = REGEX_COPRO_S_ERROR;
             end
         end
-        S_COMPLETE_ACCEPTING:
+        REGEX_COPRO_S_COMPLETE_ACCEPTING:
         begin
             finish = 1'b1;
             accept = 1'b1;
-            next_state = S_IDLE;
+            next_state = REGEX_COPRO_S_IDLE;
             //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
         end
-        S_COMPLETED_WITHOUT_ACCEPTING:
+        REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING:
         begin
             finish = 1'b1;
             accept = 1'b0;
-            next_state = S_IDLE;
+            next_state = REGEX_COPRO_S_IDLE;
              //flush subcomponents (e.g. fifos inside bb)
             subcomponent_reset = 1'b1;
+        end
+        REGEX_COPRO_S_ERROR:
+        begin
+            error = 1'b1;
         end
         endcase
     end
@@ -290,7 +292,7 @@ module regex_coprocessor_single_bb #(
     arbiter_fixed #(
         .DWIDTH(PC_WIDTH+1),
         .PRIORITY_0(1)
-    ) arbiter_to_ovveride_pc_at_bb_input (
+    ) arbiter_to_override_pc_at_bb_input (
         .in_0_ready( override_pc_ready             ),
         .in_0_data ( override_pc_and_current       ),
         .in_0_valid( override_pc_valid             ),

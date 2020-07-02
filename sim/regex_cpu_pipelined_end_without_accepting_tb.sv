@@ -127,6 +127,7 @@ module regex_cpu_pipelined_end_without_accepting();
                     current_character <= a_character;
 
                     load_pc_and_supply_memory(a_pc,{END_WITHOUT_ACCEPTING, a_random_payload });
+                    @(posedge clk);
                     while(running)
                     begin
                         @(posedge clk);

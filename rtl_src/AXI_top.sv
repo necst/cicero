@@ -45,7 +45,7 @@ localparam CHARACTER_WIDTH           = 8;
 logic                            memory_addr_from_coprocessor_ready;
 logic     [ BRAM_ADDR_WIDTH-1:0] memory_addr_from_coprocessor;
 logic                            memory_addr_from_coprocessor_valid;
-logic                            start_valid, finish, accept;
+logic                            start_valid, finish, accept, error;
 //logic             [PC_WIDTH-1:0] start_pc; 
 logic     [ BRAM_ADDR_WIDTH-1:0] start_cc_pointer;
 logic                            start_ready;
@@ -131,7 +131,7 @@ begin
         end
         
     end
-    STATUS_ACCEPTED, STATUS_REJECTED:
+    STATUS_ACCEPTED, STATUS_REJECTED, STATUS_ERROR:
     begin   
         if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
         begin      // addr_1, data_1, ..., cmd_nop.
@@ -165,11 +165,16 @@ begin
         bram_addr            = memory_addr_from_coprocessor;
         bram_valid_in        = memory_addr_from_coprocessor_valid;
         memory_addr_from_coprocessor_ready = 1'b1;
-        if( finish )
+        if(error)
+        begin
+            status_register_next = STATUS_ERROR;
+        end
+        else if( finish )
         begin
             if(accept)  status_register_next = STATUS_ACCEPTED;
             else        status_register_next = STATUS_REJECTED;
         end
+        
 
         if (&elapsed_cc == 1'b0)   
         begin //if counter has not saturated
@@ -199,9 +204,10 @@ bram #(
     .data_o(      bram_out          )
 );
 
-localparam BB_N             = 6;
-localparam FIFO_COUNT_WIDTH = 6;
-localparam CACHE_WIDTH_BITS = 0;
+localparam BB_N             = 4;
+localparam FIFO_COUNT_WIDTH = 7;
+localparam CACHE_WIDTH_BITS = 5;
+localparam BASIC_BLOCK_PIPELINED     = 1;
 if (BB_N == 1)
 begin
     regex_coprocessor_single_bb #(
@@ -209,7 +215,8 @@ begin
         .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
         .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
         .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH                       ),
-        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      )
+        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
+        .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                 )
     ) a_regex_coprocessor (
         .clk                (clk),
         .reset              (reset_master),
@@ -221,7 +228,8 @@ begin
         .start_cc_pointer   (start_cc_pointer),
         .start_valid        (start_valid),
         .finish             (finish),
-        .accept             (accept)
+        .accept             (accept),
+        .error              (error)
     );
 end
 else
@@ -231,10 +239,11 @@ begin
         .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
         .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
         .MEMORY_ADDR_WIDTH      (BRAM_ADDR_WIDTH                       ), 
-        .LATENCY_COUNT_WIDTH    (8                                     ),
+        .LATENCY_COUNT_WIDTH    (7                                     ),
         .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
         .BB_N                   (BB_N                                  ),
-        .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                      )
+        .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                      ),
+        .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                 )
     )a_regex_coprocessor (
         .clk                (clk),
         .reset              (reset_master),
@@ -246,7 +255,8 @@ begin
         .start_cc_pointer   (start_cc_pointer),
         .start_valid        (start_valid),
         .finish             (finish),
-        .accept             (accept)
+        .accept             (accept),
+        .error              (error)
     );
 end
 endmodule
