@@ -153,10 +153,13 @@ class re2_driver(DefaultIP):
         self.write_cmd( RE2_COPROCESSOR_COMMANDS.NOP   )
 
     def wait_complete(self):
-        while(self.read_status() == RE2_COPROCESSOR_STATUS.RUNNING):
-            pass
+        status = self.read_status()
+        while( status == RE2_COPROCESSOR_STATUS.RUNNING):
+            status = self.read_status()
 
-        return self.read_status() == RE2_COPROCESSOR_STATUS.ACCEPTED
+        if(status == RE2_COPROCESSOR_STATUS.ERROR):
+            raise RuntimeError('probably fifo full')
+        return status == RE2_COPROCESSOR_STATUS.ACCEPTED
     
     def get_status(self):
         return self.read_status()
@@ -172,7 +175,7 @@ class re2_driver(DefaultIP):
         self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return True
 
-    def compile_and_run(self, regex_string, string, double_check =True):
+    def compile_and_run(self, regex_string, string, double_check =True,ignore_prefix=True, full_match=False ):
         
         try:
             
@@ -189,14 +192,19 @@ class re2_driver(DefaultIP):
                 sys.path.append('../re2compiler')
                 import re2compiler
                 print('start compilation')
-                code = re2compiler.compile(data=regex_string,o=code_output_file, O1=True)
+                code = re2compiler.compile(data=regex_string,o=code_output_file, O1=True,ignore_prefix=ignore_prefix, full_match=full_match)
                 print('end compilation')
             code = code.split('\n')
             res  = self.load_and_run( code , string)
             if double_check:
                 import re
                 regex            = re.compile(regex_string)
-                golden_model_res = not(regex.fullmatch(string, pos=0) is None)
+                if full_match:
+                    golden_model_res = not(regex.fullmatch(string, pos=0) is None)
+                elif ignore_prefix:
+                    golden_model_res = not(regex.search(string, pos=0) is None)
+                else:
+                    golden_model_res = not(regex.match(string, pos=0) is None)
                 assert golden_model_res == res, f'Mismatch between golden model {golden_model_res} and regex coprocessor {res}!'
                 if self.debug:
                     print('golden model agrees')
@@ -244,23 +252,23 @@ if __name__ == "__main__":
     print('status:', re2_coprocessor.re2_copro_0.get_status())
     time.sleep(1)
     
-    regex_string        = 'a?a?a?a?aaaa'
+    regex_string        = 'a?a?bb'
     string              = 'b'+'a'*8
     
-    string_to_accept    = "a"*16
-    string_to_reject    = "a"*15+"bQ"
+    string_to_accept    = "a"*16+'bb'
+    string_to_reject    = "a"*15+"b"
     #test to accept
 
-    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string)
-    #assert has_accepted == True, 'test failed'
+    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
     cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
     print('clock cycles taken:', cc_number)
     print('status:', re2_coprocessor.re2_copro_0.get_status())
+    assert has_accepted == True, 'test failed'
     
     #re2_coprocessor.re2_copro_0.reset()
     #
-    #has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
-    #assert has_accepted == False, 'test failed'
-    #cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
-    #print('clock cycles taken: ', cc_number)
-    #print('status:', re2_coprocessor.re2_copro_0.get_status())
+    has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
+    cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+    print('clock cycles taken: ', cc_number)
+    print('status:', re2_coprocessor.re2_copro_0.get_status())
+    assert has_accepted == False, 'test failed'
