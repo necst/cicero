@@ -42,7 +42,7 @@ module regex_cpu_pipelined #(
     //stage outputs
     logic                           FETCH_SEND_waits                                     , EXE1_waits             , EXE2_waits  ;                                           
     logic [INSTRUCTION_WIDTH-1:0]                                FETCH_REC_Instr_next                                           ;         
-    logic                           FETCH_SEND_stall           , FETCH_REC_stall         , EXE1_stall             , EXE2_stall  ;
+    logic                           FETCH_SEND_not_stall           , FETCH_REC_not_stall         , EXE1_not_stall             , EXE2_not_stall  ;
     logic                                                                                  EXE1_accepts           , EXE2_accepts;
     logic                                                                                  EXE1_completes_instr                 ;    
     
@@ -68,40 +68,34 @@ module regex_cpu_pipelined #(
             FETCH_REC_has_to_save <= 1'b0;
 
             FETCH_REC_Instr_valid <= 1'b0;
-            EXE1_Instr_valid      <= 1'b0;
-            EXE2_Instr_valid      <= 1'b0; 
+                 EXE1_Instr_valid <= 1'b0;
+                 EXE2_Instr_valid <= 1'b0; 
             FETCH_REC_Pc          <= { (PC_WIDTH){1'b0} };
-            EXE1_Pc               <= { (PC_WIDTH){1'b0} };                
-            EXE2_Pc               <= { (PC_WIDTH){1'b0} }; 
+                 EXE1_Pc          <= { (PC_WIDTH){1'b0} };                
+                 EXE2_Pc          <= { (PC_WIDTH){1'b0} }; 
             FETCH_REC_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};
-            EXE1_Instr            <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};          
-            EXE2_Instr            <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};                                  
+                 EXE1_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};          
+                 EXE2_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};                                  
             
         end
         else
         begin
             
-            if(EXE2_stall  )
+            if(EXE2_not_stall  )
+            begin//for sure instruction does not require any further computation
+
+                EXE2_Instr_valid    <= 1'b0;
+            end
+            else
             begin //if stage stalled mantain state
                 EXE2_Pc             <= EXE2_Pc;
                 EXE2_Instr          <= EXE2_Instr;
                 EXE2_Instr_valid    <= EXE2_Instr_valid;
             end
-            else
-            begin//for sure instruction does not require any further computation
-                EXE2_Pc             <= { (PC_WIDTH){1'b0} };
-                EXE2_Instr          <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};
-                EXE2_Instr_valid    <= 1'b0;
-            end
+
 
             
-            if(EXE1_stall ) 
-            begin //if stage stalled mantain state
-                EXE1_Pc             <= EXE1_Pc;
-                EXE1_Instr          <= EXE1_Instr;    
-                EXE1_Instr_valid    <= EXE1_Instr_valid;
-            end
-            else 
+            if(EXE1_not_stall )  
             begin
                 //cancel status of this stage
                 //in case it will be overwritten by following stages
@@ -115,16 +109,16 @@ module regex_cpu_pipelined #(
                     EXE2_Instr_valid<= EXE1_Instr_valid;
                 end
             end
+            else
+            begin //if stage stalled mantain state
+                EXE1_Pc             <= EXE1_Pc;
+                EXE1_Instr          <= EXE1_Instr;    
+                EXE1_Instr_valid    <= EXE1_Instr_valid;
+            end
             
             
             FETCH_REC_has_to_save <= 1'b0;
-            if(FETCH_REC_stall )
-            begin
-                FETCH_REC_Pc         <= FETCH_REC_Pc;
-                FETCH_REC_Instr      <= FETCH_REC_Instr_next;    
-                FETCH_REC_Instr_valid<= FETCH_REC_Instr_valid;
-            end
-            else
+            if(FETCH_REC_not_stall )
             begin
                 FETCH_REC_Instr_valid<= 1'b0;
                     
@@ -132,25 +126,36 @@ module regex_cpu_pipelined #(
                 EXE1_Pc             <= FETCH_REC_Pc         ;
                 EXE1_Instr          <= FETCH_REC_Instr_next ;
                 EXE1_Instr_valid    <= FETCH_REC_Instr_valid;
-                
+            end
+            else
+            begin
+                FETCH_REC_Pc         <= FETCH_REC_Pc;
+                FETCH_REC_Instr      <= FETCH_REC_Instr_next;    
+                FETCH_REC_Instr_valid<= FETCH_REC_Instr_valid;
             end
 
-            if(~FETCH_SEND_stall )
+            if(FETCH_SEND_not_stall )
             begin //FETCH stall accounts for non ready FETCH_REC_stage
                 FETCH_REC_Pc                 <= input_pc    ;
                 FETCH_REC_Instr_valid        <= 1'b1        ;
                 FETCH_REC_has_to_save        <= 1'b1        ;
             end
             
-
-
         end
     end
     
-    assign FETCH_SEND_stall =                         ( FETCH_SEND_waits || (FETCH_REC_stall                           ) );
-    assign FETCH_REC_stall  = FETCH_REC_Instr_valid &&(                     (EXE1_stall                                ) );
-    assign EXE1_stall       = EXE1_Instr_valid      &&( EXE1_waits       || (EXE2_stall      && ~EXE1_completes_instr  ) );
-    assign EXE2_stall       = EXE1_Instr_valid      &&( EXE2_waits                                                       );
+    //assign FETCH_SEND_stall = (                           FETCH_SEND_waits  ||  (FETCH_REC_stall                         )  ) ;
+    //assign FETCH_REC_stall  = ( FETCH_REC_Instr_valid &&                         EXE1_stall                                 ) ;
+    //assign EXE1_stall       = ( EXE1_Instr_valid      &&  EXE1_waits        ||  (EXE2_stall      && ~EXE1_completes_instr)  ) ;
+    //assign EXE2_stall       = ( EXE2_Instr_valid      &&  EXE2_waits                                                        ) ;
+    // stage can go ahead              =(instr_is_valid && no_wait_signal raised && ( next_state_will_be_free_next_cc || stages_completes ))
+    // next_state_will_be_free_next_cc = next_stage_instr_valid && next_stage_moves || next_stage_instr_invalid 
+    assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
+    assign  FETCH_REC_not_stall  = ( FETCH_REC_Instr_valid &&                         (     ~EXE1_Instr_valid ||      EXE1_not_stall)) ;
+    assign       EXE1_not_stall  = (      EXE1_Instr_valid &&        ~EXE1_waits  && ((     ~EXE2_Instr_valid ||      EXE2_not_stall) || EXE1_completes_instr)) ;
+    assign       EXE2_not_stall  = (      EXE2_Instr_valid &&        ~EXE2_waits                                                     ) ;
+    
+
     //fetch_send stage
     always_comb begin
  
@@ -162,7 +167,7 @@ module regex_cpu_pipelined #(
         begin
             memory_valid              = 1'b1   ;
             
-            if(memory_ready == 1'b1 && ~FETCH_REC_stall)
+            if(memory_ready == 1'b1 && (~FETCH_REC_Instr_valid || FETCH_REC_not_stall))
             begin
                 input_pc_ready    = 1'b1;
                 FETCH_SEND_waits  = 1'b0;
