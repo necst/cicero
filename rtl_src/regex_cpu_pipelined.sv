@@ -163,11 +163,11 @@ module regex_cpu_pipelined #(
         input_pc_ready            = 1'b0   ;
         memory_addr               = { { (MEMORY_ADDR_WIDTH-PC_WIDTH) {1'b0} } , input_pc };
         memory_valid              = 1'B0   ;
-        if(input_pc_valid   )
+        if(input_pc_valid && (~FETCH_REC_Instr_valid || FETCH_REC_not_stall) )
         begin
             memory_valid              = 1'b1   ;
             
-            if(memory_ready == 1'b1 && (~FETCH_REC_Instr_valid || FETCH_REC_not_stall))
+            if(memory_ready == 1'b1)
             begin
                 input_pc_ready    = 1'b1;
                 FETCH_SEND_waits  = 1'b0;

@@ -71,7 +71,7 @@ module regex_coprocessor_n_bb #(
     output  logic                           accept,
     output  logic                           error
 );
-    localparam BASIC_BLOCK_PIPELINE_STAGES = 4;
+    
 
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
     localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
@@ -87,10 +87,10 @@ module regex_coprocessor_n_bb #(
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_cc  ;
     logic                           memory_valid_for_cc ;
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
-    logic                           memory_ready_for_bb     [2*BB_N-2:0];
-    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [2*BB_N-2:0];
-    logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb      [2*BB_N-2:0];
-    logic                           memory_valid_for_bb     [2*BB_N-2:0];
+    logic                           memory_ready_for_bb     [  BB_N:0];
+    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [  BB_N:0];
+    logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb      [BB_N-1:0];
+    logic                           memory_valid_for_bb     [  BB_N:0];
 
 
     //signals for basic blocks
@@ -105,7 +105,11 @@ module regex_coprocessor_n_bb #(
     logic[PC_WIDTH-1+1:0]           bb_output_pc_and_current[BB_N-1:0];
     logic                           bb_output_pc_ready      [BB_N-1:0];
     logic[LATENCY_COUNT_WIDTH-1:0]  bb_output_pc_latency    [BB_N-1:0];
-
+    //temporary signals to create a single bit any_bb_accept/any_bb_running
+    logic [BB_N-1:0] tmp_bb_accepts;
+    logic [BB_N-1:0] tmp_bb_running;
+    logic [BB_N-1:0] tmp_channel_not_empty;
+    logic [BB_N-1:0] tmp_bb_input_pc_ready;
     //to fill basic block 0 with first instruction
     logic                           override_pc_ready;
     logic [PC_WIDTH-1:0]            override_pc;
@@ -291,7 +295,7 @@ module regex_coprocessor_n_bb #(
 
     /// Moduleinstances
     genvar i;
-    logic [BB_N-1:0] tmp_bb_input_pc_ready;
+    
     generate
         for (i=0; i < BB_N; i++) 
         begin
@@ -301,7 +305,7 @@ module regex_coprocessor_n_bb #(
 
     generate
         for (i=0; i < BB_N; i++) 
-        begin
+        begin :g
             // internal signals
             logic [LATENCY_COUNT_WIDTH-1:0] tmp_channel_input_latency ;
             logic                           channel_input_pc_not_ready   ;
@@ -388,20 +392,13 @@ module regex_coprocessor_n_bb #(
             //3.2. compute ~estimated number of clock cycles the data is going to wait
             //     before being served on this channel.
             assign channel_input_pc_latency[i] = channel_count + tmp_channel_input_latency;
-            if (BASIC_BLOCK_PIPELINED )
-            begin
-                always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
+           
+           
+            always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
                 if(subcomponent_reset)  tmp_channel_input_latency   <= 0;
-                else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +BASIC_BLOCK_PIPELINE_STAGES;
+                else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +1;
             end 
-            end
-            else
-            begin
-                always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
-                    if(subcomponent_reset)  tmp_channel_input_latency   <= 0;
-                    else                    tmp_channel_input_latency   <= station_input_pc_latency[i] +1;
-                end 
-            end
+            
             //always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
             //    if(subcomponent_reset)  channel_input_pc_latency[i]   <= 0;
             //    else                    channel_input_pc_latency[i]   <= station_input_pc_latency[i] + channel_count + 1;
@@ -445,11 +442,7 @@ module regex_coprocessor_n_bb #(
         end
     endgenerate
     
-    //temporary signals to create a single bit any_bb_accept/any_bb_running
-    logic [BB_N-1:0] tmp_bb_accepts;
-    logic [BB_N-1:0] tmp_bb_running;
-    logic [BB_N-1:0] tmp_channel_not_empty;
-    
+    //temporary signals to create a single bit any_bb_accept/any_bb_running    
     generate
         for (i=0; i < BB_N; i++) 
         begin
@@ -463,44 +456,32 @@ module regex_coprocessor_n_bb #(
     //running signal is defined high if any bb/channel contain an instruction
     assign any_bb_running = (|tmp_bb_running ) || (|tmp_channel_not_empty) ;
     
-    genvar j;
-    generate //we have to create a heap of arbiters to regulate access to memory 
-             //hence for a number of basic block equal to N we need N-1 arbiters
-             // signals related to BB will belong to the lowest part of the array [0->N-1]
-             // signals related to arbiters will belong to the highest part of the array [N->N-2]
+    
+    arbiter_rr_n #(
+        .DWIDTH(MEMORY_ADDR_WIDTH),
+        .N(BB_N)
+    ) arbiter_tree_to_cope_with_memory_contention (
+        .clk       ( clk                                                   ),
+        .reset     ( subcomponent_reset                                    ),
+        .in_ready  ( memory_ready_for_bb           [BB_N-1:0 ]              ),
+        .in_data   ( memory_addr_for_bb            [BB_N-1:0 ]              ),
+        .in_valid  ( memory_valid_for_bb           [BB_N-1:0 ]              ),
+        .out_ready ( memory_ready_for_bb           [BB_N     ]              ),
+        .out_data  ( memory_addr_for_bb            [BB_N     ]              ),
+        .out_valid ( memory_valid_for_bb           [BB_N     ]              )
+    );
 
-        for (j=0; j < BB_N-1; j++) 
-        begin
-
-            arbiter_rr #(
-                .DWIDTH(MEMORY_ADDR_WIDTH),
-                .PRIORITY_0(1)
-            ) arbiter_tree_to_cope_with_memory_contention (
-                .clk       ( clk                                                   ),
-                .reset     ( subcomponent_reset                                    ),
-                .in_0_ready( memory_ready_for_bb           [2*BB_N-2 - j*2-1-1 ]   ),
-                .in_0_data ( memory_addr_for_bb            [2*BB_N-2 - j*2-1-1 ]   ),
-                .in_0_valid( memory_valid_for_bb           [2*BB_N-2 - j*2-1-1 ]   ),
-                .in_1_ready( memory_ready_for_bb           [2*BB_N-2 - j*2-1   ]   ),
-                .in_1_data ( memory_addr_for_bb            [2*BB_N-2 - j*2-1   ]   ),
-                .in_1_valid( memory_valid_for_bb           [2*BB_N-2 - j*2-1   ]   ),
-                .out_ready ( memory_ready_for_bb           [2*BB_N-2 - j       ]   ),
-                .out_data  ( memory_addr_for_bb            [2*BB_N-2 - j       ]   ),
-                .out_valid ( memory_valid_for_bb           [2*BB_N-2 - j       ]   )
-            );
-        end
-    endgenerate
 
     arbiter_fixed #(
         .DWIDTH(MEMORY_ADDR_WIDTH),
         .PRIORITY_0(1)
-    ) arbiter_for_memory_contention (
+    ) arbiter_for_memory_contention_bbs_and_cc (
         .in_0_valid( memory_valid_for_cc           ),
         .in_0_data ( memory_addr_for_cc            ),
         .in_0_ready( memory_ready_for_cc           ),
-        .in_1_valid( memory_valid_for_bb[2*BB_N-2] ),
-        .in_1_data ( memory_addr_for_bb [2*BB_N-2] ),
-        .in_1_ready( memory_ready_for_bb[2*BB_N-2] ),
+        .in_1_valid( memory_valid_for_bb[BB_N]     ),
+        .in_1_data ( memory_addr_for_bb [BB_N]     ),
+        .in_1_ready( memory_ready_for_bb[BB_N]     ),
         .out_valid ( memory_valid                  ),
         .out_data  ( memory_addr                   ),
         .out_ready ( memory_ready                  )

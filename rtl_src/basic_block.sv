@@ -263,7 +263,7 @@ module basic_block #(
     assign fifo_cur_char_data_out_ready = go && regex_cpu_input_pc_ready    ; 
     assign regex_cpu_input_pc_valid     = go && fifo_cur_char_data_out_valid;
     if(PIPELINED)
-    begin
+    begin : g
         regex_cpu_pipelined #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
@@ -289,7 +289,7 @@ module basic_block #(
         );
     end
     else
-    begin
+    begin : g 
         regex_cpu #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
@@ -325,7 +325,7 @@ module basic_block #(
     end
     else
     begin
-        cache_directly_mapped #(          
+        cache_directly_mapped_latency #(          
             .DWIDTH             (MEMORY_WIDTH           ),
             .CACHE_WIDTH_BITS   (CACHE_WIDTH_BITS       ),
             .ADDR_WIDTH         (MEMORY_ADDR_WIDTH      )

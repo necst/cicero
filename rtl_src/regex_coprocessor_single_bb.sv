@@ -255,7 +255,7 @@ module regex_coprocessor_single_bb #(
 
     /// Moduleinstances
 
-
+    begin : g
     //1. basic block
     basic_block #(
         .PC_WIDTH               (PC_WIDTH                       ),
@@ -287,7 +287,7 @@ module regex_coprocessor_single_bb #(
         .output_pc_ready        (bb_output_pc_ready             ),
         .output_pc_latency      ( )
     );
-
+    end
     //add a way to supply an instruction
     arbiter_fixed #(
         .DWIDTH(PC_WIDTH+1),
