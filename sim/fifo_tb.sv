@@ -93,15 +93,16 @@ module fifo_tb();
             $display("no empty fifo at the very beginning");
             $finish();
         end
+        
 
         for (logic [COUNT_BITS-1:0] c_max = 1 ; c_max < 1<<(COUNT_BITS-1) ; c_max+=1) 
         begin
 
-            for (logic [COUNT_BITS-1:0] c = 0 ; c < c_max ; c+=1) 
+            for (logic [COUNT_BITS-1:0] c = 1 ; c < c_max+1 ; c+=1) 
             begin
                 write(c);
                 @(posedge clk);
-                if (count !== (c+1)) begin
+                if (count !== (c)) begin
                     $display("problem with count: current %d, expected %d", count, (c+1));
                     $finish();
                 end
@@ -109,7 +110,7 @@ module fifo_tb();
 
             $display("OK writing");
 
-            for (logic [COUNT_BITS-1:0] c = 0 ; c < c_max ; c+=1) 
+            for (logic [COUNT_BITS-1:0] c = 1 ; c < c_max+1 ; c+=1) 
             begin
                 logic [DWIDTH-1:0] tmp;
                 read(tmp);
@@ -126,8 +127,7 @@ module fifo_tb();
 
 
 
-        //test basic write and reset
-        //wait for bram ready.
+        //test count
         
         @(posedge clk);
         if( count !== {COUNT_BITS{1'b0}} )
@@ -172,7 +172,78 @@ module fifo_tb();
             end
             $display("OK resetting after writing %d elements", c_max);
         end
+        
 
+        //test subsequent read/write
+        write_data  <= 16'hDEAD;
+        write_valid <= 1'b1;
+        @(posedge clk);
+        read_ready  <= 1'b1;
+        write_valid <= 1'b1;
+        write_data  <= 16'hBEEF;
+        @(posedge clk);
+        if(read_data !== 16'hDEAD) 
+        begin
+            $display("error first write");
+            $finish();
+        end
+        read_ready  <= 1'b1;
+        write_valid <= 1'b0;
+        @(posedge clk);
+        if(read_data !== 16'hBEEF) 
+        begin
+            $display("error second subsequent write");
+            $finish();
+        end
+        read_ready  <= 1'b1;
+        write_valid <= 1'b0;
+        @(posedge clk);
+        read_ready  <= 1'b0;
+        write_valid <= 1'b0;
+        if(count !== 0) 
+        begin
+            $display("error data count");
+            $finish();
+        end
+        //test subsequent read/write
+        write_data  <= 16'hDEAD;
+        write_valid <= 1'b1;
+        @(posedge clk);
+        read_ready  <= 1'b1;
+        write_valid <= 1'b1;
+        write_data  <= 16'hBEEF;
+        @(posedge clk);
+        if(read_data !== 16'hDEAD) 
+        begin
+            $display("error first write");
+            $finish();
+        end
+        read_ready  <= 1'b0;
+        write_valid <= 1'b0;
+        @(posedge clk);
+        read_ready  <= 1'b1;
+        if(read_data !== 16'hBEEF) 
+        begin
+            $display("error second subsequent write");
+            $finish();
+        end
+        @(posedge clk);
+        if(read_data !== 16'hBEEF) 
+        begin
+            $display("error second subsequent write");
+            $finish();
+        end
+        read_ready  <= 1'b1;
+        write_valid <= 1'b0;
+        @(posedge clk);
+        read_ready  <= 1'b0;
+        write_valid <= 1'b0;
+        if(count !== 0) 
+        begin
+            $display("error data count");
+            $finish();
+        end
+        
         $finish();
     end
 

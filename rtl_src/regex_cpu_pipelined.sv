@@ -11,27 +11,28 @@ module regex_cpu_pipelined #(
     parameter  MEMORY_ADDR_WIDTH    = 11,
     parameter  FIFO_WIDTH_POWER_OF_2= 2    
 )(
-    input   wire                        clk,
-    input   wire                        reset, 
-    input   logic[CHARACTER_WIDTH-1:0]  current_character,
+    input   wire                            clk,
+    input   wire                            reset, 
+    input   logic[CHARACTER_WIDTH-1:0]      current_character,
 
-    input   logic                       input_pc_valid,
-    input   logic[PC_WIDTH-1:0]         input_pc, 
-    output  logic                       input_pc_ready,
+    input   logic                           input_pc_valid,
+    input   logic[PC_WIDTH-1:0]             input_pc, 
+    output  logic                           input_pc_ready,
 
-    input   logic                       memory_ready,
-    output  logic[MEMORY_ADDR_WIDTH-1:0]memory_addr,
-    input   logic[MEMORY_WIDTH-1     :0]memory_data,
-    output  logic                       memory_valid,
+    input   logic                           memory_ready,
+    output  logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr,
+    input   logic[MEMORY_WIDTH-1     :0]    memory_data,
+    output  logic                           memory_valid,
 
  
-    output  logic                       output_pc_is_directed_to_current,
-    output  logic                       output_pc_valid,
-    output  logic[PC_WIDTH-1:0]         output_pc,
-    input   logic                       output_pc_ready,
+    output  logic                           output_pc_is_directed_to_current,
+    output  logic                           output_pc_valid,
+    output  logic[PC_WIDTH-1:0]             output_pc,
+    input   logic                           output_pc_ready,
 
-    output  logic                       accepts,
-    output  logic                       running
+    output  logic                           accepts,
+    output  logic                           running,
+    output  logic[FIFO_WIDTH_POWER_OF_2:0]  latency
 );
     
     //stage status
@@ -59,6 +60,7 @@ module regex_cpu_pipelined #(
     logic [PC_WIDTH  :0]            EXE1_buffered_output_pc_and_current           , EXE2_buffered_output_pc_and_current           ;
     logic                           EXE1_buffered_output_pc_valid                 , EXE2_buffered_output_pc_valid                 ;
     logic                           EXE1_buffered_output_pc_not_valid             , EXE2_buffered_output_pc_not_valid             ;
+    logic [FIFO_WIDTH_POWER_OF_2-1:0]EXE1_buffered_count                          , EXE2_buffered_count                           ;
     // output arbiter
     logic [PC_WIDTH  :0]            output_pc_and_current;
     always_ff @(posedge clk ) 
@@ -307,7 +309,8 @@ module regex_cpu_pipelined #(
         .wr_en      (EXE1_output_pc_valid               ), //equivalent to data_in_valid
         .rd_en      (EXE1_buffered_output_pc_ready      ), //equivalent to data_out_ready
         .dout       (EXE1_buffered_output_pc_and_current), 
-        .empty      (EXE1_buffered_output_pc_not_valid  ) //equivalent to not data_out_valid
+        .empty      (EXE1_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
+        .data_count (EXE1_buffered_count                )
     );
 
     //buffer for EXE2_output
@@ -325,7 +328,8 @@ module regex_cpu_pipelined #(
         .wr_en      (EXE2_output_pc_valid               ), //equivalent to data_in_valid
         .rd_en      (EXE2_buffered_output_pc_ready      ), //equivalent to data_out_ready
         .dout       (EXE2_buffered_output_pc_and_current), 
-        .empty      (EXE2_buffered_output_pc_not_valid  ) //equivalent to not data_out_valid
+        .empty      (EXE2_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
+        .data_count (EXE2_buffered_count                )
     );
 
     //round robin arbiter for EXE1_output
@@ -350,6 +354,6 @@ module regex_cpu_pipelined #(
     assign output_pc_is_directed_to_current = output_pc_and_current[          0];
     assign accepts =                          EXE1_accepts      || EXE2_accepts ;
     assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid || EXE2_buffered_output_pc_valid || EXE1_buffered_output_pc_valid ;
-    
+    assign latency = EXE1_buffered_count + EXE2_buffered_count;
     
 endmodule 

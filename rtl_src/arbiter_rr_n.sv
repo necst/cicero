@@ -47,7 +47,7 @@ begin
         .in_1_data (                                          ),
         .in_1_valid( tmp_valid           [2*N-2 - j*2-1   ]   ),
         .out_ready ( tmp_ready           [2*N-2 - j       ]   ),
-        .out_data (                                          ),
+        .out_data (                                           ),
         .out_valid ( tmp_valid           [2*N-2 - j       ]   )
     );
 end
@@ -56,10 +56,13 @@ endgenerate
 always_comb begin : select_data_o
     int i;
     
-    out_data = {DWIDTH{1'b01}};
-    for (i = 0 ; i < N ; i++ ) begin
+    out_data = {(DWIDTH){1'b0}};
+    for (i = 0 ; i < N ; i++ ) 
+    begin
         if(tmp_ready[i])
+        begin
             out_data = in_data[i];
+        end
     end
 end
 

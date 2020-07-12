@@ -77,6 +77,7 @@ module AXI_top_tb_from_file();
         reg [7:0]           itype0, idata0, itype1,idata1;
         reg [REG_WIDTH:0]   data;
         reg                 flag;
+        
         flag    = 1'b1;  
         address = start_address;
         
@@ -299,6 +300,107 @@ module AXI_top_tb_from_file();
     end
     endtask
 
+    localparam BB_N = 8;
+    int  bb_cc_active [BB_N-1:0] ;
+
+    task display_utilization(input logic [REG_WIDTH-1:0] cc_taken);
+    begin
+        int i;
+        real u;
+        $write("BB utilization ");
+        for (i = 0 ; i< BB_N ; i+=1) 
+        begin
+            u = $itor(bb_cc_active[i])/$itor(cc_taken);
+            $write("\t %f",u);
+        end
+        $write("\n");
+    end
+    endtask
+    localparam UTILIZATON_ENABLED = 1'b1;
+
+    genvar i;
+    generate
+
+        if(UTILIZATON_ENABLED)
+        begin
+            for(i = 0; i<BB_N; i+=1)begin
+                always @( posedge clk)
+                begin
+                   
+                    if (reset)
+                    begin
+                            bb_cc_active[i] <= 32'd0;
+                    end
+                    else 
+                    begin
+                        if(BB_N > 1)
+                        begin
+                            
+                            if( dut.g1.a_regex_coprocessor.g[i].abb.g.aregex_cpu.running)
+                            begin
+                                bb_cc_active[i] <= bb_cc_active[i]+1;
+                            end
+                        end
+                        //else
+                        //begin
+                        //    if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
+                        //    begin
+                        //        bb_cc_active[i] <= bb_cc_active[i]+1;
+                        //    end
+                        //end
+                    end
+                    
+                end
+            end
+        end
+    endgenerate 
+    /*always @( posedge clk)
+    begin
+        int i;
+        
+        if (reset)
+        begin
+            for (i = 0 ; i< BB_N ; i+=1) begin
+                bb_cc_active[i] <= 32'd0;
+            end
+        end
+        else 
+        begin
+            if(BB_N > 1)
+            begin
+                //for 1bb
+                //if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
+                //begin
+                //    bb_cc_active[0] <= bb_cc_active[0]+1;
+                //end
+                if( dut.g1.a_regex_coprocessor.g[0].abb.g.aregex_cpu.running)
+                begin
+                    bb_cc_active[0] <= bb_cc_active[0]+1;
+                end
+                if( dut.g1.a_regex_coprocessor.g[1].abb.g.aregex_cpu.running)
+                begin
+                    bb_cc_active[1] <= bb_cc_active[1]+1;
+                end
+                if( dut.g1.a_regex_coprocessor.g[2].abb.g.aregex_cpu.running)
+                begin
+                    bb_cc_active[2] <= bb_cc_active[2]+1;
+                end
+                if( dut.g1.a_regex_coprocessor.g[3].abb.g.aregex_cpu.running)
+                begin
+                    bb_cc_active[3] <= bb_cc_active[3]+1;
+                end
+            end
+            //else
+            //begin
+            //    if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
+            //    begin
+            //        bb_cc_active[i] <= bb_cc_active[i]+1;
+            //    end
+            //end
+        end
+        
+    end*/
+
     initial
     begin
         int fp_code , fp_string;
@@ -311,6 +413,7 @@ module AXI_top_tb_from_file();
         clk          = 1'b0;
         reset       <= 1'b0;
         cmd_register<= CMD_NOP;
+
         $display("Starting test for accepting");
         @(posedge clk);
         reset       <= 1'b1;
@@ -358,6 +461,7 @@ module AXI_top_tb_from_file();
 
         repeat(10)
             @(posedge clk);
+        
         start(/*start_code,*/ start_string);
         
         wait_result(res);
@@ -372,6 +476,8 @@ module AXI_top_tb_from_file();
         end 
         get_cc_elapsed(cc_taken);
         $display("cc taken: %d", cc_taken);
+        display_utilization(cc_taken);
+        $finish();
         cmd_register<= CMD_RESET;
         @(posedge clk);
         cmd_register<= CMD_NOP;
@@ -441,9 +547,11 @@ module AXI_top_tb_from_file();
         
         get_cc_elapsed(cc_taken);
         $display("cc taken: %d", cc_taken);
-        
+        display_utilization(cc_taken);
 
         $finish(0);
     end
+
+    
 
 endmodule

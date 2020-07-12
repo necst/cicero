@@ -47,7 +47,8 @@ module basic_block #(
     parameter  MEMORY_WIDTH        = 16,
     parameter  MEMORY_ADDR_WIDTH   = 11,
     parameter  CACHE_WIDTH_BITS    = 0, 
-    parameter  PIPELINED           = 0
+    parameter  PIPELINED           = 0,
+    parameter  CONSIDER_PIPELINE_FIFO = 0
 )(
     input   wire                            clk,
     input   wire                            reset, 
@@ -79,9 +80,11 @@ module basic_block #(
     //sub signals of input_pc_and_current, output_pc_and_current
     logic [PC_WIDTH-1:0]        output_pc, input_pc;
     logic                       input_pc_is_directed_to_current, output_pc_is_directed_to_current;
-    //signals fior regex_cpu
+    //signals for regex_cpu
     logic regex_cpu_running                                ;
     logic regex_cpu_input_pc_ready,regex_cpu_input_pc_valid;
+    localparam                      FIFO_WIDTH_POWER_OF_2 = 2;
+    logic [FIFO_WIDTH_POWER_OF_2:0] regex_cpu_latency;
     //storage part of the basic block
     //cache wires
     wire                        regex_cpu_memory_ready      ;
@@ -243,11 +246,23 @@ module basic_block #(
     //    if( fifo_odd_data_count > fifo_even_data_count)  input_pc_latency = fifo_odd_data_count  + 1; 
     //    else                                             input_pc_latency = fifo_even_data_count + 1;      
     //end
-    always_comb
+    if( CONSIDER_PIPELINE_FIFO == 1)
     begin
-        if( &fifo_cur_char_data_count == 1'b1) input_pc_latency =  fifo_cur_char_data_count;
-        else                                   input_pc_latency = fifo_cur_char_data_count + 1 ;
+        always_comb
+        begin
+            if( &fifo_cur_char_data_count == 1'b1) input_pc_latency = fifo_cur_char_data_count + regex_cpu_latency ;
+            else                                   input_pc_latency = fifo_cur_char_data_count + regex_cpu_latency + 1 ;
+        end
     end
+    else
+    begin
+        always_comb
+        begin
+            if( &fifo_cur_char_data_count == 1'b1) input_pc_latency = fifo_cur_char_data_count ;
+            else                                   input_pc_latency = fifo_cur_char_data_count + 1 ;
+        end
+    end
+
     
     //running if regex_cpu has taken some instruction and hence the data_out_ready=0
     //        or some instructions are saved in curr character fifo and hence fifo_cur_char_data_out_valid=1
@@ -264,11 +279,13 @@ module basic_block #(
     assign regex_cpu_input_pc_valid     = go && fifo_cur_char_data_out_valid;
     if(PIPELINED)
     begin : g
+        
         regex_cpu_pipelined #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
             .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
-            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
+            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  ),
+            .FIFO_WIDTH_POWER_OF_2              (FIFO_WIDTH_POWER_OF_2              )
         ) aregex_cpu (
             .clk                                (clk                                ),
             .reset                              (reset                              ), 
@@ -285,7 +302,8 @@ module basic_block #(
             .output_pc                          (output_pc                          ),
             .output_pc_valid                    (output_pc_valid                    ),
             .accepts                            (accepts                            ),
-            .running                            (regex_cpu_running                  )
+            .running                            (regex_cpu_running                  ),
+            .latency                            (regex_cpu_latency                  )
         );
     end
     else
@@ -312,6 +330,7 @@ module basic_block #(
             .output_pc_valid                    (output_pc_valid                    ),
             .accepts                            (accepts                            )
         );
+        assign regex_cpu_latency = 0;
         assign regex_cpu_running =  ~fifo_cur_char_data_out_ready ;
     end
 

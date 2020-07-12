@@ -27,12 +27,10 @@ module cache_directly_mapped_latency #(
   );
 localparam            TAG_WIDTH  = ADDR_WIDTH-CACHE_WIDTH_BITS;
 
-logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
+(* ram_style="block" *)logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
 logic [TAG_WIDTH-1:0] tag         [2**CACHE_WIDTH_BITS-1:0];
 logic                 is_present  [2**CACHE_WIDTH_BITS-1:0];
-logic                 is_present_i_next                    ;
-logic [DWIDTH-1:0]    content_i_next                       ;
-logic [DWIDTH-1:0]    data_out_saved, data_out_saved_next  ;
+logic [DWIDTH-1:0]    data_from_memory                     ;
 
 typedef enum logic[1:0] { S_IDLE,S_FETCH, S_WRITE } State;
 State curState, nextState;
@@ -50,44 +48,47 @@ always_ff @( posedge clk ) begin
     if(reset == 1'b1)
     begin
         curState                    <= S_IDLE;
+        tag_in_saved                <= { TAG_WIDTH{1'b0} };
+        cache_line_in_saved         <= { CACHE_WIDTH_BITS{1'b0}};
 
         for(int i=0; i<2**CACHE_WIDTH_BITS; i++)
         begin
-            is_present[i]           <= {1'b0};
+            is_present[i]           <= 1'b0;
         end 
 
-        data_out_saved              <= {(DWIDTH){1'b0}};
     end
     else 
     begin
         curState                    <= nextState;
         cache_line_in_saved         <= cache_line_in_saved_next;
         tag_in_saved                <= tag_in_saved_next;
+        data_from_memory            <= content[cache_line_in];
         if(curState == S_WRITE)
         begin
-            tag         [cache_line_in_saved] <= tag_in_saved;
-            is_present  [cache_line_in_saved] <= is_present_i_next;
-            content     [cache_line_in_saved] <= content_i_next;
+            tag         [cache_line_in_saved] <= tag_in_saved     ;
+            is_present  [cache_line_in_saved] <= 1'b1             ;
+            content     [cache_line_in_saved] <= data_in          ;
         end
-        data_out_saved              <= data_out_saved_next;
+       
     end
 end
 
 //next state 
 always_comb begin
     //default next state signals
-    nextState                =  curState           ;
-    is_present_i_next        =  1'b0               ;
-    content_i_next           =  {(DWIDTH)   {1'b0}};
-    data_out_saved_next      =  {(DWIDTH)   {1'b0}};
+    nextState                = curState            ;
     cache_line_in_saved_next = cache_line_in_saved ;
     tag_in_saved_next        = tag_in_saved        ;
 
     case (curState)
     S_IDLE:
-    if( addr_in_valid && ~hit)  
     begin
-        nextState    = S_FETCH;
+        if( addr_in_valid && ~hit)  
+        begin
+            nextState                = S_FETCH;
+            cache_line_in_saved_next = cache_line_in;
+            tag_in_saved_next        = tag_in;
+        end
     end
     S_FETCH:
     begin
@@ -98,15 +99,10 @@ always_comb begin
     end
     S_WRITE:
     begin
-        nextState           = S_IDLE    ;
-        is_present_i_next   = 1'b1      ;
-        content_i_next      = data_in   ;
+        nextState     = S_IDLE    ;
     end
     endcase             
    
-    
-
-    data_out_saved_next   =  content[cache_line_in];
    
 end
 
@@ -116,7 +112,7 @@ always_comb begin
     addr_in_ready       = 1'b0;
     addr_out            = {(ADDR_WIDTH){1'b0}}     ;
     addr_out_valid      = 1'b0                     ;
-    data_out            = data_out_saved           ;
+    data_out            = data_from_memory         ;
 
     case (curState)
     S_IDLE:
@@ -129,7 +125,7 @@ always_comb begin
         addr_out          = addr_in ;
         addr_out_valid    = 1'b1    ;
         if(addr_out_ready)
-        begin
+        begin //next cycle the memory would answer
             addr_in_ready = 1'b1    ;
         end
     end

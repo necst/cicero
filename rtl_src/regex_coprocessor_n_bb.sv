@@ -48,6 +48,7 @@ module regex_coprocessor_n_bb #(
     parameter  PC_WIDTH              = 8 ,
     parameter  LATENCY_COUNT_WIDTH   = 8 ,
     parameter  FIFO_COUNT_WIDTH      = 6 ,
+    parameter  CHANNEL_COUNT_WIDTH   = 5 ,
     parameter  CHARACTER_WIDTH       = 8 ,
     parameter  MEMORY_WIDTH          = 16,
     parameter  MEMORY_ADDR_WIDTH     = 11,
@@ -87,11 +88,13 @@ module regex_coprocessor_n_bb #(
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_cc  ;
     logic                           memory_valid_for_cc ;
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
-    logic                           memory_ready_for_bb     [  BB_N:0];
-    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [  BB_N:0];
+    logic                           memory_ready_for_bb     [BB_N-1:0];
+    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [BB_N-1:0];
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb      [BB_N-1:0];
-    logic                           memory_valid_for_bb     [  BB_N:0];
-
+    logic                           memory_valid_for_bb     [BB_N-1:0];
+    wire                            memory_ready_bb_arbitred     ;
+    wire [MEMORY_ADDR_WIDTH-1:0]    memory_addr_bb_arbitred      ;
+    wire                            memory_valid_bb_arbitred     ;
 
     //signals for basic blocks
     logic                           bbs_go                            ;
@@ -114,8 +117,9 @@ module regex_coprocessor_n_bb #(
     logic                           override_pc_ready;
     logic [PC_WIDTH-1:0]            override_pc;
     logic                           override_pc_current;
-    logic [PC_WIDTH:0]          override_pc_and_current;
+    logic [PC_WIDTH:0]              override_pc_and_current;
     logic                           override_pc_valid;
+    logic                           override_pc_directed_to_current;
     assign override_pc_directed_to_current  = 1'b1;
     assign override_pc_and_current          = {override_pc, override_pc_directed_to_current};
 
@@ -307,10 +311,10 @@ module regex_coprocessor_n_bb #(
         for (i=0; i < BB_N; i++) 
         begin :g
             // internal signals
-            logic [LATENCY_COUNT_WIDTH-1:0] tmp_channel_input_latency ;
-            logic                           channel_input_pc_not_ready   ;
-            logic                           station_input_pc_not_valid   ;
-            logic [FIFO_COUNT_WIDTH-1:0]    channel_count                ;
+            logic [LATENCY_COUNT_WIDTH-1:0] tmp_channel_input_latency  ;
+            logic                           channel_input_pc_not_ready ;
+            logic                           station_input_pc_not_valid ;
+            logic [CHANNEL_COUNT_WIDTH-1:0] channel_count              ;
 
             //1. basic block
             basic_block #(
@@ -373,7 +377,7 @@ module regex_coprocessor_n_bb #(
             //3. create incoming channel that preeceed the station
             fifo #(
                 .DWIDTH     (PC_WIDTH+1                         ),
-                .COUNT_WIDTH(FIFO_COUNT_WIDTH                   )
+                .COUNT_WIDTH(CHANNEL_COUNT_WIDTH                )
             ) fifo_channel(
                 .clk        (clk                                ), 
                 .reset      (subcomponent_reset                 ), 
@@ -391,7 +395,7 @@ module regex_coprocessor_n_bb #(
 
             //3.2. compute ~estimated number of clock cycles the data is going to wait
             //     before being served on this channel.
-            assign channel_input_pc_latency[i] = channel_count + tmp_channel_input_latency;
+            assign channel_input_pc_latency[i] = tmp_channel_input_latency + channel_count ;
            
            
             always_ff @( posedge clk ) begin : create_tmp_channel_input_latency
@@ -461,14 +465,14 @@ module regex_coprocessor_n_bb #(
         .DWIDTH(MEMORY_ADDR_WIDTH),
         .N(BB_N)
     ) arbiter_tree_to_cope_with_memory_contention (
-        .clk       ( clk                                                   ),
-        .reset     ( subcomponent_reset                                    ),
-        .in_ready  ( memory_ready_for_bb           [BB_N-1:0 ]              ),
-        .in_data   ( memory_addr_for_bb            [BB_N-1:0 ]              ),
-        .in_valid  ( memory_valid_for_bb           [BB_N-1:0 ]              ),
-        .out_ready ( memory_ready_for_bb           [BB_N     ]              ),
-        .out_data  ( memory_addr_for_bb            [BB_N     ]              ),
-        .out_valid ( memory_valid_for_bb           [BB_N     ]              )
+        .clk       ( clk                       ),
+        .reset     ( subcomponent_reset        ),
+        .in_ready  ( memory_ready_for_bb       ),
+        .in_data   ( memory_addr_for_bb        ),
+        .in_valid  ( memory_valid_for_bb       ),
+        .out_ready ( memory_ready_bb_arbitred  ),
+        .out_data  ( memory_addr_bb_arbitred   ),
+        .out_valid ( memory_valid_bb_arbitred  )
     );
 
 
@@ -476,15 +480,15 @@ module regex_coprocessor_n_bb #(
         .DWIDTH(MEMORY_ADDR_WIDTH),
         .PRIORITY_0(1)
     ) arbiter_for_memory_contention_bbs_and_cc (
-        .in_0_valid( memory_valid_for_cc           ),
-        .in_0_data ( memory_addr_for_cc            ),
         .in_0_ready( memory_ready_for_cc           ),
-        .in_1_valid( memory_valid_for_bb[BB_N]     ),
-        .in_1_data ( memory_addr_for_bb [BB_N]     ),
-        .in_1_ready( memory_ready_for_bb[BB_N]     ),
-        .out_valid ( memory_valid                  ),
+        .in_0_data ( memory_addr_for_cc            ),
+        .in_0_valid( memory_valid_for_cc           ),
+        .in_1_ready( memory_ready_bb_arbitred      ),
+        .in_1_data ( memory_addr_bb_arbitred       ),
+        .in_1_valid( memory_valid_bb_arbitred      ),
+        .out_ready ( memory_ready                  ),
         .out_data  ( memory_addr                   ),
-        .out_ready ( memory_ready                  )
+        .out_valid ( memory_valid                  )
     );
 
     //memory data are broadcasted but only memory which receives ready 
