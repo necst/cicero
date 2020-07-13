@@ -1,4 +1,4 @@
-BB_N = 10
+BB_N = 16
 res = ""
 res = 'digraph{\n'
 for i in range(BB_N):

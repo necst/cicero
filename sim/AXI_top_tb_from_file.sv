@@ -300,7 +300,7 @@ module AXI_top_tb_from_file();
     end
     endtask
 
-    localparam BB_N = 8;
+    localparam BB_N = 16;
     int  bb_cc_active [BB_N-1:0] ;
 
     task display_utilization(input logic [REG_WIDTH-1:0] cc_taken);
@@ -331,7 +331,32 @@ module AXI_top_tb_from_file();
                     begin
                             bb_cc_active[i] <= 32'd0;
                     end
-                    else 
+                    else if(dut.g1.a_regex_coprocessor.bbs_go == 1'b0)
+                    begin
+                            if(i==0)
+                            begin
+                                int j, tot;
+                                real u;
+                                tot=0;
+                                for (j = 0 ; j< BB_N ; j+=1) 
+                                begin
+                                    tot += (bb_cc_active[j]);
+                                end
+                                if(tot !== 0)begin
+                                    $write("BB utilization this iteration");
+                                    for (j = 0 ; j< BB_N ; j+=1) 
+                                    begin
+                                        u = $itor(bb_cc_active[j])/$itor(tot);
+                                        $write("\t %f",u);
+                                    end
+                                    $write("\n");
+                                    bb_cc_active[i] <= 32'd0;
+                                end
+                                
+                            end
+                            
+                    end
+                    else
                     begin
                         if(BB_N > 1)
                         begin
@@ -465,6 +490,9 @@ module AXI_top_tb_from_file();
         start(/*start_code,*/ start_string);
         
         wait_result(res);
+        get_cc_elapsed(cc_taken);
+        $display("cc taken: %d", cc_taken);
+        display_utilization(cc_taken);
         if( res == 1)
         begin
             $display("OK: string accepted");
@@ -474,9 +502,6 @@ module AXI_top_tb_from_file();
             $display("NOK: string rejected");
             $stop(1);
         end 
-        get_cc_elapsed(cc_taken);
-        $display("cc taken: %d", cc_taken);
-        display_utilization(cc_taken);
         $finish();
         cmd_register<= CMD_RESET;
         @(posedge clk);

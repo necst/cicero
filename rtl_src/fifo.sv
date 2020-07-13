@@ -31,7 +31,7 @@ module fifo #(
 logic [2:0]             state_cur, state_next;
 logic [COUNT_WIDTH-1:0] head     , head_next ,  head_incremented;
 logic [COUNT_WIDTH-1:0] tail     , tail_next ,  tail_incremented;
-
+logic [COUNT_WIDTH-1:0] where_to_read;   
 
 (* ram_style = "block" *) logic [DWIDTH-1:0]      content [(2**COUNT_WIDTH)-1:0];
 logic write_enable, read_enable;
@@ -50,6 +50,7 @@ always_ff @( posedge clk ) begin
         head      <= head_next;
         tail      <= tail_next;
         state_cur <= state_next;
+        middle    <= middle_next;
     end
 end
 
@@ -60,9 +61,9 @@ always_ff @(posedge clk)begin
         content[tail] <= din;
     end
 
-    from_memory  <= content[head_incremented];
+    from_memory  <= content[where_to_read];
 
-    middle       <= middle_next;
+   
 end
 assign from_din = din;
 
@@ -89,9 +90,9 @@ assign from_din = din;
 //                                                   v |                             
 //                                                  W,R&W,_                 
 always_comb begin //create full empty signals
-    data_count       = tail - head;
-    head_incremented = head + 1 ;
-    tail_incremented = tail + 1 ;
+    data_count            = tail - head;
+    head_incremented      = head + 1 ;
+    tail_incremented      = tail + 1 ;
 
     //empty
     if( head == tail )            empty = 1'b1;
@@ -123,9 +124,11 @@ always_comb begin //create full empty signals
     //middle register and memory
     //bit states represent: register, memory_output, memory_content 
     // validity.
-    state_next  = state_cur;
-    middle_next = middle;
-    dout        = middle;
+    state_next    = state_cur;
+    middle_next   = middle;
+    dout          = middle;
+    //all read from h+1 but not state 111 with an incoming read
+    where_to_read = head_incremented;
     case(state_cur)
     3'b000:
     begin
@@ -159,11 +162,12 @@ always_comb begin //create full empty signals
     3'b101:
     begin
         dout = middle;
+       
         case({write_enable, read_enable})
             2'b11:
             begin
                 state_next = 3'b011;
-                //middle can't be updated (memory invalid)
+                //middle can't be updated (memory output invalid)
             end
             2'b10:
             begin
@@ -173,7 +177,7 @@ always_comb begin //create full empty signals
             2'b01:
             begin
                 state_next = 3'b010;
-                //middle can't be updated (memory invalid)
+                //middle can't be updated (memory output invalid)
             end
             default:
             begin
@@ -199,7 +203,7 @@ always_comb begin //create full empty signals
             2'b01:
             begin
                 state_next = 3'b000;
-                //queue is void
+                //queue would be void
             end
             default:
             begin
@@ -216,7 +220,8 @@ always_comb begin //create full empty signals
             begin
                 state_next = state_cur;
                 //data_in is written in memory and 
-                //middle  is not used
+                //from_memory, which was intended for middle is redirected toward output
+                //middle  can't be updated
             end
             2'b10:
             begin
@@ -226,6 +231,7 @@ always_comb begin //create full empty signals
             2'b01:
             begin
                 state_next = 3'b010;
+                
             end
             default:
             begin
@@ -238,12 +244,17 @@ always_comb begin //create full empty signals
     begin
         dout = middle;
         
-        if(read_enable )
+        if(read_enable)
         begin 
-            middle_next= from_memory;
-            if(data_count == 2 )
+            middle_next   = from_memory;
+            where_to_read = head_incremented +1;
+            if(data_count == 2 && ~ write_enable)
             begin
                 state_next = 3'b100;
+            end
+            else if(data_count == 2 && write_enable)
+            begin
+                state_next = 3'b101;
             end
             
         end
