@@ -39,8 +39,8 @@ assign bram_payload     = {bram_out[15+1:8+1],bram_out[7:0]};
 logic     [       REG_WIDTH-1:0] bram_o_register;
 assign bram_o_register  = { {(REG_WIDTH-BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY){1'b0}},bram_payload};
 ///// Coprocessor
-localparam BB_N                      = 8;
-localparam FIFO_COUNT_WIDTH          = 6;
+localparam BB_N                      = 16;
+localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;
 localparam CACHE_WIDTH_BITS          = 5;
@@ -236,7 +236,7 @@ if (BB_N == 1) begin : g1
 end
 else
 begin : g1
-    regex_coprocessor_n_bb #(
+    regex_coprocessor_n_bb_mesh #(
         .PC_WIDTH               (PC_WIDTH                              ),
         .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
         .MEMORY_WIDTH           (BRAM_READ_WIDTH-BRAM_READ_WIDTH_PARITY),
@@ -244,7 +244,8 @@ begin : g1
         .LATENCY_COUNT_WIDTH    (LATENCY_COUNT_WIDTH                   ),
         .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
         .CHANNEL_COUNT_WIDTH    (CHANNEL_COUNT_WIDTH                   ),
-        .BB_N                   (BB_N                                  ),
+        .BB_N_X                 (3                                     ),
+        .BB_N_Y                 (3                                     ),
         .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                      ),
         .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                 )
     )a_regex_coprocessor (
