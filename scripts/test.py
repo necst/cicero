@@ -10,10 +10,12 @@ arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.'	  
 arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.'		                                    , default=None)
 arg_parser.add_argument('-testpy'		               , help='measure time taken by python', action='store_true'		, default=False)
 arg_parser.add_argument('-testcopro'		           , help='measure time taken by copro.', action='store_true'		, default=False)
-arg_parser.add_argument('-strfile'		, type=str , help='file containing test input'  ,	                          default='test2.input')
-arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    ,	                          default='test.reg')
-arg_parser.add_argument('-bitstream'		, type=str , help='bitstream file of the coprocessor'    ,	                          default='re2_coprocessor4bbP110.bit')
-arg_parser.add_argument('-do_not_optimize'	, help='do not optimize recopro code'    ,action='store_true', default=False)
+arg_parser.add_argument('-testre2py'		           , help='measure time taken by a self-made python module.'        , action='store_true'		, default=False)
+arg_parser.add_argument('-testsimre2'		           , help='measure minimum clock cycles taken by emulated re2copro.', action='store_true'		, default=False)
+arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                        , default='test5.input')
+arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                        , default='test2.reg')
+arg_parser.add_argument('-bitstream'		, type=str , help='bitstream file of the coprocessor'    	                , default='re2_coprocessor4bbP110.bit')
+arg_parser.add_argument('-do_not_optimize'	, help='do not optimize recopro code'    ,action='store_true'               , default=False)
 
 args = arg_parser.parse_args()
 optimize_str = 'O1' if not args.do_not_optimize else ''
@@ -42,7 +44,7 @@ with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as cs
                             
                             
                             #freq                = 90_000_000
-                            has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, ignore_prefix=True, O1=(not args.do_not_optimize) )
+                            has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, allow_prefix=True, O1=(not args.do_not_optimize) )
                             cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
                             print('clock cycles taken:', cc_number)
                             print('status:', re2_coprocessor.re2_copro_0.get_status())
@@ -50,8 +52,21 @@ with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as cs
                             print('time re2coprocessor', min_time_copro, 'cc')
                         min_time_re = 0
                         if args.testpy:
-                            min_time_re = test_execution.time_ignore_prefix_match(r, line, perf_counter=True)
+                            min_time_re = test_execution.time_allow_prefix_match(r, line, perf_counter=True)
                             print('minimum time', min_time_re, 'ns')
+                        if args.testre2py:
+                            import sys
+                            sys.path.append('../re2compiler')
+                            import emulate_execution
+                            min_time_re = emulate_execution.time_allow_prefix_match(r, line, perf_counter=True)
+                            print('minimum time', min_time_re, 'ns')
+                        if args.testsimre2:
+                            import sys
+                            sys.path.append('../re2compiler')
+                            import emulate_execution
+                            min_time_re = emulate_execution.cc_allow_prefix_match(r, line)
+                            print('minimum cc', min_time_re)
+
 
                         fout.writerow([r,has_accepted,  min_time_copro,  min_time_re,' '])
                     except Exception as exc:

@@ -9,7 +9,7 @@ def do_full_match(regex, string):
     res = regex.full_match(string, pos=0)
     print(res)
     return not( res is None)
-def do_ignore_prefix_match(regex, string):  
+def do_allow_prefix_match(regex, string):  
     res = regex.search(string, pos=0)
     print(res)    
     return not( res is None)
@@ -46,14 +46,14 @@ def time_match(regex_string, string, debug=False, perf_counter=False):
 
     return min(secs)/number_of_batch*to_ns
 
-def time_ignore_prefix_match(regex_string, string, debug=False, perf_counter=False):
+def time_allow_prefix_match(regex_string, string, debug=False, perf_counter=False):
     if perf_counter:
         timer = time.perf_counter
     else:
         timer = time.process_time
     secs = timeit.repeat(f"res = not(regex.search('{string}',pos=0)) is None", f"import re; regex = re.compile('{regex_string}')", timer=timer , number=number_of_batch , repeat=repeat)
     if debug:
-            do_ignore_prefix_match(prepare(regex_string), string)
+            do_allow_prefix_match(prepare(regex_string), string)
 
     return min(secs)/number_of_batch*to_ns
 
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         timer = time.perf_counter
     else:
         timer = time.process_time
-    print('res', do_ignore_prefix_match(prepare(regex_string),string))
+    print('res', do_allow_prefix_match(prepare(regex_string),string))
     secs = timeit.repeat(f"res = not(regex.search('{string}',pos=0)) is None", f"import re\nregex = re.compile('{regex_string}')", timer=timer , number=number_of_batch, repeat=repeat)
 
     print( secs)

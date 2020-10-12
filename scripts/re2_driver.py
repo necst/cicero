@@ -175,12 +175,12 @@ class re2_driver(DefaultIP):
         self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return True
 
-    def compile_and_run(self, regex_string, string, double_check =True,ignore_prefix=True, full_match=False, O1=True ):
+    def compile_and_run(self, regex_string, string, double_check =True,allow_prefix=True, full_match=False, O1=True ):
         
         try:
             
             import os.path
-            code_output_file = regex_string+('_ignore_' if ignore_prefix else '')+('_full_match_' if full_match else '')+('_O1_' if O1 else '')+'.out'
+            code_output_file = regex_string+('_ignore_' if allow_prefix else '')+('_full_match_' if full_match else '')+('_O1_' if O1 else '')+'.out'
             code_output_file = code_output_file.replace('/', u'\u2215')
             if os.path.exists(code_output_file):
                 print('reusing previously compilation')
@@ -192,7 +192,7 @@ class re2_driver(DefaultIP):
                 sys.path.append('../re2compiler')
                 import re2compiler
                 print('start compilation')
-                code = re2compiler.compile(data=regex_string,o=code_output_file, O1=O1,ignore_prefix=ignore_prefix, full_match=full_match)
+                code = re2compiler.compile(data=regex_string,o=code_output_file, O1=O1,allow_prefix=allow_prefix, full_match=full_match)
                 print('end compilation')
             code = code.split('\n')
             res  = self.load_and_run( code , string)
@@ -201,7 +201,7 @@ class re2_driver(DefaultIP):
                 regex            = re.compile(regex_string)
                 if full_match:
                     golden_model_res = not(regex.fullmatch(string, pos=0) is None)
-                elif ignore_prefix:
+                elif allow_prefix:
                     golden_model_res = not(regex.search(string, pos=0) is None)
                 else:
                     golden_model_res = not(regex.match(string, pos=0) is None)
