@@ -66,11 +66,21 @@ module cache_directly_mapped_tb();
             $display("error not requesting missing cache line");
             $stop(0);
         end
+        if(addr_out !== an_address)
+        begin
+            $display("error in out address");
+            $stop(0);
+        end
         @(posedge clk);
         addr_out_ready  <=1'b1;
         if(addr_out_valid !== 1'b1)
         begin
             $display("error not requesting missing cache line");
+            $stop(0);
+        end
+        if(addr_out !== an_address)
+        begin
+            $display("error in out address");
             $stop(0);
         end
         @(posedge clk);

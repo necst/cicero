@@ -29,7 +29,9 @@ module fifo #(
 );
 
 logic [2:0]             state_cur, state_next;
+//head points to the first valid-element (only in case of an empty fifo heaqd=tail)
 logic [COUNT_WIDTH-1:0] head     , head_next ,  head_incremented;
+//tail points to the first non-valid element 
 logic [COUNT_WIDTH-1:0] tail     , tail_next ,  tail_incremented;
 logic [COUNT_WIDTH-1:0] where_to_read;   
 
@@ -262,6 +264,31 @@ always_comb begin //create full empty signals
     endcase
 end
 
+function string to_dotty(string name);
+    
+    string label = {"",name} ;
+    logic [COUNT_WIDTH-1:0] base;
+    int i;
+    //represent queue content
+    if( ~ empty)begin
+        for ( i = 0 , base = head ; i < data_count ;i++ , base++) begin
+            label = {label , "|"};
+            if(i == 0)
+                label = {label ,"<first>"};
+        
+            $sformat(label," %s %d ",label, content[base]);
+        end
+    end
+    //last point to the first non used cell
+    label = {label ,"| <last>"};
+    //if queue if full represent it
+    if(full)begin
+        label = {label ,"| full "};
+    end
+    
 
+    $sformat(to_dotty,"%s [ label =\"%s\", shape = \"record\"];\n", name , label);
+   
+endfunction
 
 endmodule

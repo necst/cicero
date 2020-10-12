@@ -75,7 +75,7 @@ module AXI_top_tb_from_file();
     begin
         int c;
         reg [7:0]           itype0, idata0, itype1,idata1;
-        reg [REG_WIDTH:0]   data;
+        reg [REG_WIDTH-1:0] data;
         reg                 flag;
         
         flag    = 1'b1;  
@@ -105,7 +105,7 @@ module AXI_top_tb_from_file();
                 cmd_register  <= CMD_WRITE;
                 flag           = 1'b0;
             end
-            address += 2;
+            address += 1;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
@@ -116,11 +116,10 @@ module AXI_top_tb_from_file();
                      input  reg [REG_WIDTH-1:0] start_address ,
                      output reg [REG_WIDTH-1:0] address);
     begin
-        reg [REG_WIDTH-1:0] address;
         int bytes_read;
         reg [7:0]           c [3:0];
-        reg [REG_WIDTH:0]   data;
-        reg                 flag;
+        reg [REG_WIDTH-1:0]   data;
+        reg                   flag;
         flag    = 1'b1;  
         address = start_address;
         
@@ -154,30 +153,31 @@ module AXI_top_tb_from_file();
                 cmd_register  <= CMD_WRITE;
                 flag           = 1'b0;
             end
-            address += 2;
+            address += 1;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
+        
     end
     endtask
 
     task read_and_compare_with_file( int fp,
                     input  reg [REG_WIDTH-1:0] start_address);
     begin
-        reg [REG_WIDTH-1:0] address;
+        reg [REG_WIDTH :0]  address;
         int c;
         reg [7:0]           itype0, idata0;
-        reg [REG_WIDTH:0]   data;
+        reg [REG_WIDTH-1:0] data;
         reg                 flag;
         flag    = 1'b1;  
-        address = start_address;
+        address = {start_address, 1'b0};
         
         while (! $feof(fp)) 
         begin
             c = $fscanf(fp,"%d ; %d\n", itype0, idata0);
             $display("%d,%d",itype0, idata0);
             
-            address_register  <= address;
+            address_register  <= address[1+:REG_WIDTH];
             @(posedge clk);
             if(flag)
             begin
@@ -189,7 +189,7 @@ module AXI_top_tb_from_file();
             
            
             @(posedge clk);
-            if ( data_o_register  !== { {16{1'b0}}, itype0, idata0})
+            if ( data_o_register[(address % 2)*16+:16]  !== { itype0, idata0})
             begin
                 $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , itype0, idata0);
                 $stop;
@@ -205,13 +205,13 @@ module AXI_top_tb_from_file();
      task read_and_compare_with_string_file( int fp,
                     input  reg [REG_WIDTH-1:0] start_address);
     begin
-        reg [REG_WIDTH-1:0] address;
+        reg [REG_WIDTH:0] address;
         int bytes_read;
         reg [7:0]           c [1:0];
-        reg [REG_WIDTH:0]   data;
+        reg [REG_WIDTH-1:0]   data;
         reg                 flag;
         flag    = 1'b1;  
-        address = start_address;
+        address = {start_address, 1'b0};
         
         while (! $feof(fp)) 
         begin
@@ -226,7 +226,7 @@ module AXI_top_tb_from_file();
             $display("%d,%d", c[1], c[0]);
             data          = { c[1], c[0]};
             
-            address_register  <= address;
+            address_register  <= address[1+:REG_WIDTH];
             @(posedge clk);
             if(flag)
             begin
@@ -238,7 +238,7 @@ module AXI_top_tb_from_file();
             
            
             @(posedge clk);
-            if ( data_o_register  !== { {16{1'b0}}, c[1], c[0] })
+            if ( data_o_register[(address % 2)*16+:16]  !== { c[1], c[0] })
             begin
                 $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , c[1], c[0]);
                 $stop;
@@ -316,7 +316,7 @@ module AXI_top_tb_from_file();
         $write("\n");
     end
     endtask
-    localparam UTILIZATON_ENABLED = 1'b1;
+    localparam UTILIZATON_ENABLED = 1'b0;
 
     genvar i;
     generate
@@ -448,7 +448,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a.out","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\a.out","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -460,7 +460,7 @@ module AXI_top_tb_from_file();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\string_ok.csv","r");
+        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\scripts\\string_ok.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_ok.csv");
@@ -468,8 +468,7 @@ module AXI_top_tb_from_file();
         end
         
         //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
-        if (end_code %2 == 0)  start_string = end_code + 2;
-        else                   start_string = end_code + 1;
+        start_string = end_code;
         //write string
         $display("writing string from %h",start_string);
         write_string_file(fp_string, start_string, end_string  );
@@ -486,7 +485,7 @@ module AXI_top_tb_from_file();
 
         repeat(10)
             @(posedge clk);
-        
+        start_string = start_string << 2;
         start(/*start_code,*/ start_string);
         
         wait_result(res);
@@ -521,7 +520,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
 
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\a.out","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\a(bORc)star.csv","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -533,7 +532,7 @@ module AXI_top_tb_from_file();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Desktop\\regex_coprocessor\\sim\\string_nok.csv","r");
+        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\string_nok.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_nok.csv");
@@ -541,8 +540,7 @@ module AXI_top_tb_from_file();
         end
         
         //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
-        if (end_code %2 == 0)  start_string = end_code + 2;
-        else                   start_string = end_code + 1;
+        start_string = end_code;
         //write string
         $display("writing string from %h",start_string);
         write_string_file(fp_string, start_string, end_string  );
@@ -556,7 +554,7 @@ module AXI_top_tb_from_file();
         $display("string : OK");
         $fclose(fp_code);
         $fclose(fp_string);
-
+        start_string = start_string << 2;
         start(/*start_code,*/ start_string);
         wait_result(res);
         if( res == 1)

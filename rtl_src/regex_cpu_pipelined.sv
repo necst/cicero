@@ -356,4 +356,61 @@ module regex_cpu_pipelined #(
     assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid || EXE2_buffered_output_pc_valid || EXE1_buffered_output_pc_valid ;
     assign latency = EXE1_buffered_count + EXE2_buffered_count;
     
+    function string to_dotty(string name);
+        string instr_fetch, instr_exe1, instr_exe2;
+        string s_exe1_output, s_exe2_output;
+        string label_fifo_exe1, label_fifo_exe2;
+
+        $sformat(instr_fetch, "%d"   , FETCH_REC_Pc);
+        $sformat(instr_exe1, "%d"    , EXE1_Pc);
+        $sformat(instr_exe2, "%d"    , EXE2_Pc);
+        $sformat(label_fifo_exe1, "%s_exe1_buff"   , name);
+        $sformat(label_fifo_exe2, "%s_exe2_buff"    , name);
+        $sformat(s_exe1_output, "%d"    , EXE1_output_pc);
+        $sformat(s_exe2_output, "%d"    , EXE2_output_pc);
+
+
+        $sformat(to_dotty , {"subgraph cluster_%s\n { label=\"%s\"",
+                             "%s_input;\n",
+                             "%s_output;\n"
+        },name, name, name, name);
+        /*regex_cpu_bb0_input -> test:<fetch> [label="", color="green"];
+        test:<exe1>        -> regex_cpu_bb0_output   [label="", color="green"];
+        test:<exe2>        -> regex_cpu_bb0_output   [label="", color="green"];
+        test [label="{stage| instruction}|{<fetch>fetch|}|{<exe1>exe1|}|{<exe2>exe2|}", shape="record"];
+        */
+        //input to pipeline
+        $sformat(to_dotty, "%s %s_input ->pipeline_%s:<fetch> [color=\"%s\"];\n",
+         to_dotty, name, name, (input_pc_ready && input_pc_valid ? "green": ""));
+        //pipeline to_dotty;
+        $sformat(to_dotty, {"%s pipeline_%s [label=\"",
+                            "{stage| instruction}|",
+                            "{<fetch>fetch|%s}|",
+                            "{exe1|<exe1>%s}|",
+                            "{exe2|<exe2>%s}\", shape=\"record\"];\n"}, 
+                            to_dotty, name,
+                            (FETCH_REC_Instr_valid ? instr_fetch : ""),
+                            (EXE1_Instr_valid ? instr_exe1 : ""),
+                            (EXE2_Instr_valid ? instr_exe2 : "")
+                            );
+        //pipeline->buffer to_dotty;
+        $sformat(to_dotty, {"%s %s %s",
+                            "pipeline_%s:exe1 -> %s:<last> [label =\"%s\", color=\"%s\"];\n",
+                            "pipeline_%s:exe2 -> %s:<last> [label =\"%s\", color=\"%s\"];\n"}, 
+                            to_dotty, fifo_exe1_buffer.to_dotty(label_fifo_exe1), fifo_exe2_buffer.to_dotty(label_fifo_exe2),  
+                            name, label_fifo_exe1, (EXE1_output_pc_valid ? s_exe1_output : ""), (EXE1_output_pc_valid ? "green":""),
+                            name, label_fifo_exe2, (EXE2_output_pc_valid ? s_exe2_output : ""), (EXE2_output_pc_valid ? "green":"")
+        );
+        //buffer to arbiter:
+        $sformat(to_dotty, {"%s",
+                            "%s:<first> -> %s_output [color=\"%s\"];\n",
+                            "%s:<first> -> %s_output [color=\"%s\"];\n"} ,
+                 to_dotty, 
+                 label_fifo_exe1, name, (EXE1_buffered_output_pc_ready && EXE1_buffered_output_pc_valid ? "green": ""),
+                 label_fifo_exe2, name, (EXE2_buffered_output_pc_ready && EXE2_buffered_output_pc_valid ? "green": "")
+        );
+
+        to_dotty = {to_dotty, "}\n"};
+        
+    endfunction
 endmodule 

@@ -47,6 +47,7 @@ module basic_block #(
     parameter  MEMORY_WIDTH        = 16,
     parameter  MEMORY_ADDR_WIDTH   = 11,
     parameter  CACHE_WIDTH_BITS    = 0, 
+    parameter  CACHE_BLOCK_WIDTH_BITS = 2 ,
     parameter  PIPELINED           = 0,
     parameter  CONSIDER_PIPELINE_FIFO = 0
 )(
@@ -74,6 +75,9 @@ module basic_block #(
     input   logic[LATENCY_COUNT_WIDTH-1:0]  output_pc_latency
 
 );
+    localparam I_WIDTH = 16;
+    localparam OFFSET_I= $clog2(MEMORY_WIDTH/I_WIDTH);
+    localparam CPU_MEMORY_ADDR_WIDTH = MEMORY_ADDR_WIDTH+OFFSET_I;
     //output latency is unused by basic block.
     wire [LATENCY_COUNT_WIDTH-1:0] output_pc_latency_unused;
     assign output_pc_latency_unused = output_pc_latency;
@@ -83,13 +87,13 @@ module basic_block #(
     //signals for regex_cpu
     logic regex_cpu_running                                ;
     logic regex_cpu_input_pc_ready,regex_cpu_input_pc_valid;
-    localparam                      FIFO_WIDTH_POWER_OF_2 = 2;
-    logic [FIFO_WIDTH_POWER_OF_2:0] regex_cpu_latency;
+    localparam                      REGEX_CPU_FIFO_WIDTH_POWER_OF_2 = 2;
+    logic [REGEX_CPU_FIFO_WIDTH_POWER_OF_2:0] regex_cpu_latency;
     //storage part of the basic block
     //cache wires
     wire                        regex_cpu_memory_ready      ;
-    wire [MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr       ;
-    wire [MEMORY_WIDTH-1     :0]regex_cpu_memory_data       ;
+    wire [CPU_MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr       ;
+    wire [I_WIDTH-1     :0]     regex_cpu_memory_data       ;
     wire                        regex_cpu_memory_valid      ;
     //FIFO even signal 
     logic                       fifo_even_data_in_ready     ;
@@ -283,9 +287,9 @@ module basic_block #(
         regex_cpu_pipelined #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
-            .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
-            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  ),
-            .FIFO_WIDTH_POWER_OF_2              (FIFO_WIDTH_POWER_OF_2              )
+            .MEMORY_WIDTH                       (I_WIDTH                       ),
+            .MEMORY_ADDR_WIDTH                  (CPU_MEMORY_ADDR_WIDTH              ),
+            .FIFO_WIDTH_POWER_OF_2              (REGEX_CPU_FIFO_WIDTH_POWER_OF_2    )
         ) aregex_cpu (
             .clk                                (clk                                ),
             .reset                              (reset                              ), 
@@ -311,8 +315,8 @@ module basic_block #(
         regex_cpu #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
-            .MEMORY_WIDTH                       (MEMORY_WIDTH                       ),
-            .MEMORY_ADDR_WIDTH                  (MEMORY_ADDR_WIDTH                  )
+            .MEMORY_WIDTH                       (I_WIDTH                       ),
+            .MEMORY_ADDR_WIDTH                  (CPU_MEMORY_ADDR_WIDTH              )
         ) aregex_cpu (
             .clk                                (clk                                ),
             .reset                              (reset                              ), 
@@ -344,10 +348,11 @@ module basic_block #(
     end
     else
     begin
-        cache_directly_mapped_latency #(          
-            .DWIDTH             (MEMORY_WIDTH           ),
+        cache_block_directly_mapped #(          
+            .DWIDTH             (I_WIDTH                ),
             .CACHE_WIDTH_BITS   (CACHE_WIDTH_BITS       ),
-            .ADDR_WIDTH         (MEMORY_ADDR_WIDTH      )
+            .BLOCK_WIDTH_BITS   (CACHE_BLOCK_WIDTH_BITS ),
+            .ADDR_IN_WIDTH      (CPU_MEMORY_ADDR_WIDTH  )
         ) a_cache (
             .clk                (clk                    ),
             .reset              (reset                  ),
@@ -361,4 +366,72 @@ module basic_block #(
             .data_in            (memory_data            )
         );
     end
+
+    function string to_dotty(string name);
+        //string name = "node_a";
+        string label = "" ;
+        string curr_fifo        , next_fifo,       regex_cpu;
+        string curr_fifo_label  , next_fifo_label, regex_cpu_label;
+        string input_node       , output_node;
+        string exiting_instr;
+        $sformat(curr_fifo_label, "curr_fifo_%s", name);
+        $sformat(next_fifo_label, "next_fifo_%s", name);
+        $sformat(regex_cpu_label, "regex_cpu_%s", name);
+        regex_cpu = g.aregex_cpu.to_dotty(regex_cpu_label);
+        $sformat(to_dotty , {"subgraph cluster_%s\n",
+            "{   label=\"bb_%s\" \n",
+            " %s \n"
+             },
+             name, name, regex_cpu);
+        
+        if(fifo_cur_char_data_out_valid && fifo_cur_char_data_out_ready)
+            $sformat(to_dotty, "%s\n %s:<first>-> %s_input [label=\"%d\", color=\"green\"];\n", to_dotty, curr_fifo_label,regex_cpu_label,fifo_cur_char_data_out );
+        else
+            $sformat(to_dotty, "%s\n %s -> %s_input ; \n",to_dotty, curr_fifo_label, regex_cpu_label );
+            
+        if(cur_is_even_character)
+        begin
+            curr_fifo = fifo_even.to_dotty(curr_fifo_label);
+            next_fifo = fifo_odd.to_dotty(next_fifo_label);
+        end
+        else
+        begin
+            next_fifo = fifo_even.to_dotty(next_fifo_label);
+            curr_fifo = fifo_odd.to_dotty(curr_fifo_label);
+        end
+
+        to_dotty = {to_dotty, next_fifo, curr_fifo};
+        if (input_pc_valid && input_pc_ready)begin
+            if(input_pc_is_directed_to_current)
+            begin
+               $sformat(to_dotty, {"%0$s\n %1$s_input -> %1$s:<last> [label=\"%d\",color=\"green\"];\n",
+               " %s_input -> %s:<last>; \n"}, to_dotty, name, curr_fifo_label, input_pc, name, next_fifo_label);
+
+            end
+            else
+            begin         
+                $sformat(to_dotty , {"%0$s\n %1$s_input -> %1$s:<last> [label=\"%d\",color=\"green\"];\n",
+                " %s_input -> %s:<last>; \n"}, to_dotty, name, next_fifo_label, input_pc, name, curr_fifo_label);
+            end
+        end
+        else
+        begin
+            $sformat(to_dotty, {"%0$s\n ",
+               " %s_input -> %s:<last>; \n",
+               " %s_input -> %s:<last>; \n"}, to_dotty, name, curr_fifo_label, name, next_fifo_label);
+        end
+
+        if (output_pc_valid && output_pc_ready)begin
+            $sformat(to_dotty, {"%0$s\n ",
+               "%s_output -> %s_output [label=\"%d\", color=\"green\"];\n"}, to_dotty, regex_cpu_label,name, output_pc);
+        end
+        else
+        begin
+            $sformat(to_dotty, {"%0$s\n ",
+               " %s_output -> %s_output ;\n"}, to_dotty, regex_cpu_label,name);
+        
+        end
+        to_dotty = {to_dotty, "}"};
+    endfunction
+    
 endmodule

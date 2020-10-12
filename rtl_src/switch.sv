@@ -105,4 +105,30 @@ module switch   #(
         end
     end
 
+    function string to_dotty(string name);
+        $sformat(to_dotty, "subgraph cluster_%s{ label=\"%s\"\n", name, name);
+        if(in_0_out_0) begin
+            if(out_0_ready && out_0_valid)
+                $sformat(to_dotty, "%s %s_in_0 -> %s_out_0 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_0_data[DWIDTH-1:1]);
+            else
+                $sformat(to_dotty, "%s %s_in_0 -> %s_out_0;\n", to_dotty, name, name);
+
+            if(out_1_ready && out_1_valid)
+                $sformat(to_dotty, "%s %s_in_1 -> %s_out_1 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_1_data[DWIDTH-1:1]);
+            else
+                $sformat(to_dotty, "%s %s_in_1 -> %s_out_1;\n", to_dotty, name, name);
+        end
+        else
+        begin
+            if(out_0_ready && out_0_valid)
+                $sformat(to_dotty, "%s %s_in_1 -> %s_out_0 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_0_data[DWIDTH-1:1]);
+            else
+                $sformat(to_dotty, "%s %s_in_1 -> %s_out_0;\n", to_dotty, name, name);
+            if(out_1_ready && out_1_valid)
+                $sformat(to_dotty, "%s %s_in_0 -> %s_out_1 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_1_data[DWIDTH-1:1]);
+            else
+                $sformat(to_dotty, "%s %s_in_0 -> %s_out_1;\n", to_dotty, name, name);
+        end
+        to_dotty =  {to_dotty, "}"};
+    endfunction
 endmodule

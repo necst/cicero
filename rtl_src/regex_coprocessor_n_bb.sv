@@ -52,9 +52,11 @@ module regex_coprocessor_n_bb #(
     parameter  CHARACTER_WIDTH       = 8 ,
     parameter  MEMORY_WIDTH          = 16,
     parameter  MEMORY_ADDR_WIDTH     = 11,
-    parameter  BB_N                  = 4,
-    parameter  CACHE_WIDTH_BITS      = 5,
-    parameter  BASIC_BLOCK_PIPELINED = 0
+    parameter  BB_N                  = 4 ,
+    parameter  CACHE_WIDTH_BITS      = 5 ,
+    parameter  CACHE_BLOCK_WIDTH_BITS= 2 ,
+    parameter  BASIC_BLOCK_PIPELINED = 0 ,
+    parameter  REG_WIDTH             = 32
 )
 (
     input   logic                           clk,
@@ -66,20 +68,20 @@ module regex_coprocessor_n_bb #(
     output  logic                           memory_valid,
 
     input   logic                           start_ready,
-    input   logic[MEMORY_ADDR_WIDTH-1:0]    start_cc_pointer,
+    input   logic[REG_WIDTH-1        :0]    start_cc_pointer,
     output  logic                           start_valid,
     output  logic                           finish,
     output  logic                           accept,
     output  logic                           error
 );
-    
+    localparam                       C_ADDR_OFFSET = $clog2(MEMORY_WIDTH/CHARACTER_WIDTH);
 
-    localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
-    localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
-    logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
-    logic      [CHARACTER_WIDTH-1:0]   cur_cc                   , next_cc;
-    logic                              cur_is_even_character   , next_is_even_character;
-    
+    localparam [CHARACTER_WIDTH-1:0] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
+    localparam [PC_WIDTH-1       :0] start_pc = { PC_WIDTH{1'b0} };
+    logic      [REG_WIDTH-1      :0] cur_cc_pointer           , next_cc_pointer;
+    logic      [CHARACTER_WIDTH-1:0] cur_cc                   , next_cc;
+    logic                            cur_is_even_character   , next_is_even_character;
+      
     
     //MEMORY
     //1. provide memory access for FSM outside the basic block
@@ -88,13 +90,13 @@ module regex_coprocessor_n_bb #(
     logic[MEMORY_WIDTH-1     :0]    memory_data_for_cc  ;
     logic                           memory_valid_for_cc ;
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
-    logic                           memory_ready_for_bb     [BB_N-1:0];
-    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb      [BB_N-1:0];
-    logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb      [BB_N-1:0];
-    logic                           memory_valid_for_bb     [BB_N-1:0];
-    wire                            memory_ready_bb_arbitred     ;
-    wire [MEMORY_ADDR_WIDTH-1:0]    memory_addr_bb_arbitred      ;
-    wire                            memory_valid_bb_arbitred     ;
+    logic                            memory_ready_for_bb     [BB_N-1:0];
+    logic[MEMORY_ADDR_WIDTH-1:0]     memory_addr_for_bb      [BB_N-1:0];
+    logic[MEMORY_WIDTH-1     :0]     memory_data_for_bb      [BB_N-1:0];
+    logic                            memory_valid_for_bb     [BB_N-1:0];
+    wire                             memory_ready_bb_arbitred     ;
+    wire [MEMORY_ADDR_WIDTH-1:0]     memory_addr_bb_arbitred      ;
+    wire                             memory_valid_bb_arbitred     ;
 
     //signals for basic blocks
     logic                           bbs_go                            ;
@@ -153,7 +155,7 @@ module regex_coprocessor_n_bb #(
         if(reset)
         begin
             cur_state               <= REGEX_COPRO_S_IDLE;
-            cur_cc_pointer          <= { (PC_WIDTH+1){1'b0}      };
+            cur_cc_pointer          <= { REG_WIDTH{1'b0}      };
             cur_cc                  <= { (CHARACTER_WIDTH){1'b0} };
             cur_is_even_character   <= 1'b1;
         end
@@ -193,7 +195,7 @@ module regex_coprocessor_n_bb #(
         begin
             //prepare signals to fetch first character at the next clock cycle
             
-            memory_addr_for_cc  = start_cc_pointer;
+            memory_addr_for_cc  = start_cc_pointer[C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
             memory_valid_for_cc = 1'b1;
             
             //if memory answer affirmatively and start signal is raised start
@@ -203,14 +205,14 @@ module regex_coprocessor_n_bb #(
                 //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
                 //dual-word address. we have to concatenate a bit. 
                 //First char of the string is assumed to be allineated to 32 bits  
-                next_cc_pointer     = {start_cc_pointer, 1'b0};
+                next_cc_pointer     = start_cc_pointer;
                 start_valid         = 1'b1;
             end
         end
         REGEX_COPRO_S_FETCH_1ST_CC:
         begin
-            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                          next_cc    = memory_data[15:8];
+            
+            next_cc    = memory_data[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
             
             override_pc         = start_pc; 
             override_pc_valid   = 1'b1;
@@ -225,10 +227,7 @@ module regex_coprocessor_n_bb #(
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
             
-            //memory is 2B width
-            // TODO: parametrize in function of MEMORY_WIDTH
-            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                          next_cc    = memory_data[15:8];
+            next_cc    = memory_data[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
@@ -253,11 +252,11 @@ module regex_coprocessor_n_bb #(
                 else  // otherwise we have still work to do
                 begin // ask for new current character
                     //TODO: avoid asking character if tmp_cur_cc[0] == 1
-                    logic [MEMORY_ADDR_WIDTH:0] tmp_cur_cc_increment ;
+                    logic [REG_WIDTH-1:0] tmp_cur_cc_increment ;
                     tmp_cur_cc_increment= cur_cc_pointer + 1;
                     memory_valid_for_cc = 1'b1;
                     //memory with 2B width support only even aligned adresses
-                    memory_addr_for_cc  = tmp_cur_cc_increment [1+: MEMORY_ADDR_WIDTH];
+                    memory_addr_for_cc  = tmp_cur_cc_increment [C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
                    
                     if( memory_ready_for_cc)
                     begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
@@ -324,6 +323,7 @@ module regex_coprocessor_n_bb #(
                 .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
                 .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
                 .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
+                .CACHE_BLOCK_WIDTH_BITS (CACHE_BLOCK_WIDTH_BITS         ),
                 .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               ),
                 .PIPELINED              (BASIC_BLOCK_PIPELINED          )
             ) abb (
@@ -494,5 +494,63 @@ module regex_coprocessor_n_bb #(
     //memory data are broadcasted but only memory which receives ready 
     //knows that at next cc it would be its turn.
     assign memory_data_for_cc = memory_data;
+    
+    /*always_ff @(posedge clk)begin
+        if(cur_state == REGEX_COPRO_S_EXEC)
+            to_dotty();
+    end*/
+//degub plotty autogenerated by scripts o_dotty_regex_coprocessor_generation.py
+    function string to_dotty();
+            string result = "digraph{\n rankdir = \"LR\"\n";
+            string channel_name ,bb_name   , switch_name , switch_name_prev ;
+            string dotty_channel, dotty_abb, dotty_switch;
+            
 
+            $sformat(result, "%s current_char [label=\"current char = %c\"];", result, cur_cc);
+            $sformat(channel_name, "fifo_channel_%0d_%0d",1,0);
+                dotty_channel = g[0].fifo_channel.to_dotty(channel_name);
+
+                $sformat(switch_name, "switch_%0d",0);
+                dotty_switch = g[0].aswitch.to_dotty(switch_name);
+                $sformat(switch_name_prev, "switch_%0d",1);
+
+                $sformat(bb_name, "bb%0d",0);
+                dotty_abb = g[0].abb.to_dotty(bb_name);
+
+                $sformat(result, {"%s %s\n",
+                            "%s:<first> -> %s_in_1  %s;\n",
+                            "%s_out_1   -> %s:<last> %s;\n",
+                            "%s_output -> %s_in_0 %s;\n ",
+                            "%s_out_0  -> %s_input %s;\n ",
+                            "%s\n %s \n"}, result, dotty_channel,
+                                        channel_name, switch_name     , (station_input_pc_valid[0] && station_input_pc_ready[0]     ? "[color=\"green\"]" : ""),
+                                        switch_name_prev, channel_name, (channel_input_pc_valid[0] && channel_input_pc_ready[0]     ? "[color=\"green\"]" : ""),
+                                        bb_name     ,switch_name      , (bb_output_pc_valid[0] && bb_output_pc_ready[0]             ? "[color=\"green\"]" : ""),
+                                        switch_name, bb_name          , (bb_input_pc_valid[0] && bb_input_pc_ready[0]               ? "[color=\"green\"]" : ""),
+                                        dotty_switch, dotty_abb );
+                 $sformat(channel_name, "fifo_channel_%0d_%0d",0,1);
+                dotty_channel = g[1].fifo_channel.to_dotty(channel_name);
+
+                $sformat(switch_name, "switch_%0d",1);
+                dotty_switch = g[1].aswitch.to_dotty(switch_name);
+                $sformat(switch_name_prev, "switch_%0d",0);
+
+                $sformat(bb_name, "bb%0d",1);
+                dotty_abb = g[1].abb.to_dotty(bb_name);
+
+                $sformat(result, {"%s %s\n",
+                            "%s:<first> -> %s_in_1  %s;\n",
+                            "%s_out_1   -> %s:<last> %s;\n",
+                            "%s_output -> %s_in_0 %s;\n ",
+                            "%s_out_0  -> %s_input %s;\n ",
+                            "%s\n %s \n"}, result, dotty_channel,
+                                        channel_name, switch_name     , (station_input_pc_valid[1] && station_input_pc_ready[1]     ? "[color=\"green\"]" : ""),
+                                        switch_name_prev, channel_name, (channel_input_pc_valid[1] && channel_input_pc_ready[1]     ? "[color=\"green\"]" : ""),
+                                        bb_name     ,switch_name      , (bb_output_pc_valid[1] && bb_output_pc_ready[1]             ? "[color=\"green\"]" : ""),
+                                        switch_name, bb_name          , (bb_input_pc_valid[1] && bb_input_pc_ready[1]               ? "[color=\"green\"]" : ""),
+                                        dotty_switch, dotty_abb );
+                 $strobe("%s}", result);
+
+
+    endfunction
 endmodule
