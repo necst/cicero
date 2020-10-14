@@ -242,7 +242,7 @@ begin : g1
         .LATENCY_COUNT_WIDTH    (LATENCY_COUNT_WIDTH                    ),
         .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                       ),
         .CHANNEL_COUNT_WIDTH    (CHANNEL_COUNT_WIDTH                    ),
-        .BB_N                   (2                                      ),
+        .BB_N                   (BB_N                                   ),
         .CACHE_BLOCK_WIDTH_BITS (CACHE_BLOCK_WIDTH_BITS                 ),      
         .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                       ),
         .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                  ),

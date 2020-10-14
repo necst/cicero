@@ -3,6 +3,7 @@ from pynq import Overlay
 from pynq import MMIO
 from pynq import DefaultIP
 from enum import Enum
+from math import log2, ceil
 import re
 import time
 
@@ -32,11 +33,12 @@ class RE2_COPROCESSOR_REGISTER_OFFSET(Enum):
 
 class re2_driver(DefaultIP):
     debug                               = False
-
+    verbose                             = False
+    word_size_in_bytes                  = 4
     def __init__(self, description):
         super().__init__(description=description)
 
-    bindto = ['xilinx.com:user:re2_copro:2']
+    bindto = ['xilinx.com:user:re2_copro:1']
 
     def write_data_in(self, i):
         self.write(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_IN.value, i)
@@ -45,7 +47,7 @@ class re2_driver(DefaultIP):
         return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_IN.value)
 
     def write_address(self, i):
-        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.ADDRESS.value, i)
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.ADDRESS.value, i//self.word_size_in_bytes)
 
     def read_address(self):
         return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.ADDRESS.value)
@@ -99,7 +101,8 @@ class re2_driver(DefaultIP):
         address     = starting_address
         flag        = True
         #write 32 bits at a time
-        write_width = 4
+        #hence 4 bytes
+        write_width = self.word_size_in_bytes
         for string_offset in range(0,len(bytes_list), write_width):
             to_write        = bytes_list[string_offset: string_offset+write_width]
             #byteorder start with Least Significant Bytes
@@ -112,7 +115,7 @@ class re2_driver(DefaultIP):
                 flag = False
                 self.write_cmd(RE2_COPROCESSOR_COMMANDS.WRITE)
 
-            address+=2
+            address+=write_width
         
         self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return address
@@ -129,7 +132,9 @@ class re2_driver(DefaultIP):
         byteorder   = 'little' if endianness == "BIG" else 'big'
         address     = starting_address
         flag        = True
-        read_width  = 2
+        
+        #read 32 bit a at time
+        read_width  = self.word_size_in_bytes
         for string_offset in range(0,len(bytes_list), +read_width):
             expected_to_read    = bytes_list[string_offset: string_offset+read_width]
             #byteorder start with Least Significant Bytes
@@ -142,7 +147,7 @@ class re2_driver(DefaultIP):
             if self.debug:
                 print('@ ', address,' read ', read,' expected ', expected_to_read_int)
             assert read == expected_to_read_int, ("@ "+str(address)+" data mismatch "+str(read)+" !== "+str(expected_to_read_int))
-            address+=1
+            address +=read_width
         
         self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return 1
@@ -182,8 +187,12 @@ class re2_driver(DefaultIP):
             import os.path
             code_output_file = regex_string+('_ignore_' if allow_prefix else '')+('_full_match_' if full_match else '')+('_O1_' if O1 else '')+'.out'
             code_output_file = code_output_file.replace('/', u'\u2215')
-            if os.path.exists(code_output_file):
-                print('reusing previously compilation')
+            if len(code_output_file) > 255:
+                code_output_file = None
+
+            if code_output_file and  os.path.exists(code_output_file) :
+                if self.verbose or self.debug :
+                    print('reusing previous compilation')
                 code = ''
                 with open(code_output_file,'r') as f:
                     code = f.read()
@@ -191,9 +200,11 @@ class re2_driver(DefaultIP):
                 import sys
                 sys.path.append('../re2compiler')
                 import re2compiler
-                print('start compilation')
+                if self.verbose or self.debug :
+                    print('start compilation')
                 code = re2compiler.compile(data=regex_string,o=code_output_file, O1=O1,allow_prefix=allow_prefix, full_match=full_match)
-                print('end compilation')
+                if self.verbose or self.debug :
+                    print('end compilation')
             code = code.split('\n')
             res  = self.load_and_run( code , string)
             if double_check:
@@ -230,13 +241,15 @@ class re2_driver(DefaultIP):
                 print('restart sent')
 
         code_address_end        = self.load_code(code)
-        string_address_start    = code_address_end
+        string_address_start    = ceil(code_address_end/self.word_size_in_bytes)*self.word_size_in_bytes
         _                       = self.load_string(string,string_address_start)
-        print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
-        print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
+        if self.verbose or self.debug :
+            print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
+            print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
         self.start(string_address_start)
         has_accepted = self.wait_complete()
-        print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
+        if self.verbose or self.debug :
+            print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
         return has_accepted   
     
 
@@ -244,16 +257,15 @@ if __name__ == "__main__":
     debug = False
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
-    re2_coprocessor = Overlay('../bitstreams/re2_coprocessor16bbP85.bit')
+    re2_coprocessor = Overlay('../bitstreams/re_copro16BBP_150.bit')
     if debug :
         print('test:',re2_coprocessor.ip_dict)
-
+    re2_coprocessor.re2_copro_0.verbose     = True
     cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
     print('status:', re2_coprocessor.re2_copro_0.get_status())
     time.sleep(1)
     
     regex_string        = '(R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X)'
-    string              = 'b'+'a'*8
     
     string_to_accept    = "MSIIGATRLQNDKSDTYSAGPCYAGGCSAFTPRGTCGKDWDLGEQTCASGFCTSQPLCARIKKTQVCGLRYSSKGKDPLVSAEWDSRGAPYVRCTYDADLIDTQAQVDQFVSMFGESPSLAERYCMRGVKNTAGELVSRVSSDADPAGGWCRKWYSAHRGPDQDAALGSFCIKNPGAADCKCINRASDPVYQKVKTLHAYPDQCWYVPCAADVGELKMGTQRDTPTNCPTQVCQIVFNMLDDGSVTMDDVKNTINCDFSKYVPPPPPPKPTPPTPPTPPTPPTPPTPPTPPTPRPVHNRKVMFFVAGAVLVAILISTVRW"
     string_to_reject    = "a"*15+"b"

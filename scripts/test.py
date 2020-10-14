@@ -1,7 +1,138 @@
-import test_execution
+
 import csv
 import os 
 import argparse
+import sys
+from   tqdm import tqdm
+
+class regular_expression_executor():
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+    def get_name(self):
+        return self.name
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        raise NotImplementedError()
+
+class re2copro_executor(regular_expression_executor):
+    def __init__(self, bitstream_filepath):
+        super().__init__("re2copro")
+        self.bitstream_filepath = bitstream_filepath
+        
+    
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import re2_driver
+        import pynq
+        from pynq import Overlay
+        re2_coprocessor = Overlay(self.bitstream_filepath)
+
+        #freq                = 90_000_000
+        has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, allow_prefix=allow_prefix,full_match=full_match, O1=O1 )
+        cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+        if debug:
+            print('status:', re2_coprocessor.re2_copro_0.get_status(),
+            'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
+        return cc_number
+
+class re_executor(regular_expression_executor):
+    def __init__(self):
+        super().__init__("re")
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import test_re
+        min_time_re = test_re.time_allow_prefix_match(r, line, perf_counter=True)
+        if debug:
+            print('minimum time', min_time_re, 'ns')
+        return min_time_re
+
+class emulated_re2_copro_asap_executor(regular_expression_executor):
+    def __init__(self):
+        super().__init__("emulated_re2copro_asap")
+    
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import sys
+        sys.path.append('../re2compiler')
+        import emulate_execution
+        cc = emulate_execution.cc_asap_allow_prefix_match(r, line, perf_counter=True)
+        if debug:
+            print('minimum cc', cc)
+        return cc
+
+
+class emulated_re2_copro_executor(regular_expression_executor):
+    def __init__(self):
+        super().__init__("emulated_re2copro")
+
+    
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import sys
+        sys.path.append('../re2compiler')
+        import emulate_execution
+        cc = emulate_execution.cc_allow_prefix_match(r, line)
+        if debug:
+            print('minimum cc', cc)
+        return cc
+
+class cmd_executor(regular_expression_executor):
+    def __init__(self, name, program, batch_length=1000, num_of_batches=10):
+        super().__init__(name)
+        self.program        = program
+        self.batch_length   = batch_length
+        self.num_of_batches = num_of_batches
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        res = [ self._execute(regex, string, O1=O1, allow_prefix=allow_prefix, full_match=full_match, debug=debug) for i in range(self.num_of_batches)]
+        return sum(res)/len(res)
+
+    def _execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        from subprocess import run, CalledProcessError, PIPE
+        from shutil     import which
+        num_times   = self.batch_length
+        
+        arguments   = f"time -p {self.program} \"{regex}\" \"{string}\" {num_times}"
+
+        if sys.version_info[0] > 4 or (sys.version_info[0] == 3 and sys.version_info[1] >= 7):
+            sub = run(arguments, capture_output=True, shell=True, check=False)
+        else:
+            sub = run(arguments,                      shell=True, check=False, stdout=PIPE, stderr=PIPE)
+
+        if(sub.returncode != 0):
+            if(sub.returncode ==1): 
+                pass #grep returns an error code to signal a non-match
+            else:
+                print("error!")
+                print('out->', sub.stdout)
+                print('err->', sub.stderr)
+                exit(sub.returncode)
+
+        import re
+
+        stderr = (sub.stderr.decode())
+        
+        res     = re.findall('real (\d+\.\d+)\nuser (\d+\.\d+)\nsys (\d+\.\d+)\n', stderr)
+        if debug: 
+            print('err->',type(sub.stderr), sub.stderr)
+            print(len(res), res)
+
+        if len(res) <1 or  (len(res)> 0 and len(res[0]) < 3) :
+            exit(1)
+        real    = float(res[0][0])
+        user    = float(res[0][1])
+        system  = float(res[0][2])
+
+        return user*1_000_000_000/num_times
+    
+
+class grep_executor(cmd_executor):
+    def __init__(self, batch_length=50      , num_of_batches=10):
+        super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
+
+class re2_executor(cmd_executor):
+    def __init__(self, batch_length=80_000 , num_of_batches=30):
+        super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
+
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
 arg_parser.add_argument('-startstr'		    , type=int , help='index first str.'	                                    , default=0   )
@@ -10,8 +141,10 @@ arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.'	  
 arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.'		                                    , default=None)
 arg_parser.add_argument('-testpy'		               , help='measure time taken by python', action='store_true'		, default=False)
 arg_parser.add_argument('-testcopro'		           , help='measure time taken by copro.', action='store_true'		, default=False)
-arg_parser.add_argument('-testre2py'		           , help='measure time taken by a self-made python module.'        , action='store_true'		, default=False)
-arg_parser.add_argument('-testsimre2'		           , help='measure minimum clock cycles taken by emulated re2copro.', action='store_true'		, default=False)
+arg_parser.add_argument('-testsimre2coproasap'		   , help='measure clock cycles taken by emulated re2copro.'        , action='store_true'		, default=False)
+arg_parser.add_argument('-testsimre2copro'	           , help='measure clock cycles taken by emulated re2copro.'        , action='store_true'		, default=False)
+arg_parser.add_argument('-testre2'	                   , help='measure time taken by re2.'        , action='store_true'		, default=False)
+arg_parser.add_argument('-testgrep'	               , help='measure time taken by re2.'        , action='store_true'		, default=False)
 arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                        , default='test5.input')
 arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                        , default='test2.reg')
 arg_parser.add_argument('-bitstream'		, type=str , help='bitstream file of the coprocessor'    	                , default='re2_coprocessor4bbP110.bit')
@@ -20,58 +153,65 @@ arg_parser.add_argument('-do_not_optimize'	, help='do not optimize recopro code'
 args = arg_parser.parse_args()
 optimize_str = 'O1' if not args.do_not_optimize else ''
 bitstream_filename = os.path.basename(args.bitstream)[:-4]
+
+executor_list = []
+if args.testcopro:
+    executor_list.append(re2copro_executor(args.bitstream))
+if args.testpy:
+    executor_list.append(re_executor())
+if args.testsimre2coproasap:
+    executor_list.append(emulated_re2_copro_asap_executor())
+if args.testsimre2copro:
+    executor_list.append(emulated_re2_copro_executor())
+if args.testre2:
+    executor_list.append(re2_executor())
+if args.testgrep:
+    executor_list.append(grep_executor())
+str_lines   = []
+#read string file
+with open(args.strfile, 'r', errors='ignore') as f:
+    str_lines = f.readlines()[args.startstr:args.endstr]
+regex_lines = []
+#open regex file 
+with open(args.regfile) as f:
+    regex_lines = f.readlines()[args.startreg:args.endreg]
+total_number_of_exec = len(str_lines)*len(regex_lines)*len(executor_list)
+progress_bar = tqdm(total=total_number_of_exec)
+
+#open log file
 with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as csvfile:
     fout = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
-    with open(args.strfile, 'r', errors='ignore') as f:
-        lines = f.readlines()[args.startstr:args.endstr]
-        for line in lines:
-            print('len', len(line),'->', bytes(line,'utf-8'))
-            line = line[:-1]
-            fout.writerow(['string', line, '', ''])
-            fout.writerow(['regex', 'result','copro',  'python re'])
-            with open(args.regfile) as f:
-                for r in f.readlines()[args.startreg:args.endreg]:
-                    r = r[:-1]
-                    print('regex', r,'\nstring', line)
-                    try:
-                        min_time_copro = 0
-                        has_accepted   = 'UNK'
-                        if args.testcopro:
-                            import re2_driver
-                            import pynq
-                            from pynq import Overlay
-                            re2_coprocessor = Overlay(args.bitstream)
-                            
-                            
-                            #freq                = 90_000_000
-                            has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, allow_prefix=True, O1=(not args.do_not_optimize) )
-                            cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
-                            print('clock cycles taken:', cc_number)
-                            print('status:', re2_coprocessor.re2_copro_0.get_status())
-                            min_time_copro = cc_number#*1/freq*1_000_000_000
-                            print('time re2coprocessor', min_time_copro, 'cc')
-                        min_time_re = 0
-                        if args.testpy:
-                            min_time_re = test_execution.time_allow_prefix_match(r, line, perf_counter=True)
-                            print('minimum time', min_time_re, 'ns')
-                        if args.testre2py:
-                            import sys
-                            sys.path.append('../re2compiler')
-                            import emulate_execution
-                            min_time_re = emulate_execution.time_allow_prefix_match(r, line, perf_counter=True)
-                            print('minimum time', min_time_re, 'ns')
-                        if args.testsimre2:
-                            import sys
-                            sys.path.append('../re2compiler')
-                            import emulate_execution
-                            min_time_re = emulate_execution.cc_allow_prefix_match(r, line)
-                            print('minimum cc', min_time_re)
-
-
-                        fout.writerow([r,has_accepted,  min_time_copro,  min_time_re,' '])
-                    except Exception as exc:
-                        raise exc
-                        print('error',r,exc)
+    #foreach string 
+    for l_number, line in enumerate(str_lines):
+        #print('len', len(line),'->', bytes(line,'utf-8'))
+        #eliminate end of line
+        line = line[:-1]
+        #write in csv current string and caption
+        fout.writerow(['string', line, '', ''])
+        names = [e.get_name() for e in executor_list]
+        fout.writerow(['regex', 'result', *names])
+        
+        #foreach regex
+        for r_number, r in enumerate(regex_lines):
+            #result todo: report regex match result.
+            has_accepted = "UNK"
+            #eliminate end of line from regex
+            r            = r[:-1]
+            results      = [ ]
+            
+            for e_number, e in enumerate(executor_list):
+                
+                
+                try:
+                    result = None
+                    result = e.execute(regex=r, string=line, full_match = False, allow_prefix=True, O1=True )   
+                except Exception as exc:
+                    raise exc
+                    print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
+                progress_bar.update(1)
+                
+                results.append(result)
+            fout.writerow([r,has_accepted,  *results ])
                     
 
 
