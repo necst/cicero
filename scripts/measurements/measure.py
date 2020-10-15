@@ -5,7 +5,7 @@ import argparse
 import sys
 from   tqdm import tqdm
 
-class regular_expression_executor():
+class regular_expression_measurer():
     def __init__(self, name):
         super().__init__()
         self.name = name
@@ -16,13 +16,15 @@ class regular_expression_executor():
     def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
         raise NotImplementedError()
 
-class re2copro_executor(regular_expression_executor):
+class re2copro_measurer(regular_expression_measurer):
     def __init__(self, bitstream_filepath):
         super().__init__("re2copro")
         self.bitstream_filepath = bitstream_filepath
         
     
     def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import sys
+        sys.path.append('../driver')
         import re2_driver
         import pynq
         from pynq import Overlay
@@ -36,7 +38,7 @@ class re2copro_executor(regular_expression_executor):
             'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
         return cc_number
 
-class re_executor(regular_expression_executor):
+class re_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("re")
 
@@ -47,13 +49,13 @@ class re_executor(regular_expression_executor):
             print('minimum time', min_time_re, 'ns')
         return min_time_re
 
-class emulated_re2_copro_asap_executor(regular_expression_executor):
+class emulated_re2_copro_asap_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("emulated_re2copro_asap")
     
     def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
         import sys
-        sys.path.append('../re2compiler')
+        sys.path.append('../../re2compiler')
         import emulate_execution
         cc = emulate_execution.cc_asap_allow_prefix_match(r, line, perf_counter=True)
         if debug:
@@ -61,21 +63,21 @@ class emulated_re2_copro_asap_executor(regular_expression_executor):
         return cc
 
 
-class emulated_re2_copro_executor(regular_expression_executor):
+class emulated_re2_copro_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("emulated_re2copro")
 
     
     def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
         import sys
-        sys.path.append('../re2compiler')
+        sys.path.append('../../re2compiler')
         import emulate_execution
         cc = emulate_execution.cc_allow_prefix_match(r, line)
         if debug:
             print('minimum cc', cc)
         return cc
 
-class cmd_executor(regular_expression_executor):
+class cmd_measurer(regular_expression_measurer):
     def __init__(self, name, program, batch_length=1000, num_of_batches=10):
         super().__init__(name)
         self.program        = program
@@ -125,61 +127,68 @@ class cmd_executor(regular_expression_executor):
         return user*1_000_000_000/num_times
     
 
-class grep_executor(cmd_executor):
+class grep_measurer(cmd_measurer):
     def __init__(self, batch_length=50      , num_of_batches=10):
         super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
 
-class re2_executor(cmd_executor):
+class re2_measurer(cmd_measurer):
     def __init__(self, batch_length=80_000 , num_of_batches=30):
         super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
 
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
-arg_parser.add_argument('-startstr'		    , type=int , help='index first str.'	                                    , default=0   )
-arg_parser.add_argument('-endstr'		    , type=int , help='index end string.'	                                    , default=None)
-arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.'	                                    , default=0   )
-arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.'		                                    , default=None)
-arg_parser.add_argument('-testpy'		               , help='measure time taken by python', action='store_true'		, default=False)
-arg_parser.add_argument('-testcopro'		           , help='measure time taken by copro.', action='store_true'		, default=False)
-arg_parser.add_argument('-testsimre2coproasap'		   , help='measure clock cycles taken by emulated re2copro.'        , action='store_true'		, default=False)
-arg_parser.add_argument('-testsimre2copro'	           , help='measure clock cycles taken by emulated re2copro.'        , action='store_true'		, default=False)
-arg_parser.add_argument('-testre2'	                   , help='measure time taken by re2.'        , action='store_true'		, default=False)
-arg_parser.add_argument('-testgrep'	               , help='measure time taken by re2.'        , action='store_true'		, default=False)
-arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                        , default='test5.input')
-arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                        , default='test2.reg')
-arg_parser.add_argument('-bitstream'		, type=str , help='bitstream file of the coprocessor'    	                , default='re2_coprocessor4bbP110.bit')
-arg_parser.add_argument('-do_not_optimize'	, help='do not optimize recopro code'    ,action='store_true'               , default=False)
+arg_parser.add_argument('-startstr'		    , type=int , help='index first str.'	                                                                , default=0   )
+arg_parser.add_argument('-endstr'		    , type=int , help='index end string.'	                                                                , default=None)
+arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.'	                                                                , default=0   )
+arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.'		                                                                , default=None)
+arg_parser.add_argument('-py'		                   , help='measure time taken by python'                             , action='store_true'      , default=False)
+arg_parser.add_argument('-copro'		               , help='measure time taken by copro.'                             , action='store_true'      , default=False)
+arg_parser.add_argument('-simre2coproasap'		       , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
+arg_parser.add_argument('-simre2copro'	               , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
+arg_parser.add_argument('-re2'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
+arg_parser.add_argument('-grep'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
+arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                                                    , default='input_protomata_selected.txt')
+arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                                                    , default='regular_expr.txt')
+arg_parser.add_argument('-bitstream'		, type=str , help='coprocessor bitstream file'    	                                                    , default='')
+arg_parser.add_argument('-do_not_optimize'	           , help='do not optimize recopro code'                             ,action='store_true'       , default=False)
 
 args = arg_parser.parse_args()
-optimize_str = 'O1' if not args.do_not_optimize else ''
-bitstream_filename = os.path.basename(args.bitstream)[:-4]
 
-executor_list = []
-if args.testcopro:
-    executor_list.append(re2copro_executor(args.bitstream))
-if args.testpy:
-    executor_list.append(re_executor())
-if args.testsimre2coproasap:
-    executor_list.append(emulated_re2_copro_asap_executor())
-if args.testsimre2copro:
-    executor_list.append(emulated_re2_copro_executor())
-if args.testre2:
-    executor_list.append(re2_executor())
-if args.testgrep:
-    executor_list.append(grep_executor())
+optimize_str = "" if args.do_not_optimize else '_O1' 
+bitstream_filename = ""  if not args.copro else os.path.basename(args.bitstream)[:-4]
+
+#any program and coprocessors have a specific method
+# to measure the time taken to complete a match.
+# These methods are encapsulated into an instance of measurer subclass,
+# which expose a method(execute()) to measure time required to match.  
+# measurer_list is filled by measurer depending on user requests.
+measurer_list = []
+if args.copro:
+    measurer_list.append(re2copro_measurer(args.bitstream))
+if args.py:
+    measurer_list.append(re_measurer())
+if args.simre2coproasap:
+    measurer_list.append(emulated_re2_copro_asap_measurer())
+if args.simre2copro:
+    measurer_list.append(emulated_re2_copro_measurer())
+if args.re2:
+    measurer_list.append(re2_measurer())
+if args.grep:
+    measurer_list.append(grep_measurer())
 str_lines   = []
 #read string file
 with open(args.strfile, 'r', errors='ignore') as f:
     str_lines = f.readlines()[args.startstr:args.endstr]
 regex_lines = []
 #open regex file 
-with open(args.regfile) as f:
+with open(args.regfile, 'r',) as f:
     regex_lines = f.readlines()[args.startreg:args.endreg]
-total_number_of_exec = len(str_lines)*len(regex_lines)*len(executor_list)
-progress_bar = tqdm(total=total_number_of_exec)
+
+total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
+progress_bar               = tqdm(total=total_number_of_executions)
 
 #open log file
-with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
     fout = csv.writer(csvfile, delimiter=';', quoting=csv.QUOTE_MINIMAL)
     #foreach string 
     for l_number, line in enumerate(str_lines):
@@ -188,7 +197,7 @@ with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as cs
         line = line[:-1]
         #write in csv current string and caption
         fout.writerow(['string', line, '', ''])
-        names = [e.get_name() for e in executor_list]
+        names = [e.get_name() for e in measurer_list]
         fout.writerow(['regex', 'result', *names])
         
         #foreach regex
@@ -199,7 +208,7 @@ with open(f'log_{bitstream_filename}_{optimize_str}.csv', 'w', newline='') as cs
             r            = r[:-1]
             results      = [ ]
             
-            for e_number, e in enumerate(executor_list):
+            for e_number, e in enumerate(measurer_list):
                 
                 
                 try:
