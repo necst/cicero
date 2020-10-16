@@ -1,10 +1,10 @@
 `timescale 1ns/1ps
 module cache_block_directly_mapped_tb();
-    localparam DWIDTH                   = 16;
     localparam HALF_CLOCK_CYCLE_PERIOD  = 5ns;
-    localparam CACHE_WIDTH_BITS         = 5;
-    localparam ADDR_WIDTH               = 20;
+    localparam DWIDTH                   = 4;
+    localparam CACHE_WIDTH_BITS         = 4;
     localparam BLOCK_WIDTH_BITS         = 4;
+    localparam ADDR_WIDTH               = 16;
 
     logic                                       clk           ;
     logic                                       reset         ;
@@ -171,52 +171,46 @@ task request_non_missing_block(
                     $display("error requesting a missing cache line that is expected to be present");
                     $stop(0);
                 end
-                if(addr_in_ready !== 1'b1)
+                if(addr_in_ready == 1'b0)
                 begin
                     $display("error not signaling data incoming");
                     $stop(0);
                 end
+        
                 addr_in_valid   <= 1'b1;
                 addr_in         <= an_address+i;
 
-                if(i-2>0 && data_out !== block[DWIDTH*(i-2)+:DWIDTH])
+                if( data_out !== block[DWIDTH*(i-1)+:DWIDTH])
                 begin
-                    $display("error in data out");
+                    $display("error in data out %d != %d ", data_out, block[DWIDTH*(i-1)+:DWIDTH]) ;
                     $stop(0);
                 end
-                else if(i-2>0)
+                else
                     $display("block address %d read ok", an_address+i-2);
             end
             
             //end response
             addr_in_valid  <= 1'b0;
             @(posedge clk);
-            if(data_out !== block[DWIDTH*(2**BLOCK_WIDTH_BITS-2)+:DWIDTH])
+            if(data_out !== block[DWIDTH*(2**BLOCK_WIDTH_BITS-1)+:DWIDTH])
             begin
-                $display("error in data out");
+                $display("error in data out %d != %d ", data_out, block[DWIDTH*(2**BLOCK_WIDTH_BITS-1)+:DWIDTH]) ;
                 $stop(0);
             end
             else
                 $display("block address %d read ok", an_address+(2**BLOCK_WIDTH_BITS-1));
-            @(posedge clk);
-            if(data_out !== block[DWIDTH*(2**BLOCK_WIDTH_BITS-1)+:DWIDTH])
-            begin
-                $display("error in data out");
-                $stop(0);
-            end
-            else
-                $display("final block address %d read ok", an_address+(2**BLOCK_WIDTH_BITS-1));
+            
 
 endtask 
 
 
     initial
     begin
-        logic [ADDR_WIDTH-1:0] an_address = 20'hDEAD0; // DEAD is the address without block indexing 0 is block index
-        logic [DWIDTH-1:0    ] a_data     = 16'hBEEF;
-        logic [DWIDTH-1:0    ] another_data  = 16'hBEEA;
-        logic [DWIDTH-1:0    ] a_rd_data  = 16'hCBCB; 
-        logic [DWIDTH-1:0    ] a_th_data  = 16'h4242; 
+        logic [ADDR_WIDTH-1:0] an_address = 16'hEAD0; // DEAD is the address without block indexing 0 is block index
+        logic [DWIDTH-1:0    ] a_data     = 4'hF;
+        logic [DWIDTH-1:0    ] another_data  = 4'hA;
+        logic [DWIDTH-1:0    ] a_rd_data  = 4'hB; 
+        logic [DWIDTH-1:0    ] a_th_data  = 4'h2; 
         logic [2**BLOCK_WIDTH_BITS*DWIDTH-1:0] block0, block1;
         int offset;
         clk             = 1'b0;
