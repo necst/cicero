@@ -3,6 +3,9 @@
 #include <re2/re2.h>
 #include <vector>
 #include <cassert>
+#include <chrono>
+#include <list>
+#include <math.h>
 using namespace std;
 
 int main(int argc, char** argv){
@@ -17,18 +20,22 @@ int main(int argc, char** argv){
     int     expectedResult; 
     string  regex(argv[1]);
     string  str(argv[2]);
-    //cout << "REGEX:"  << regex << std::endl;
-    //cout << "STRING:" << str << std::endl;
-    //string s;
-    RE2 obj(regex);
-    assert(obj.ok());
+
+	RE2 obj(regex);
+	assert(obj.ok());	
+    
     for(int i=0; i<num_of_repeats; i++){
-        matchResult = RE2::PartialMatch(str, obj);
-        if(i==0)
-            expectedResult = matchResult;
-        assert(expectedResult == matchResult);
-        //cout << str         << endl;
-        //cout << expectedResult << endl;
+	
+        
+        
+		matchResult = RE2::PartialMatch(str, obj);
+		if(i==0)
+			expectedResult = matchResult;
+		assert(expectedResult == matchResult);
+        
+        
+
     }
+
     exit(!matchResult);
 }

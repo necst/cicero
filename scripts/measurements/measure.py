@@ -31,6 +31,8 @@ class re2copro_measurer(regular_expression_measurer):
         re2_coprocessor = Overlay(self.bitstream_filepath)
 
         #freq                = 90_000_000
+        if debug:
+            print('string', string, ' regex:',regex)
         has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, allow_prefix=allow_prefix,full_match=full_match, O1=O1 )
         cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
         if debug:
@@ -90,7 +92,6 @@ class cmd_measurer(regular_expression_measurer):
 
     def _execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
         from subprocess import run, CalledProcessError, PIPE
-        from shutil     import which
         num_times   = self.batch_length
         
         arguments   = f"time -p {self.program} \"{regex}\" \"{string}\" {num_times}"
@@ -126,14 +127,71 @@ class cmd_measurer(regular_expression_measurer):
 
         return user*1_000_000_000/num_times
     
-
+#https://www.embedded.com/tutorial-techniques-for-measuring-execution-time-and-real-time-performance-part-1/
 class grep_measurer(cmd_measurer):
     def __init__(self, batch_length=50      , num_of_batches=10):
         super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_measurer(cmd_measurer):
-    def __init__(self, batch_length=80_000 , num_of_batches=30):
+    def __init__(self, batch_length=500_000 , num_of_batches=20):
         super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
+
+class re2_chrono_measurer(regular_expression_measurer):
+    def __init__(self, batch_length=80_000 ):
+        super().__init__(" [ re2_chrono_exe, re2_chrono_compile]" )
+        self.batch_length 	= batch_length
+
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        from subprocess import run, CalledProcessError, PIPE
+        num_times   = self.batch_length
+        
+        arguments   = f"./test_re2_chrono.o \"{regex}\" \"{string}\" {num_times}"
+
+        if sys.version_info[0] > 4 or (sys.version_info[0] == 3 and sys.version_info[1] >= 7):
+            sub = run(arguments, capture_output=True, shell=True, check=False)
+        else:
+            sub = run(arguments,                      shell=True, check=False, stdout=PIPE, stderr=PIPE)
+
+        if(sub.returncode != 0):
+            if(sub.returncode ==1): 
+                pass #grep returns an error code to signal a non-match
+            else:
+                print("error!")
+                print('out->', sub.stdout)
+                print('err->', sub.stderr)
+                exit(sub.returncode)
+
+        import re
+
+        stdout = sub.stdout.decode()
+        
+        res     = re.findall('Execution \d+ iterations?: avg time taken (\d+\.\d+)', stdout)
+
+        if debug: 
+            print('stdout->',type(sub.stdout), sub.stdout)
+            print(len(res), res)
+
+        if len(res) <1 or  (len(res)> 0 and len(res[0]) < 1) :
+            exit(1)
+        exec    = float(res[0])
+        if debug:
+            print(exec)
+
+        res     = re.findall('Compilation \d+ iterations?: avg time taken (\d+\.\d+)', stdout)
+
+        if debug: 
+            print('stdout->',type(sub.stdout), sub.stdout)
+            print(len(res), res)
+
+        if len(res) <1 or  (len(res)> 0 and len(res[0]) < 1) :
+            exit(1)
+
+        compilation    = float(res[0])
+        if debug:
+            print(compilation)
+
+        return [exec, compilation]
 
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
@@ -146,12 +204,14 @@ arg_parser.add_argument('-copro'		               , help='measure time taken by c
 arg_parser.add_argument('-simre2coproasap'		       , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
 arg_parser.add_argument('-simre2copro'	               , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
 arg_parser.add_argument('-re2'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
+arg_parser.add_argument('-re2chrono'                   , help='measure time taken by re2.'                               , action='store_true'      , default=False)
 arg_parser.add_argument('-grep'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
 arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                                                    , default='input_protomata_selected.txt')
 arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                                                    , default='regular_expr.txt')
 arg_parser.add_argument('-bitstream'		, type=str , help='coprocessor bitstream file'    	                                                    , default='')
 arg_parser.add_argument('-do_not_optimize'	           , help='do not optimize recopro code'                             ,action='store_true'       , default=False)
-
+arg_parser.add_argument('-debug'	                   , help='execute in debug mode'                                    ,action='store_true'       , default=False)
+ 
 args = arg_parser.parse_args()
 
 optimize_str = "" if args.do_not_optimize else '_O1' 
@@ -173,6 +233,8 @@ if args.simre2copro:
     measurer_list.append(emulated_re2_copro_measurer())
 if args.re2:
     measurer_list.append(re2_measurer())
+if args.re2chrono:
+    measurer_list.append(re2_chrono_measurer())
 if args.grep:
     measurer_list.append(grep_measurer())
 str_lines   = []
@@ -213,7 +275,7 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                 
                 try:
                     result = None
-                    result = e.execute(regex=r, string=line, full_match = False, allow_prefix=True, O1=True )   
+                    result = e.execute(regex=r, string=line, full_match = False, allow_prefix=True, O1=True, debug=args.debug )   
                 except Exception as exc:
                     raise exc
                     print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
