@@ -21,7 +21,7 @@ module arbiter_rr_tb();
         #HALF_CLOCK_CYCLE_PERIOD clk = ~ clk;
     end 
 
-    arbiter_rr #(
+    arbiter_2_rr #(
         .DWIDTH(DWIDTH),
         .PRIORITY_0(1)
     ) arbiter_under_test (

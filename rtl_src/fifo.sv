@@ -92,7 +92,7 @@ assign from_din = din;
 //                                                   v |                             
 //                                                  W,R&W,_                 
 always_comb begin //create full empty signals
-    data_count            = tail - head;
+    data_count            = tail - head; //todo data count can be implemented with +1/-1 depending on read_en/wr_en
     head_incremented      = head + 1 ;
     tail_incremented      = tail + 1 ;
 

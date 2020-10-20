@@ -47,22 +47,16 @@ module regex_cpu_pipelined #(
     logic                                                                                  EXE1_accepts           , EXE2_accepts;
     logic                                                                                  EXE1_completes_instr                 ;    
     
-    //for buffer
+    //for cpu exe_. stages
     logic                           EXE1_output_pc_not_ready                      , EXE2_output_pc_not_ready             ; 
     logic                           EXE1_output_pc_ready                          , EXE2_output_pc_ready                 ;
     logic                           EXE1_output_pc_is_directed_to_current         , EXE2_output_pc_is_directed_to_current;
     logic [PC_WIDTH-1:0]            EXE1_output_pc                                , EXE2_output_pc                       ;
     logic [PC_WIDTH  :0]            EXE1_output_pc_and_current                    , EXE2_output_pc_and_current           ;
     logic                           EXE1_output_pc_valid                          , EXE2_output_pc_valid                 ;
-    //buffer
-    logic                           EXE1_buffered_output_pc_ready                 , EXE2_buffered_output_pc_ready                 ;
-    logic                           EXE1_buffered_output_pc_is_directed_to_current, EXE2_buffered_output_pc_is_directed_to_current;
-    logic [PC_WIDTH  :0]            EXE1_buffered_output_pc_and_current           , EXE2_buffered_output_pc_and_current           ;
-    logic                           EXE1_buffered_output_pc_valid                 , EXE2_buffered_output_pc_valid                 ;
-    logic                           EXE1_buffered_output_pc_not_valid             , EXE2_buffered_output_pc_not_valid             ;
-    logic [FIFO_WIDTH_POWER_OF_2-1:0]EXE1_buffered_count                          , EXE2_buffered_count                           ;
     // output arbiter
     logic [PC_WIDTH  :0]            output_pc_and_current;
+
     always_ff @(posedge clk ) 
     begin 
         if(reset)
@@ -146,13 +140,7 @@ module regex_cpu_pipelined #(
         end
     end
     
-    //assign FETCH_SEND_stall = (                           FETCH_SEND_waits  ||  (FETCH_REC_stall                         )  ) ;
-    //assign FETCH_REC_stall  = ( FETCH_REC_Instr_valid &&                         EXE1_stall                                 ) ;
-    //assign EXE1_stall       = ( EXE1_Instr_valid      &&  EXE1_waits        ||  (EXE2_stall      && ~EXE1_completes_instr)  ) ;
-    //assign EXE2_stall       = ( EXE2_Instr_valid      &&  EXE2_waits                                                        ) ;
-    // stage can go ahead              =(instr_is_valid && no_wait_signal raised && ( next_state_will_be_free_next_cc || stages_completes ))
-    // next_state_will_be_free_next_cc = next_stage_instr_valid && next_stage_moves || next_stage_instr_invalid 
-    assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
+        assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
     assign  FETCH_REC_not_stall  = ( FETCH_REC_Instr_valid &&                         (     ~EXE1_Instr_valid ||      EXE1_not_stall)) ;
     assign       EXE1_not_stall  = (      EXE1_Instr_valid &&        ~EXE1_waits  && ((     ~EXE2_Instr_valid ||      EXE2_not_stall) || EXE1_completes_instr)) ;
     assign       EXE2_not_stall  = (      EXE2_Instr_valid &&        ~EXE2_waits                                                     ) ;
@@ -294,57 +282,25 @@ module regex_cpu_pipelined #(
         end
     end
 
-    //buffer for EXE1_output
-    assign EXE1_output_pc_and_current   = {EXE1_output_pc, EXE1_output_pc_is_directed_to_current};
-    assign EXE1_output_pc_ready         = ~EXE1_output_pc_not_ready;
-    assign EXE1_buffered_output_pc_valid= ~EXE1_buffered_output_pc_not_valid;
-    fifo #(
-        .DWIDTH     (PC_WIDTH+1                         ),
-        .COUNT_WIDTH(FIFO_WIDTH_POWER_OF_2              )
-    ) fifo_exe1_buffer(
-        .clk        (clk                                ), 
-        .reset      (reset                              ), 
-        .full       (EXE1_output_pc_not_ready           ), //equivalent to not data_in_ready
-        .din        (EXE1_output_pc_and_current         ),  
-        .wr_en      (EXE1_output_pc_valid               ), //equivalent to data_in_valid
-        .rd_en      (EXE1_buffered_output_pc_ready      ), //equivalent to data_out_ready
-        .dout       (EXE1_buffered_output_pc_and_current), 
-        .empty      (EXE1_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
-        .data_count (EXE1_buffered_count                )
-    );
 
-    //buffer for EXE2_output
+    assign EXE1_output_pc_and_current   = {EXE1_output_pc, EXE1_output_pc_is_directed_to_current};
+
     assign EXE2_output_pc_and_current   = {EXE2_output_pc, EXE2_output_pc_is_directed_to_current};
-    assign EXE2_output_pc_ready         = ~EXE2_output_pc_not_ready;
-    assign EXE2_buffered_output_pc_valid= ~EXE2_buffered_output_pc_not_valid;
-    fifo #(
-        .DWIDTH     (PC_WIDTH+1                         ),
-        .COUNT_WIDTH(FIFO_WIDTH_POWER_OF_2              )
-    ) fifo_exe2_buffer(
-        .clk        (clk                                ), 
-        .reset      (reset                              ), 
-        .full       (EXE2_output_pc_not_ready           ), //equivalent to not data_in_ready
-        .din        (EXE2_output_pc_and_current         ),  
-        .wr_en      (EXE2_output_pc_valid               ), //equivalent to data_in_valid
-        .rd_en      (EXE2_buffered_output_pc_ready      ), //equivalent to data_out_ready
-        .dout       (EXE2_buffered_output_pc_and_current), 
-        .empty      (EXE2_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
-        .data_count (EXE2_buffered_count                )
-    );
+    
 
     //round robin arbiter for EXE1_output
-    arbiter_rr #(
-        .DWIDTH(PC_WIDTH+1                                    ),
-        .PRIORITY_0(     1                                    )
+    arbiter_2_rr #(
+        .DWIDTH(PC_WIDTH+1                                    )
+        
     ) arbiter_output_pc_port (
         .clk       ( clk                                      ),
         .reset     ( reset                                    ),
-        .in_0_ready( EXE1_buffered_output_pc_ready            ),
-        .in_0_data ( EXE1_buffered_output_pc_and_current      ),
-        .in_0_valid( EXE1_buffered_output_pc_valid            ),
-        .in_1_ready( EXE2_buffered_output_pc_ready            ),
-        .in_1_data ( EXE2_buffered_output_pc_and_current      ),
-        .in_1_valid( EXE2_buffered_output_pc_valid            ),
+        .in_0_ready( EXE1_output_pc_ready                     ),
+        .in_0_data ( EXE1_output_pc_and_current               ),
+        .in_0_valid( EXE1_output_pc_valid                     ),
+        .in_1_ready( EXE2_output_pc_ready                     ),
+        .in_1_data ( EXE2_output_pc_and_current               ),
+        .in_1_valid( EXE2_output_pc_valid                     ),
         .out_ready ( output_pc_ready                          ),
         .out_data  ( output_pc_and_current                    ),
         .out_valid ( output_pc_valid                          )
@@ -353,7 +309,7 @@ module regex_cpu_pipelined #(
     assign output_pc                        = output_pc_and_current[1+:PC_WIDTH];
     assign output_pc_is_directed_to_current = output_pc_and_current[          0];
     assign accepts =                          EXE1_accepts      || EXE2_accepts ;
-    assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid || EXE2_buffered_output_pc_valid || EXE1_buffered_output_pc_valid ;
-    assign latency = EXE1_buffered_count + EXE2_buffered_count;
+    assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid ;
+    assign latency = 0; //EXE1_buffered_count + EXE2_buffered_count;
     
 endmodule 

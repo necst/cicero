@@ -74,7 +74,7 @@ always_ff @( posedge clk ) begin
         tag_saved                   <= tag_saved_next       ;
         curState                    <= nextState            ;
         data_from_memory            <= content[cache_line_in];
-        if(curState == S_WRITE)
+        if(curState == S_FETCH)
         begin
             tag         [cache_line_saved] <= tag_saved;
             is_present  [cache_line_saved] <= 1'b1     ;
@@ -93,27 +93,20 @@ always_comb begin
     cache_line_saved_next    = cache_line_saved    ;
     tag_saved_next           = tag_saved           ;
     case (curState)
-    S_IDLE, S_WRITE:
+    S_IDLE:
     begin
-        if( addr_in_valid && ~hit)  
+        block_sel_saved_next     = block_sel_in    ;
+        cache_line_saved_next    = cache_line_in   ;
+        tag_saved_next           = tag_in          ;
+        if( addr_in_valid && ~hit && addr_out_ready)  
         begin
-            block_sel_saved_next     = block_sel_in    ;
-            cache_line_saved_next    = cache_line_in   ;
-            tag_saved_next           = tag_in          ;
-            nextState                = S_FETCH         ;
+            nextState                = S_FETCH     ;
         end
-        else
-        begin
-            block_sel_saved_next     = block_sel_in    ;
-            nextState                = S_IDLE;
-        end
+        
     end
     S_FETCH:
     begin
-        if(addr_out_ready)
-        begin
-            nextState = S_WRITE;
-        end
+        nextState = S_IDLE;
     end
     endcase             
    
@@ -124,29 +117,20 @@ end
 always_comb begin 
     //default output
     addr_in_ready       = 1'b0;
-    addr_out            = {(OUT_ADDR_WIDTH){1'b0}} ;
-    addr_out_valid      = 1'b0                     ;
+    addr_out            = addr_in[ADDR_IN_WIDTH-1-:OUT_ADDR_WIDTH] ;
+    addr_out_valid      = 1'b0                                     ;
     data_out            = data_from_memory[ block_sel_saved*DWIDTH+:DWIDTH ];
 
     case (curState)
     S_IDLE:
     begin
-        if( addr_in_valid == 1'b1)  
-            addr_in_ready = hit ;
+        
+        addr_in_ready     = addr_in_valid && hit ;
+        addr_out_valid    = addr_in_valid && ~hit;
     end
     S_FETCH:
     begin
-        //take the topmost i bits from addr_in signal
-        addr_out          = addr_in[ADDR_IN_WIDTH-1-:OUT_ADDR_WIDTH] ;
-        addr_out_valid    = 1'b1    ;
-        if(addr_out_ready)
-        begin //next cycle the memory would answer
-            addr_in_ready = 1'b1 ;
-        end
-    end
-    S_WRITE: 
-    begin
-        data_out              = data_in[ block_sel_saved*DWIDTH+:DWIDTH] ;
+        //take the  bits from data_in
     end
     endcase
     

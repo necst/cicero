@@ -1,65 +1,53 @@
 `timescale 1ns/1ps
-
+/*
+Arbiters: Design Ideas and Coding Styles Matt Weber
+*/
 module arbiter_fixed #(
     parameter DWIDTH      = 8 ,
-    parameter PRIORITY_0  = 1 
+    parameter N           = 2 
 )(
-    input  logic               in_0_valid,
-    input  logic [DWIDTH-1:0]  in_0_data,
-    output logic               in_0_ready,
 
-    input  logic               in_1_valid,
-    input  logic [DWIDTH-1:0]  in_1_data,
-    output logic               in_1_ready,
+    input  logic                in_valid [N-1:0],
+    input  logic [DWIDTH-1:0]   in_data  [N-1:0],
+    output logic                in_ready [N-1:0],
+
  
-    output logic              out_valid,
-    output logic [DWIDTH-1:0] out_data,
-    input  logic              out_ready
+    output logic                out_valid,
+    output logic [DWIDTH-1:0]   out_data,
+    input  logic                out_ready
 );
 
-always_comb begin 
-    in_0_ready = 1'b0;
-    in_1_ready = 1'b0;
-    out_valid  = 1'b0;
-    out_data   = {(DWIDTH){1'b0}};
-
-    
-    if(PRIORITY_0 == 1)
-    begin
-
-        if(in_0_valid)
-        begin   
-            out_valid  = in_0_valid;
-            out_data   = in_0_data;
-            in_0_ready = out_ready;
-        end
-        else
-        begin
-            out_valid  = in_1_valid;
-            out_data   = in_1_data;
-            in_1_ready = out_ready;
-        end
-    end
-    else
-    begin
-        if( ~ in_1_valid)
-        begin   
-            out_valid  = in_0_valid;
-            out_data   = in_0_data;
-            in_0_ready = out_ready;
-        end
-        else
-        begin
-            out_valid  = in_1_valid;
-            out_data   = in_1_data;
-            in_1_ready = out_ready;
-        end
-    end
-    
-    
-    
+wire [N-1     :0] data_masked   [DWIDTH-1:0];
+wire [N-1     :0] req;
+wire [N-1     :0] in_ready_packed;
+genvar i;
+genvar j;
+generate 
+for (i=0; i<N; i++)
+begin
+    assign req		 [i] = in_valid[i];
+    assign in_ready  [i] = in_ready_packed[i] & out_ready;
 end
+endgenerate
 
+assign out_valid         =  | req;
 
-    
+arbitration_logic_fixed #(
+    .N(N)
+) arbitration_logic (
+    .req  ( req						   ),
+    .grant( in_ready_packed            )
+);
+
+generate 
+for (j=0; j< DWIDTH; j++)
+begin
+    for (i=0; i< N     ; i++)
+    begin
+        assign data_masked[j][i]    = in_data[i][j] & in_ready[i];
+    end
+    assign out_data   [j]       = |(data_masked [j]);
+end
+endgenerate
+   
 endmodule

@@ -289,9 +289,8 @@ module regex_coprocessor_single_bb #(
     );
     end
     //add a way to supply an instruction
-    arbiter_fixed #(
-        .DWIDTH(PC_WIDTH+1),
-        .PRIORITY_0(1)
+    arbiter_2_fixed #(
+        .DWIDTH(PC_WIDTH+1)
     ) arbiter_to_override_pc_at_bb_input (
         .in_0_ready( override_pc_ready             ),
         .in_0_data ( override_pc_and_current       ),
@@ -304,9 +303,8 @@ module regex_coprocessor_single_bb #(
         .out_valid ( bb_input_pc_valid             )
     );
 
-     arbiter_fixed #(
-        .DWIDTH(MEMORY_ADDR_WIDTH),
-        .PRIORITY_0(1)
+     arbiter_2_fixed #(
+        .DWIDTH(MEMORY_ADDR_WIDTH)
     ) arbiter_for_memory_contention (
         .in_0_valid( memory_valid_for_cc ),
         .in_0_data ( memory_addr_for_cc  ),

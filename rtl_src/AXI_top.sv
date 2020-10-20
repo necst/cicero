@@ -38,7 +38,7 @@ logic     [ BRAM_WRITE_WIDTH      -1:0 ] bram_w;
 logic     [ BRAM_WE_WIDTH         -1:0 ] bram_w_valid;
 
 ///// Coprocessor
-localparam BB_N                      = 16;
+localparam BB_N                      = 2;
 localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;

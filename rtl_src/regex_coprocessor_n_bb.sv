@@ -80,23 +80,19 @@ module regex_coprocessor_n_bb #(
     localparam [PC_WIDTH-1       :0] start_pc = { PC_WIDTH{1'b0} };
     logic      [REG_WIDTH-1      :0] cur_cc_pointer           , next_cc_pointer;
     logic      [CHARACTER_WIDTH-1:0] cur_cc                   , next_cc;
+    logic      [MEMORY_WIDTH-1   :0] cur_ccs                  , next_ccs;
     logic                            cur_is_even_character   , next_is_even_character;
       
     
     //MEMORY
     //1. provide memory access for FSM outside the basic block
-    logic                           memory_ready_for_cc ;
-    logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_cc  ;
-    logic[MEMORY_WIDTH-1     :0]    memory_data_for_cc  ;
-    logic                           memory_valid_for_cc ;
+    logic                            memory_ready_for_cc ;
+    logic[MEMORY_ADDR_WIDTH-1:0]     memory_addr_for_cc  ;
+    logic                            memory_valid_for_cc ;
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
-    logic                            memory_ready_for_bb     [BB_N-1:0];
-    logic[MEMORY_ADDR_WIDTH-1:0]     memory_addr_for_bb      [BB_N-1:0];
-    logic[MEMORY_WIDTH-1     :0]     memory_data_for_bb      [BB_N-1:0];
-    logic                            memory_valid_for_bb     [BB_N-1:0];
-    wire                             memory_ready_bb_arbitred     ;
-    wire [MEMORY_ADDR_WIDTH-1:0]     memory_addr_bb_arbitred      ;
-    wire                             memory_valid_bb_arbitred     ;
+    logic                            memory_ready_for_bb     [BB_N:0];
+    logic[MEMORY_ADDR_WIDTH-1:0]     memory_addr_for_bb      [BB_N:0];
+    logic                            memory_valid_for_bb     [BB_N:0];
 
     //signals for basic blocks
     logic                           bbs_go                            ;
@@ -155,24 +151,28 @@ module regex_coprocessor_n_bb #(
         if(reset)
         begin
             cur_state               <= REGEX_COPRO_S_IDLE;
-            cur_cc_pointer          <= { REG_WIDTH{1'b0}      };
-            cur_cc                  <= { (CHARACTER_WIDTH){1'b0} };
+            cur_cc_pointer          <= { REG_WIDTH{1'b0}    };
+            cur_ccs                 <= { MEMORY_WIDTH{1'b0} };
             cur_is_even_character   <= 1'b1;
         end
         else
         begin
             cur_state               <= next_state;
             cur_cc_pointer          <= next_cc_pointer;
-            cur_cc                  <= next_cc;
+            cur_ccs                 <= next_ccs;
             cur_is_even_character   <= next_is_even_character;
         end
     end
 
     always_comb 
-    begin //realize next state function
+    begin
+        logic [REG_WIDTH-1:0] tmp_cur_cc_increment ;
+        tmp_cur_cc_increment    = cur_cc_pointer + 1; 
+        //realize next state function
         next_state              = cur_state;
         next_cc_pointer         = cur_cc_pointer;
-        next_cc                 = cur_cc;
+        
+        next_ccs                = cur_ccs;
         next_is_even_character  = cur_is_even_character;
         //default signal
         start_valid             = 1'b0;
@@ -190,6 +190,7 @@ module regex_coprocessor_n_bb #(
         else                 subcomponent_reset = 1'b0;
         //basic bock computation default disabled
         bbs_go                 = 1'b0;
+        cur_cc                 = cur_ccs[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
         case(cur_state)
         REGEX_COPRO_S_IDLE:
         begin
@@ -212,7 +213,7 @@ module regex_coprocessor_n_bb #(
         REGEX_COPRO_S_FETCH_1ST_CC:
         begin
             
-            next_cc    = memory_data[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
+            next_ccs            = memory_data;
             
             override_pc         = start_pc; 
             override_pc_valid   = 1'b1;
@@ -227,13 +228,24 @@ module regex_coprocessor_n_bb #(
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
             
-            next_cc    = memory_data[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
+            next_ccs    = memory_data;
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
             if(any_bb_running)  next_state = REGEX_COPRO_S_EXEC;
             else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
               
+        end
+        REGEX_COPRO_S_NO_FETCH_NEXT_CC:
+        begin
+            //Differently from REGEX_COPRO_S_FETCH_NEXT_CC basic bock computation enable
+            bbs_go                         = 1'b1;
+            //if the basic block immediately show not to have any work to do
+            //for the current character
+            //means that the regular expression does not match the string.
+            if(any_bb_running)  next_state = REGEX_COPRO_S_EXEC;
+            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+            
         end
         REGEX_COPRO_S_EXEC:
         begin
@@ -243,35 +255,36 @@ module regex_coprocessor_n_bb #(
             begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = REGEX_COPRO_S_COMPLETE_ACCEPTING;
             end
-            else if( ~ any_bb_running ) 
-            begin // if all basic blocks have finished to execute instructions related to current char it's time to move to the next character
-                if( cur_cc == CHARACTER_TERMINATOR)
-                begin //if we reach the end of the string (i.e. current char is terminator) 
-                    next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
-                end
-                else  // otherwise we have still work to do
-                begin // ask for new current character
-                    //TODO: avoid asking character if tmp_cur_cc[0] == 1
-                    logic [REG_WIDTH-1:0] tmp_cur_cc_increment ;
-                    tmp_cur_cc_increment= cur_cc_pointer + 1;
-                    memory_valid_for_cc = 1'b1;
-                    //memory with 2B width support only even aligned adresses
-                    memory_addr_for_cc  = tmp_cur_cc_increment [C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
-                   
-                    if( memory_ready_for_cc)
-                    begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
-                          //update is_even_character ff 
-                        next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
-                        next_cc_pointer         = tmp_cur_cc_increment;
-                        next_is_even_character  = ~ cur_is_even_character;
-                    end
-                end
-                
+            else if( ~ any_bb_running && cur_cc == CHARACTER_TERMINATOR)
+            begin //if we reach the end of the string (i.e. current char is terminator) 
+                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
             end
+            else if( ~ any_bb_running && cur_cc_pointer[C_ADDR_OFFSET] != tmp_cur_cc_increment[C_ADDR_OFFSET])
+            begin // if all basic blocks have finished to execute instructions related to current char 
+                  // and we have finished char to be examide it's time to move to the next character
+                memory_valid_for_cc = 1'b1;
+                memory_addr_for_cc  = tmp_cur_cc_increment [C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
+
+                if( memory_ready_for_cc)
+                begin //if memory answers affermatively go to state where at next cc memory data is 
+                      //latched in current character register. 
+                      //update is_even_character ff 
+                    next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
+                    next_cc_pointer         = tmp_cur_cc_increment;
+                    next_is_even_character  = ~ cur_is_even_character;
+                end
+            end
+            else if( ~ any_bb_running && cur_cc_pointer[C_ADDR_OFFSET] == tmp_cur_cc_increment[C_ADDR_OFFSET] )
+            begin
+                next_state              = REGEX_COPRO_S_NO_FETCH_NEXT_CC;
+                next_cc_pointer         = tmp_cur_cc_increment;
+                next_is_even_character  = ~ cur_is_even_character;
+            end  
             else if ( (|tmp_bb_input_pc_ready) == 1'b0 && ( (|tmp_channel_not_empty) == 1'b1)) 
             begin // if there's an instruction that should be saved but no one is able to save it 
                 next_state = REGEX_COPRO_S_ERROR;
-            end
+            end       
+            
         end
         REGEX_COPRO_S_COMPLETE_ACCEPTING:
         begin
@@ -336,7 +349,7 @@ module regex_coprocessor_n_bb #(
                 .accepts                (bb_accepts                 [i] ),
                 .memory_ready           (memory_ready_for_bb        [i] ),
                 .memory_addr            (memory_addr_for_bb         [i] ),
-                .memory_data            (memory_data_for_bb         [i] ),
+                .memory_data            (memory_data                    ),
                 .memory_valid           (memory_valid_for_bb        [i] ),
                 .input_pc_valid         (bb_input_pc_valid          [i] ),
                 .input_pc_and_current   (bb_input_pc_and_current    [i] ), 
@@ -347,9 +360,9 @@ module regex_coprocessor_n_bb #(
                 .output_pc_ready        (bb_output_pc_ready         [i] ),
                 .output_pc_latency      (bb_output_pc_latency       [i] )
             );
-            //memory data are broadcasted but only memory which receives ready 
-            //knows that at next cc it would be its turn.
-            assign memory_data_for_bb[i] = memory_data;
+            //memory data are broadcasted but only module which receives a ready 
+            //knows that it has won arbitration
+  
             //2. output switch 
             switch #(
                 .DWIDTH             ( PC_WIDTH+1                    ),
@@ -418,20 +431,23 @@ module regex_coprocessor_n_bb #(
             begin
                 //add a way to supply an instruction
                 //5.a for the first station close the loop and add a way to supply an instruction
-                arbiter_fixed #(
-                    .DWIDTH(PC_WIDTH+1),
-                    .PRIORITY_0(1)
-                ) arbiter_to_override_pc_at_bb_0_input (
-                    .in_0_ready( override_pc_ready                      ),
-                    .in_0_data ( override_pc_and_current                ),
-                    .in_0_valid( override_pc_valid                      ),
-                    .in_1_ready( channel_output_pc_ready       [BB_N-1] ),
-                    .in_1_data ( channel_output_pc_and_current [BB_N-1] ),
-                    .in_1_valid( channel_output_pc_valid       [BB_N-1] ),
-                    .out_ready ( channel_input_pc_ready        [0   ]   ),
-                    .out_data  ( channel_input_pc_and_current  [0   ]   ),
-                    .out_valid ( channel_input_pc_valid        [0   ]   )
-                );
+                always_comb
+                begin
+                    if( override_pc_valid ) 
+                    begin
+                        override_pc_ready                    = channel_input_pc_ready        [0]    ;
+                        channel_input_pc_and_current[0]      = override_pc_and_current              ;
+                        channel_input_pc_valid      [0]      = override_pc_valid                    ;
+                        channel_output_pc_ready     [BB_N-1] = 1'b0;
+                    end
+                    else
+                    begin
+                        channel_output_pc_ready     [BB_N-1] = channel_input_pc_ready        [0]  ;
+                        channel_input_pc_and_current[0]      = channel_output_pc_and_current [BB_N-1];
+                        channel_input_pc_valid      [0]      = channel_output_pc_valid       [BB_N-1];
+                        override_pc_ready                    = 1'b0;
+                    end
+                end
 
                 assign channel_output_pc_latency[BB_N-1] = channel_input_pc_latency[0  ];
             end
@@ -463,36 +479,23 @@ module regex_coprocessor_n_bb #(
     
     arbiter_rr_n #(
         .DWIDTH(MEMORY_ADDR_WIDTH),
-        .N(BB_N)
+        .N(BB_N+1) //memory_.*for_cc is mixed with memory_.*for_bb
     ) arbiter_tree_to_cope_with_memory_contention (
         .clk       ( clk                       ),
         .reset     ( subcomponent_reset        ),
         .in_ready  ( memory_ready_for_bb       ),
         .in_data   ( memory_addr_for_bb        ),
         .in_valid  ( memory_valid_for_bb       ),
-        .out_ready ( memory_ready_bb_arbitred  ),
-        .out_data  ( memory_addr_bb_arbitred   ),
-        .out_valid ( memory_valid_bb_arbitred  )
+        .out_ready ( memory_ready              ),
+        .out_data  ( memory_addr               ),
+        .out_valid ( memory_valid              )
     );
+    assign memory_addr_for_bb [BB_N] = memory_addr_for_cc;
+    assign memory_valid_for_bb[BB_N] = memory_valid_for_cc;    
+    assign memory_ready_for_cc       = memory_ready_for_bb[BB_N];
+    //memory data is broadcasted but only the module 
+    //which receives also a ready knows that it has
+    //won the arbitration 
 
-
-    arbiter_fixed #(
-        .DWIDTH(MEMORY_ADDR_WIDTH),
-        .PRIORITY_0(1)
-    ) arbiter_for_memory_contention_bbs_and_cc (
-        .in_0_ready( memory_ready_for_cc           ),
-        .in_0_data ( memory_addr_for_cc            ),
-        .in_0_valid( memory_valid_for_cc           ),
-        .in_1_ready( memory_ready_bb_arbitred      ),
-        .in_1_data ( memory_addr_bb_arbitred       ),
-        .in_1_valid( memory_valid_bb_arbitred      ),
-        .out_ready ( memory_ready                  ),
-        .out_data  ( memory_addr                   ),
-        .out_valid ( memory_valid                  )
-    );
-
-    //memory data are broadcasted but only memory which receives ready 
-    //knows that at next cc it would be its turn.
-    assign memory_data_for_cc = memory_data;
     
 endmodule

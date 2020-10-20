@@ -1,8 +1,11 @@
 `timescale 1ns/1ps
 
+/*
+Arbiters: Design Ideas and Coding Styles Matt Weber
+*/
 module arbiter_rr_n #(
     parameter DWIDTH      = 16 ,
-    parameter N           = 2
+    parameter N           = 2  
 )(
     input  logic                clk,
     input  logic                reset,
@@ -16,58 +19,41 @@ module arbiter_rr_n #(
     input  logic                out_ready
 );
 
-logic tmp_ready [2*N-2:0];
-logic tmp_valid [2*N-2:0];
-
-//we have to create a heap of arbiters to regulate access to output                     
-//hence for a number of requestor equal to N we need N-1 arbiters                 
-// signals related to requerstor will belong to the lowest part of the array [N-1->0]       
-// signals related to arbiters will belong to the highest part of the array  [2*N-2->N]
+wire [N-1     :0] data_masked   [DWIDTH-1:0];
+wire [N-1     :0] req;
+wire [N-1     :0] in_ready_packed;
+genvar i;
 genvar j;
-generate    
-for (j=0; j < N; j++) 
+generate 
+for (i=0; i<N; i++)
 begin
-    assign in_ready [j] = tmp_ready[j];
-    assign tmp_valid[j] = in_valid [j];
-end
-
-for (j=0; j < N-1; j++) 
-begin
-
-    arbiter_rr #(
-        .DWIDTH(1),
-        .PRIORITY_0(1)
-    ) arbiter_tree_to_cope_with_data_o_contention (
-        .clk       ( clk                                      ),
-        .reset     ( reset                                    ),
-        .in_0_ready( tmp_ready           [2*N-2 - j*2-1-1 ]   ),
-        .in_0_data (                                          ),
-        .in_0_valid( tmp_valid           [2*N-2 - j*2-1-1 ]   ),
-        .in_1_ready( tmp_ready           [2*N-2 - j*2-1   ]   ),
-        .in_1_data (                                          ),
-        .in_1_valid( tmp_valid           [2*N-2 - j*2-1   ]   ),
-        .out_ready ( tmp_ready           [2*N-2 - j       ]   ),
-        .out_data (                                           ),
-        .out_valid ( tmp_valid           [2*N-2 - j       ]   )
-    );
+    assign req		 [i] = in_valid[i];
+    assign in_ready  [i] = in_ready_packed[i] & out_ready;
 end
 endgenerate
 
-always_comb begin : select_data_o
-    int i;
-    
-    out_data = {(DWIDTH){1'b0}};
-    for (i = 0 ; i < N ; i++ ) 
-    begin
-        if(tmp_ready[i])
-        begin
-            out_data = in_data[i];
-        end
-    end
-end
+assign out_valid         =  | req;
 
-assign tmp_ready[2*N-2] = out_ready   ;
-assign out_valid        = tmp_valid[2*N-2]; 
+arbitration_logic_rr #(
+    .N(N)
+) arbitration_logic (
+    .clk  (clk                         ),
+    .rst  ( reset                      ),
+    .req  ( req         			   ),
+    .grant( in_ready_packed            )
+);
+
+generate 
+for (j=0; j< DWIDTH; j++)
+begin
+    for (i=0; i< N     ; i++)
+    begin
+        assign data_masked[j][i]    = in_data[i][j] & in_ready[i];
+    end
+    assign out_data   [j]       = |(data_masked [j]);
+end
+endgenerate
+
 
     
 endmodule
