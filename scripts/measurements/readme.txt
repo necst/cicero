@@ -37,7 +37,8 @@ available:
 -debug'	                       , help='execute in debug mode. print debug messages'                                   
 -strfile'		    		   , help='file containing strings'  	                        
 -regfile'		    		   , help='file containing regular expressions'    	                        
--bitstream'				       , help='only for copro: coprocessor bitstream file'    	                        
+-bitstream'				       , help='only for copro: coprocessor bitstream file'    	                
+-copro_not_check'              , help='only for copro: disable check against a golden model(python re).'     						        
 -do_not_optimize'	           , help='only for copro and coprocompiler: do not optimize recopro code'  
 some of them have default values you can read it directly in measure.py
 */
