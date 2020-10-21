@@ -24,27 +24,26 @@ int main(int argc, char** argv){
 
     std::list<chrono::duration <double, nano>> lexe;
 	std::list<chrono::duration <double, nano>> lcomp;
-    int batch_num = 50;
-    for(int i=0; i<int(num_of_repeats/batch_num); i++){
-		auto start = std::chrono::high_resolution_clock::now();
+
+    for(int i=0; i<num_of_repeats; i++){
+		auto start = std::chrono::steady_clock::now();
     	RE2 obj(regex);
-		auto end = std::chrono::high_resolution_clock::now();
+		auto end = std::chrono::steady_clock::now();
 
     	assert(obj.ok());	
 
         chrono::duration <double, nano> elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
         lcomp.push_back(elapsed);
 
-        start = std::chrono::high_resolution_clock::now();
+        start = std::chrono::steady_clock::now();
+		matchResult = RE2::PartialMatch(str, obj);
+        end = std::chrono::steady_clock::now();
+
+		if(i==0)
+			expectedResult = matchResult;
+		assert(expectedResult == matchResult);
         
-        for (int j=0; j<batch_num; j++){
-            matchResult = RE2::PartialMatch(str, obj);
-            if(i==0)
-                expectedResult = matchResult;
-            assert(expectedResult == matchResult);
-        }
         
-        end = std::chrono::high_resolution_clock::now();
     	elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
         lexe.push_back(elapsed);
 

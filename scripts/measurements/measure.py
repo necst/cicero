@@ -40,6 +40,24 @@ class re2copro_measurer(regular_expression_measurer):
             'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
         return cc_number
 
+class re2copro_compiler_measurer(regular_expression_measurer):
+    def __init__(self, num_times=80): #100 for I5, ULTRA. 80 for PYNQ.
+        super().__init__("re2copro_compiler")
+        self.num_times = num_times
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import timeit
+
+        execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, allow_prefix={allow_prefix}, full_match={full_match}, o=None)"
+        prepare_code = "import sys;sys.path.append('../../re2compiler');import re2compiler"
+        
+        secs = timeit.repeat(execute_code, prepare_code  ,number=self.num_times)
+        if debug:
+            print(secs)
+        return (sum(secs)/len(secs))/self.num_times*1_000_000_000
+
+    
+
 class re_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("re")
@@ -127,7 +145,7 @@ class cmd_measurer(regular_expression_measurer):
 
         return user*1_000_000_000/num_times
     
-#https://www.embedded.com/tutorial-techniques-for-measuring-execution-time-and-real-time-performance-part-1/
+
 class grep_measurer(cmd_measurer):
     def __init__(self, batch_length=50      , num_of_batches=10):
         super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
@@ -137,10 +155,11 @@ class re2_measurer(cmd_measurer):
         super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_chrono_measurer(regular_expression_measurer):
-    def __init__(self, batch_length=80_000 ):
-        super().__init__(" [ re2_chrono_exe, re2_chrono_compile]" )
+    def __init__(self, batch_length=1_000 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
+        super().__init__("[ re2_chrono_exe, re2_chrono_compile]" )
         self.batch_length 	= batch_length
-
+    def get_name(self):
+        return ["re2_chrono_exe","re2_chrono_compile"]
 
     def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
         from subprocess import run, CalledProcessError, PIPE
@@ -195,21 +214,22 @@ class re2_chrono_measurer(regular_expression_measurer):
 
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
-arg_parser.add_argument('-startstr'		    , type=int , help='index first str.'	                                                                , default=0   )
-arg_parser.add_argument('-endstr'		    , type=int , help='index end string.'	                                                                , default=None)
-arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.'	                                                                , default=0   )
-arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.'		                                                                , default=None)
-arg_parser.add_argument('-py'		                   , help='measure time taken by python'                             , action='store_true'      , default=False)
-arg_parser.add_argument('-copro'		               , help='measure time taken by copro.'                             , action='store_true'      , default=False)
+arg_parser.add_argument('-startstr'		    , type=int , help='index first str. to restrict num of strings'	                                                                , default=0   )
+arg_parser.add_argument('-endstr'		    , type=int , help='index end string. to restrict num of strings'	                                                                , default=None)
+arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.to restrict num of regexp'	                                                                , default=0   )
+arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.to restrict num of regexp'		                                                                , default=None)
+arg_parser.add_argument('-py'		                   , help='measure time taken by python re module'                   , action='store_true'      , default=False)
+arg_parser.add_argument('-copro'		               , help='measure clock cycles taken by copro. you have to look at -bitstream and -do_not_optimize'                             , action='store_true'      , default=False)
+arg_parser.add_argument('-coprocompiler'		       , help='measure time taken by copro compiler. you have to look at -do_not_optimize'                     , action='store_true'      , default=False)
 arg_parser.add_argument('-simre2coproasap'		       , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
 arg_parser.add_argument('-simre2copro'	               , help='measure clock cycles taken by emulated re2copro.'         , action='store_true'		, default=False)
-arg_parser.add_argument('-re2'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
-arg_parser.add_argument('-re2chrono'                   , help='measure time taken by re2.'                               , action='store_true'      , default=False)
-arg_parser.add_argument('-grep'	                       , help='measure time taken by re2.'                               , action='store_true'      , default=False)
-arg_parser.add_argument('-strfile'		    , type=str , help='file containing test input'  	                                                    , default='input_protomata_selected.txt')
-arg_parser.add_argument('-regfile'		    , type=str , help='file containing test reg'    	                                                    , default='regular_expr.txt')
-arg_parser.add_argument('-bitstream'		, type=str , help='coprocessor bitstream file'    	                                                    , default='')
-arg_parser.add_argument('-do_not_optimize'	           , help='do not optimize recopro code'                             ,action='store_true'       , default=False)
+arg_parser.add_argument('-re2'	                       , help='measure time taken by re2 using time.'                               , action='store_true'      , default=False)
+arg_parser.add_argument('-re2chrono'                   , help='measure time taken by re2 using chrono (distinguished between match and "compilation").'                  , action='store_true'      , default=False)
+arg_parser.add_argument('-grep'	                       , help='measure time taken by grep using time.'                              , action='store_true'      , default=False)
+arg_parser.add_argument('-strfile'		    , type=str , help='file containing strings'  	                                                    , default='input_protomata_selected.txt')
+arg_parser.add_argument('-regfile'		    , type=str , help='file containing regular expressions'    	                                                    , default='regular_expr.txt')
+arg_parser.add_argument('-bitstream'		, type=str , help='only for copro: coprocessor bitstream file'    	                                                    , default='')
+arg_parser.add_argument('-do_not_optimize'	           , help='only for copro and coprocompiler: do not optimize recopro code'                             ,action='store_true'       , default=False)
 arg_parser.add_argument('-debug'	                   , help='execute in debug mode'                                    ,action='store_true'       , default=False)
  
 args = arg_parser.parse_args()
@@ -225,6 +245,8 @@ bitstream_filename = ""  if not args.copro else os.path.basename(args.bitstream)
 measurer_list = []
 if args.copro:
     measurer_list.append(re2copro_measurer(args.bitstream))
+if args.coprocompiler:
+    measurer_list.append(re2copro_compiler_measurer())
 if args.py:
     measurer_list.append(re_measurer())
 if args.simre2coproasap:
@@ -259,7 +281,12 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
         line = line[:-1]
         #write in csv current string and caption
         fout.writerow(['string', line, '', ''])
-        names = [e.get_name() for e in measurer_list]
+        names = []
+        for e in measurer_list:
+            if isinstance(e.get_name(), list):
+                names += [*e.get_name()]
+            else:
+                names.append(e.get_name())
         fout.writerow(['regex', 'result', *names])
         
         #foreach regex
@@ -281,7 +308,10 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                     print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
                 progress_bar.update(1)
                 
-                results.append(result)
+                if isinstance(result, list):
+                    results +=[*result]
+                else:
+                    results.append(result)
             fout.writerow([r,has_accepted,  *results ])
                     
 
