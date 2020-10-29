@@ -1,5 +1,7 @@
 `timescale 1ns / 10ps
-
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module bram #(  
         parameter READ_WIDTH            = 64,
         parameter READ_ADDR_WIDTH       = 9,

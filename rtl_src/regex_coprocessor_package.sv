@@ -1,5 +1,6 @@
-//contains signals used to interface regex_coprocessor
-//and AXI_top
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 package Regex_coprocessor_package;
 
     localparam nr_bits_states = 3;

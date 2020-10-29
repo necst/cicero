@@ -1,4 +1,7 @@
 `timescale 1ns/1ps
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 
 module arbiter_rr #(
     parameter DWIDTH      = 16 ,
@@ -27,14 +30,9 @@ always_ff @( posedge clk ) begin
         last_in     <= ~PRIORITY_0;
     end
     else
-    //else if( out_ready && out_valid)
     begin
         last_in    <= last_in_next;
     end
-    //else 
-    //begin
-    //    last_in     <= last_in;
-    //end
     
 end
 

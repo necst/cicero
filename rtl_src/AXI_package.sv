@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
-//contains signals used to interface regex_coprocessor
-//and software.
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 package AXI_package;
 localparam REG_WIDTH                = 32;
 parameter  CMD_NOP                  = 'h0000_0000 ;

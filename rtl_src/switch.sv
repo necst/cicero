@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
-
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module switch   #(  
         parameter DWIDTH              = 8 ,
         parameter LATENCY_COUNT_WIDTH = 4 
@@ -29,19 +31,14 @@ module switch   #(
     logic best_output;
 
     always_comb 
-    begin //select_output
+    begin 
         logic both_inputs_valid;
         both_inputs_valid = in_0_valid && in_1_valid;
         if( both_inputs_valid )
             in_0_out_0 = 1'b0;
         else 
         begin
-            //if 0_valid 
-            //   best_output = 1 -> in_0_out_0 = 0 : 0->1
-            //   best_output = 0 -> in_0_out_0 = 1 : 0->0
-            //if 1_valid 
-            //   best_output = 1 -> in_0_out_0 = 1 : 1->1
-            //   best_output = 1 -> in_0_out_0 = 0 : 1->0
+
             if( in_0_valid ) in_0_out_0 = ~best_output;
             else             in_0_out_0 =  best_output;
             
@@ -50,14 +47,9 @@ module switch   #(
 
     
     always_comb 
-    begin // output_latency
+    begin 
         logic min_latency;
-        //this information is supposed to lead the 
-        //decision for data movement at next clock cycle.
-        //taking minimum we are sure latency does not diverge
-        //      -> 1 ---> 2 ---> 3 --  
-        //     |   7                 |
-        //      -- 6  <--- 5 <--- 4<-
+
 
         if( out_1_latency > out_0_latency )
         begin
@@ -83,7 +75,7 @@ module switch   #(
     end
 
     always_comb 
-    begin // output_data_signal
+    begin 
         if( in_0_out_0 == 1'b1) begin
             out_0_valid = in_0_valid ;
             out_0_data  = in_0_data  ;
@@ -105,30 +97,5 @@ module switch   #(
         end
     end
 
-    function string to_dotty(string name);
-        $sformat(to_dotty, "subgraph cluster_%s{ label=\"%s\"\n", name, name);
-        if(in_0_out_0) begin
-            if(out_0_ready && out_0_valid)
-                $sformat(to_dotty, "%s %s_in_0 -> %s_out_0 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_0_data[DWIDTH-1:1]);
-            else
-                $sformat(to_dotty, "%s %s_in_0 -> %s_out_0;\n", to_dotty, name, name);
 
-            if(out_1_ready && out_1_valid)
-                $sformat(to_dotty, "%s %s_in_1 -> %s_out_1 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_1_data[DWIDTH-1:1]);
-            else
-                $sformat(to_dotty, "%s %s_in_1 -> %s_out_1;\n", to_dotty, name, name);
-        end
-        else
-        begin
-            if(out_0_ready && out_0_valid)
-                $sformat(to_dotty, "%s %s_in_1 -> %s_out_0 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_0_data[DWIDTH-1:1]);
-            else
-                $sformat(to_dotty, "%s %s_in_1 -> %s_out_0;\n", to_dotty, name, name);
-            if(out_1_ready && out_1_valid)
-                $sformat(to_dotty, "%s %s_in_0 -> %s_out_1 [label=\"%d\", color=\"green\"];\n", to_dotty, name, name, out_1_data[DWIDTH-1:1]);
-            else
-                $sformat(to_dotty, "%s %s_in_0 -> %s_out_1;\n", to_dotty, name, name);
-        end
-        to_dotty =  {to_dotty, "}"};
-    endfunction
 endmodule

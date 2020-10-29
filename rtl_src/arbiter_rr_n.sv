@@ -1,5 +1,7 @@
 `timescale 1ns/1ps
-
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module arbiter_rr_n #(
     parameter DWIDTH      = 16 ,
     parameter N           = 2
@@ -19,10 +21,6 @@ module arbiter_rr_n #(
 logic tmp_ready [2*N-2:0];
 logic tmp_valid [2*N-2:0];
 
-//we have to create a heap of arbiters to regulate access to output                     
-//hence for a number of requestor equal to N we need N-1 arbiters                 
-// signals related to requerstor will belong to the lowest part of the array [N-1->0]       
-// signals related to arbiters will belong to the highest part of the array  [2*N-2->N]
 genvar j;
 generate    
 for (j=0; j < N; j++) 

@@ -1,18 +1,7 @@
 `timescale 1ns/1ps
-//This module implements a parametric queue
-//It provides also an output which signals how many values have been 
-//stored inside the queue. 
-//
-//  ------
-//  |    |
-//  ------
-//  | // | <-tail
-//  ------
-//  | A  |
-//  ------
-//  | B   | <-head
-//  ------
-//
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module fifo #(
     parameter DWIDTH          = 16,
     parameter COUNT_WIDTH     = 7
@@ -69,42 +58,20 @@ always_ff @(posedge clk)begin
 end
 assign from_din = din;
 
-//        +---------------+      W           +---------------+                       
-//        |     000       -------------------|     100       |-------> R&W           
-//        |               <-------------------               <-------                
-//        +-------^-------+      R         -->---------|-----<-------------------+   
-//                |                    ---/            |                         |   
-//                | R             ----/                |W                        |   
-//                |           ---/R&W,_                |                         |   
-//        +-------|-------+--/     R         +---------v-----+                   |   
-//        |     010       <-------------------     101       |          R&C==2   |   
-//        |               ------------------->               |                   |   
-//        +-------^-------+        W       /-----------|-----+                   |   
-//                |                   /----            |                         |   
-//                |R              /---                 |W,_                      |   
-//                |          /---- R&W                 |                         |   
-// R&W    +-------|-------<--                +---------v-----+                   |   
-//   <-----     011       ------------------->   111         |                   |   
-//   ----->               |       W,_        |               --------------------+   
-//        +---------------+                  +-------|-^-----+                       
-//                                                   | |                             
-//                                                   | |                             
-//                                                   v |                             
-//                                                  W,R&W,_                 
-always_comb begin //create full empty signals
+      
+always_comb begin 
     data_count            = tail - head;
     head_incremented      = head + 1 ;
     tail_incremented      = tail + 1 ;
 
-    //empty
+
     if( head == tail )            empty = 1'b1;
     else                          empty = 1'b0;
-    //full
+
     if( head == tail_incremented) full = 1'b1;
     else                          full = 1'b0;
 
-    //validate read/write signals
-    //and compute next_head/next_tail
+
     write_enable     = 1'b0;
     read_enable      = 1'b0;
     tail_next        = tail;
@@ -122,14 +89,11 @@ always_comb begin //create full empty signals
         head_next   = head_incremented;
     end
     
-    //little FSM to track validity of 
-    //middle register and memory
-    //bit states represent: register, memory_output, memory_content 
-    // validity.
+
     state_next    = state_cur;
     middle_next   = middle;
     dout          = middle;
-    //all read from h+1 but not state 111 with an incoming read
+
     where_to_read = head_incremented;
     case(state_cur)
     3'b000:
@@ -152,12 +116,12 @@ always_comb begin //create full empty signals
             2'b10:
             begin
                 state_next = 3'b101;    
-                //middle kept
+
             end    
             2'b01:
             begin
                 state_next = 3'b000;
-                //void queue even if middle kept no problem, would be invalid.
+
             end
         endcase
     end
@@ -169,22 +133,22 @@ always_comb begin //create full empty signals
             2'b11:
             begin
                 state_next = 3'b011;
-                //middle can't be updated (memory output invalid)
+
             end
             2'b10:
             begin
                 state_next = 3'b111;
-                //middle don't need to be updated
+
             end
             2'b01:
             begin
                 state_next = 3'b010;
-                //middle can't be updated (memory output invalid)
+
             end
             default:
             begin
                 state_next = 3'b111;
-                //middle don't need to be updated
+
             end
         endcase
     end
@@ -205,7 +169,7 @@ always_comb begin //create full empty signals
             2'b01:
             begin
                 state_next = 3'b000;
-                //queue would be void
+
             end
             default:
             begin
@@ -221,9 +185,7 @@ always_comb begin //create full empty signals
             2'b11:
             begin
                 state_next = state_cur;
-                //data_in is written in memory and 
-                //from_memory, which was intended for middle is redirected toward output
-                //middle  can't be updated
+
             end
             2'b10:
             begin

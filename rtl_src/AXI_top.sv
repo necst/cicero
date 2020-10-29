@@ -2,16 +2,15 @@
 
 import AXI_package::*;
 
-//component intended to decouple the regex_coprocessor and the AXI interface.
-//It contains the memory of the regex_coprocessor so that is possible to show outside the contetn of the memory
-//It implements some commands that are intended to drive the regex_coprocessor and other component from software. 
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 
 module AXI_top(
     input  logic                 clk,
     input  logic                 reset,
     input  logic [REG_WIDTH-1:0] data_in_register,
     input  logic [REG_WIDTH-1:0] address_register,
-//  input  logic [REG_WIDTH-1:0] start_pc_register,
     input  logic [REG_WIDTH-1:0] start_cc_pointer_register,
     input  logic [REG_WIDTH-1:0] cmd_register,
     output logic [REG_WIDTH-1:0] status_register,
@@ -53,16 +52,13 @@ logic                                   memory_addr_from_coprocessor_ready;
 logic     [ BRAM_READ_ADDR_WIDTH-1:0]   memory_addr_from_coprocessor;
 logic                                   memory_addr_from_coprocessor_valid;
 logic                                   start_valid, finish, accept, error;
-//logic             [PC_WIDTH-1:0] start_pc; 
 logic                                   start_ready;
 
-/////performace counters
 logic     [REG_WIDTH-1:0]               elapsed_cc, elapsed_cc_next;        
 
 
 assign reset_master = reset || (cmd_register==CMD_RESET);
 
-///// Sequential logic 
 always_ff @(posedge clk) 
 begin 
     if(reset_master == 1'b1)
@@ -77,7 +73,6 @@ begin
     end
 end
 
-//// Combinational logic
 
 always_comb 
 begin
@@ -100,10 +95,10 @@ begin
     case(status_register)
     STATUS_IDLE:
     begin   
-        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
-        begin      // addr_1, data_1, ..., cmd_nop.
+        if(cmd_register == CMD_WRITE) 
+        begin      
             
-            bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
+            bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH];
             bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
             bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
         end
@@ -116,7 +111,6 @@ begin
         end
         else if(cmd_register == CMD_START)
         begin
-            //start_pc            = start_pc_register[0+:PC_WIDTH];
             start_ready         = 1'b1;
             bram_r_addr         = memory_addr_from_coprocessor;
             bram_r_valid        = memory_addr_from_coprocessor_valid;
@@ -136,7 +130,7 @@ begin
     end
     STATUS_ACCEPTED, STATUS_REJECTED, STATUS_ERROR:
     begin   
-        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
+        if(cmd_register == CMD_WRITE) 
         begin      // addr_1, data_1, ..., cmd_nop.
             
             bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
@@ -162,7 +156,6 @@ begin
     end
     STATUS_RUNNING:
     begin 
-        // leave memory control to coprocessor
         bram_r_addr          = memory_addr_from_coprocessor;
         bram_r_valid         = memory_addr_from_coprocessor_valid;
         memory_addr_from_coprocessor_ready = 1'b1;
@@ -178,7 +171,7 @@ begin
         
 
         if (&elapsed_cc == 1'b0)   
-        begin //if counter has not saturated
+        begin 
             elapsed_cc_next = elapsed_cc + 1;
         end                             
     end
@@ -208,31 +201,7 @@ bram #(
 );
 
 
-if (BB_N == 1) begin : g1
-    regex_coprocessor_single_bb #(
-        .PC_WIDTH               (PC_WIDTH                              ),
-        .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
-        .MEMORY_WIDTH           (BRAM_READ_WIDTH                       ),
-        .MEMORY_ADDR_WIDTH      (BRAM_READ_ADDR_WIDTH                  ),
-        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
-        .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                 )
-    ) a_regex_coprocessor (
-        .clk                (clk                                        ),
-        .reset              (reset_master                               ),
-        .memory_ready       (memory_addr_from_coprocessor_ready         ),
-        .memory_addr        (memory_addr_from_coprocessor               ),
-        .memory_data        (bram_r                                     ),
-        .memory_valid       (memory_addr_from_coprocessor_valid         ),
-        .start_ready        (start_ready                                ),
-        .start_cc_pointer   (start_cc_pointer_register                  ),
-        .start_valid        (start_valid                                ),
-        .finish             (finish                                     ),
-        .accept             (accept                                     ),
-        .error              (error                                      )
-    );
-end
-else
-begin : g1
+
     
     regex_coprocessor_n_bb#(
         .PC_WIDTH               (PC_WIDTH                               ),
@@ -261,5 +230,5 @@ begin : g1
         .accept                 (accept                                 ),
         .error                  (error                                  )
     );
-end
+
 endmodule

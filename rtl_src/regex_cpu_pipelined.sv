@@ -1,9 +1,9 @@
 `timescale 1ns/1ps
 
 import instruction::*;
-//A simple processor of reg2_instructions
-// It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
-// the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module regex_cpu_pipelined #(
     parameter  PC_WIDTH             = 8 ,
     parameter  CHARACTER_WIDTH      = 8 ,
@@ -35,33 +35,33 @@ module regex_cpu_pipelined #(
     output  logic[FIFO_WIDTH_POWER_OF_2:0]  latency
 );
     
-    //stage status
+
     logic [PC_WIDTH-1:0]                                         FETCH_REC_Pc            ,EXE1_Pc          , EXE2_Pc            ;
     logic [INSTRUCTION_WIDTH-1:0]                                FETCH_REC_Instr         ,EXE1_Instr       , EXE2_Instr         ;
     logic                                                        FETCH_REC_Instr_valid   ,EXE1_Instr_valid , EXE2_Instr_valid   ;
     logic                                                        FETCH_REC_has_to_save                                          ;
-    //stage outputs
+
     logic                           FETCH_SEND_waits                                     , EXE1_waits             , EXE2_waits  ;                                           
     logic [INSTRUCTION_WIDTH-1:0]                                FETCH_REC_Instr_next                                           ;         
     logic                           FETCH_SEND_not_stall           , FETCH_REC_not_stall         , EXE1_not_stall             , EXE2_not_stall  ;
     logic                                                                                  EXE1_accepts           , EXE2_accepts;
     logic                                                                                  EXE1_completes_instr                 ;    
     
-    //for buffer
+
     logic                           EXE1_output_pc_not_ready                      , EXE2_output_pc_not_ready             ; 
     logic                           EXE1_output_pc_ready                          , EXE2_output_pc_ready                 ;
     logic                           EXE1_output_pc_is_directed_to_current         , EXE2_output_pc_is_directed_to_current;
     logic [PC_WIDTH-1:0]            EXE1_output_pc                                , EXE2_output_pc                       ;
     logic [PC_WIDTH  :0]            EXE1_output_pc_and_current                    , EXE2_output_pc_and_current           ;
     logic                           EXE1_output_pc_valid                          , EXE2_output_pc_valid                 ;
-    //buffer
+
     logic                           EXE1_buffered_output_pc_ready                 , EXE2_buffered_output_pc_ready                 ;
     logic                           EXE1_buffered_output_pc_is_directed_to_current, EXE2_buffered_output_pc_is_directed_to_current;
     logic [PC_WIDTH  :0]            EXE1_buffered_output_pc_and_current           , EXE2_buffered_output_pc_and_current           ;
     logic                           EXE1_buffered_output_pc_valid                 , EXE2_buffered_output_pc_valid                 ;
     logic                           EXE1_buffered_output_pc_not_valid             , EXE2_buffered_output_pc_not_valid             ;
     logic [FIFO_WIDTH_POWER_OF_2-1:0]EXE1_buffered_count                          , EXE2_buffered_count                           ;
-    // output arbiter
+
     logic [PC_WIDTH  :0]            output_pc_and_current;
     always_ff @(posedge clk ) 
     begin 
@@ -84,12 +84,12 @@ module regex_cpu_pipelined #(
         begin
             
             if(EXE2_not_stall  )
-            begin//for sure instruction does not require any further computation
+            begin
 
                 EXE2_Instr_valid    <= 1'b0;
             end
             else
-            begin //if stage stalled mantain state
+            begin 
                 EXE2_Pc             <= EXE2_Pc;
                 EXE2_Instr          <= EXE2_Instr;
                 EXE2_Instr_valid    <= EXE2_Instr_valid;
@@ -99,20 +99,18 @@ module regex_cpu_pipelined #(
             
             if(EXE1_not_stall )  
             begin
-                //cancel status of this stage
-                //in case it will be overwritten by following stages
-                
+
                 EXE1_Instr_valid    <= 1'b0;
                 if(~EXE1_completes_instr)
                 begin
-                    //otherwise not having stalled ensures that next stage is free we can move status
+                  
                     EXE2_Pc         <= EXE1_Pc         ;
                     EXE2_Instr      <= EXE1_Instr      ;
                     EXE2_Instr_valid<= EXE1_Instr_valid;
                 end
             end
             else
-            begin //if stage stalled mantain state
+            begin 
                 EXE1_Pc             <= EXE1_Pc;
                 EXE1_Instr          <= EXE1_Instr;    
                 EXE1_Instr_valid    <= EXE1_Instr_valid;
@@ -124,7 +122,7 @@ module regex_cpu_pipelined #(
             begin
                 FETCH_REC_Instr_valid<= 1'b0;
                     
-                //otherwise if next stage is free we can move status to the next instruction
+
                 EXE1_Pc             <= FETCH_REC_Pc         ;
                 EXE1_Instr          <= FETCH_REC_Instr_next ;
                 EXE1_Instr_valid    <= FETCH_REC_Instr_valid;
@@ -137,7 +135,7 @@ module regex_cpu_pipelined #(
             end
 
             if(FETCH_SEND_not_stall )
-            begin //FETCH stall accounts for non ready FETCH_REC_stage
+            begin 
                 FETCH_REC_Pc                 <= input_pc    ;
                 FETCH_REC_Instr_valid        <= 1'b1        ;
                 FETCH_REC_has_to_save        <= 1'b1        ;
@@ -145,20 +143,14 @@ module regex_cpu_pipelined #(
             
         end
     end
-    
-    //assign FETCH_SEND_stall = (                           FETCH_SEND_waits  ||  (FETCH_REC_stall                         )  ) ;
-    //assign FETCH_REC_stall  = ( FETCH_REC_Instr_valid &&                         EXE1_stall                                 ) ;
-    //assign EXE1_stall       = ( EXE1_Instr_valid      &&  EXE1_waits        ||  (EXE2_stall      && ~EXE1_completes_instr)  ) ;
-    //assign EXE2_stall       = ( EXE2_Instr_valid      &&  EXE2_waits                                                        ) ;
-    // stage can go ahead              =(instr_is_valid && no_wait_signal raised && ( next_state_will_be_free_next_cc || stages_completes ))
-    // next_state_will_be_free_next_cc = next_stage_instr_valid && next_stage_moves || next_stage_instr_invalid 
+ 
     assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
     assign  FETCH_REC_not_stall  = ( FETCH_REC_Instr_valid &&                         (     ~EXE1_Instr_valid ||      EXE1_not_stall)) ;
     assign       EXE1_not_stall  = (      EXE1_Instr_valid &&        ~EXE1_waits  && ((     ~EXE2_Instr_valid ||      EXE2_not_stall) || EXE1_completes_instr)) ;
     assign       EXE2_not_stall  = (      EXE2_Instr_valid &&        ~EXE2_waits                                                     ) ;
     
 
-    //fetch_send stage
+
     always_comb begin
  
         FETCH_SEND_waits          = 1'b1   ;
@@ -179,7 +171,7 @@ module regex_cpu_pipelined #(
         
     end
 
-    //fetch_rec stage
+
     always_comb begin 
        
         if (FETCH_REC_has_to_save && FETCH_REC_Instr_valid) FETCH_REC_Instr_next = memory_data[0+:INSTRUCTION_WIDTH];
@@ -187,17 +179,17 @@ module regex_cpu_pipelined #(
 
     end
 
-    //exe1  stage
+
     always_comb begin
         EXE1_accepts                          = 1'b0;
         EXE1_output_pc_valid                  = 1'b0;
         EXE1_output_pc                        = EXE1_Pc + 1;
         EXE1_output_pc_is_directed_to_current = 1'b1;
-        //not requires to go through other stages
+
         EXE1_completes_instr                  = 1'b1;
         EXE1_waits                            = 1'b0;
         
-        //implements 
+
         if( EXE1_Instr_valid )
         begin
             case(EXE1_Instr[INSTRUCTION_TYPE_START:INSTRUCTION_TYPE_END])
@@ -269,13 +261,13 @@ module regex_cpu_pipelined #(
 
     end
 
-    //exe2  stage
+
     always_comb begin
         EXE2_accepts                          = 1'b0;
         EXE2_output_pc_valid                  = 1'b0;
         EXE2_output_pc                        = EXE2_Pc + 1;
         EXE2_output_pc_is_directed_to_current = 1'b1;
-        //not requires to go through other stages
+
         EXE2_waits                            = 1'b0;
         if( EXE2_Instr_valid ) 
         begin
@@ -294,7 +286,7 @@ module regex_cpu_pipelined #(
         end
     end
 
-    //buffer for EXE1_output
+
     assign EXE1_output_pc_and_current   = {EXE1_output_pc, EXE1_output_pc_is_directed_to_current};
     assign EXE1_output_pc_ready         = ~EXE1_output_pc_not_ready;
     assign EXE1_buffered_output_pc_valid= ~EXE1_buffered_output_pc_not_valid;
@@ -304,12 +296,12 @@ module regex_cpu_pipelined #(
     ) fifo_exe1_buffer(
         .clk        (clk                                ), 
         .reset      (reset                              ), 
-        .full       (EXE1_output_pc_not_ready           ), //equivalent to not data_in_ready
+        .full       (EXE1_output_pc_not_ready           ),
         .din        (EXE1_output_pc_and_current         ),  
-        .wr_en      (EXE1_output_pc_valid               ), //equivalent to data_in_valid
-        .rd_en      (EXE1_buffered_output_pc_ready      ), //equivalent to data_out_ready
+        .wr_en      (EXE1_output_pc_valid               ), 
+        .rd_en      (EXE1_buffered_output_pc_ready      ), 
         .dout       (EXE1_buffered_output_pc_and_current), 
-        .empty      (EXE1_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
+        .empty      (EXE1_buffered_output_pc_not_valid  ), 
         .data_count (EXE1_buffered_count                )
     );
 
@@ -323,12 +315,12 @@ module regex_cpu_pipelined #(
     ) fifo_exe2_buffer(
         .clk        (clk                                ), 
         .reset      (reset                              ), 
-        .full       (EXE2_output_pc_not_ready           ), //equivalent to not data_in_ready
+        .full       (EXE2_output_pc_not_ready           ),
         .din        (EXE2_output_pc_and_current         ),  
-        .wr_en      (EXE2_output_pc_valid               ), //equivalent to data_in_valid
-        .rd_en      (EXE2_buffered_output_pc_ready      ), //equivalent to data_out_ready
+        .wr_en      (EXE2_output_pc_valid               ), 
+        .rd_en      (EXE2_buffered_output_pc_ready      ), 
         .dout       (EXE2_buffered_output_pc_and_current), 
-        .empty      (EXE2_buffered_output_pc_not_valid  ), //equivalent to not data_out_valid
+        .empty      (EXE2_buffered_output_pc_not_valid  ), 
         .data_count (EXE2_buffered_count                )
     );
 

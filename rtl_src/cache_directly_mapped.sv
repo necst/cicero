@@ -1,12 +1,6 @@
 `timescale 1ns/1ps
-//A cache to decouple memory access between different 
-//basic block. 
-//Remember that in this context none write the memory 
-//hence no synchronization problem can happen.
-//1. memory is supplied with an address (filling addr_in,raising addr_in_valid)
-//2.a if memory has this content in cache answers positively raising addr_in_ready.
-//2.b otherwise memory relays memory request on addr_out using the same protocol.
-//
+//compute hit signal
+
 module cache_directly_mapped #(          
     parameter DWIDTH                    = 16,
     parameter CACHE_WIDTH_BITS          = 5,

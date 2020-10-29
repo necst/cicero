@@ -1,12 +1,7 @@
 `timescale 1ns/1ps
-//A cache to decouple memory access between different 
-//basic block. 
-//Remember that in this context none write the memory 
-//hence no synchronization problem can happen.
-//1. memory is supplied with an address (filling addr_in,raising addr_in_valid)
-//2.a if memory has this content in cache answers positively raising addr_in_ready.
-//2.b otherwise memory relays memory request on addr_out using the same protocol.
-//
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.
 module cache_block_directly_mapped #(          
     parameter DWIDTH                    = 4,
     parameter CACHE_WIDTH_BITS          = 4,
@@ -43,7 +38,6 @@ logic [RAM_WIDTH-1:0] data_from_memory ;
 typedef enum logic[1:0] { S_IDLE,S_FETCH, S_WRITE } State;
 State curState, nextState;
 
-//decompose addr_in in tag and cache_line
 logic [BLOCK_WIDTH_BITS-1:0]            block_sel_in , block_sel_saved, block_sel_saved_next;
 logic [CACHE_WIDTH_BITS-1:0 ]           cache_line_in, cache_line_saved, cache_line_saved_next ;
 logic [TAG_WIDTH-1:0]                   tag_in       , tag_saved       , tag_saved_next        ;
@@ -51,7 +45,7 @@ logic [TAG_WIDTH-1:0]                   tag_in       , tag_saved       , tag_sav
 assign block_sel_in  = addr_in[0+:BLOCK_WIDTH_BITS];
 assign cache_line_in = addr_in[BLOCK_WIDTH_BITS+:CACHE_WIDTH_BITS];
 assign tag_in        = addr_in[ADDR_IN_WIDTH-1-:TAG_WIDTH];
-//compute hit signal
+
 logic                                   hit;
 assign hit           = (tag[cache_line_in] == tag_in && is_present[cache_line_in]) ;
 

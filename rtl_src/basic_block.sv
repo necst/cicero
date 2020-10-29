@@ -1,43 +1,8 @@
 `timescale 1ns/1ps
-//wraps 
-//1.a regex_cpu and 
-//2.two fifos to save instructions in the form of their program counters 
-//  for current and next character.
-//                                                                                                    
-//                                                                            /-<memory_data          
-//                                                                          /--->memory_addr          
-//                                   +------------------------------------------>memory_valid         
-//+----------------------------------|------------------------+             \---<memory_ready         
-//|                     Basic block  |                        |                                       
-//|                          +- - - - - - - +                 | 
-//|                            cache                          | 
-//|                          | (optional)   |                 | 
-//|                                                           | 
-//|                          +- - - - - - - +                 |                                       
-//|                                  |                        |                                       
-//|                          +-------|------+                 |                                       
-//|                          | Regex_cpu    |                 |             /--->output_pc_valid      
-//|                  +-----> |              ------>----------------------------->output_pc_and current
-//|                  |       |              |                 |             \---<output_pc_ready      
-//|                  |       +--------------+                 |                                       
-//|                  |                             input_pc_and_current[0]                            
-//|                  |   +------------------+ 1   +-----+     |                                       
-//|                  +----  curr_char_fifo  <--+--+--+  |     |                                       
-//|                      +------------------+  |demux|  |     |             /---<input_pc_valid       
-//|                      +------------------+  |     <--+-----------------------<input_pc_and_current 
-//| 0 --data_out_ready-->|  next_char_fifo  <--+-----+  +----------------------->input_pc_ready       
-//|                      +------------------+ 0         |     |                                       
-//|                                                     |     |                                       
-//|                            even_in_ready            |     |                                       
-//|                            and ---------------------+     |                                       
-//|                            odd_in_ready                   |                                       
-//|                                                           |                                       
-//+-----------------------------------------------------------+                                       
-//note that:                                                                                                    
-//- curr_char_fifo and next_char_fifo are implemented by 2 fifos(called odd/even)
-//  in which inputs/outputs are muxed/demuxed via cur_is_even_character (input)                                                                                                      
-//  not represented for sake of drawing simplicity                                                                                                  
-                                                                                                                                                             
+
+// Author: Daniele Parravicini
+// This work is licensed under a Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License.
+// Furthermore no-copy is allowed without explicit permission of the authors.                                                                                                     
 
 module basic_block #(
     parameter  PC_WIDTH            = 8 ,
