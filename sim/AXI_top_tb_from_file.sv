@@ -448,7 +448,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\a.out","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\sim\\a(bORc)star.csv","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -460,7 +460,7 @@ module AXI_top_tb_from_file();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\scripts\\string_ok.csv","r");
+        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\sim\\string_ok.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_ok.csv");
@@ -501,7 +501,7 @@ module AXI_top_tb_from_file();
             $display("NOK: string rejected");
             $stop(1);
         end 
-        $finish();
+        
         cmd_register<= CMD_RESET;
         @(posedge clk);
         cmd_register<= CMD_NOP;
@@ -520,7 +520,7 @@ module AXI_top_tb_from_file();
             @(posedge clk);
 
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\a(bORc)star.csv","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\sim\\a(bORc)star.csv","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -532,7 +532,7 @@ module AXI_top_tb_from_file();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor\\sim\\string_nok.csv","r");
+        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\sim\\string_nok.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_nok.csv");

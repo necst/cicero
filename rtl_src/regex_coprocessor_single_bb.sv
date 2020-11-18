@@ -40,7 +40,9 @@ module regex_coprocessor_single_bb #(
     parameter CHARACTER_WIDTH       = 8,
     parameter MEMORY_WIDTH          = 16,
     parameter MEMORY_ADDR_WIDTH     = 11,
-    parameter BASIC_BLOCK_PIPELINED = 0
+    parameter BASIC_BLOCK_PIPELINED = 0,
+    parameter REG_WIDTH             = 32,
+    parameter INSTRUCTION_WIDTH     = 16 
 )
 (
     input   logic                           clk,
@@ -52,17 +54,19 @@ module regex_coprocessor_single_bb #(
     output  logic                           memory_valid,
 
     input   logic                           start_ready,
-    input   logic[MEMORY_ADDR_WIDTH-1:0]    start_cc_pointer,
+    input   logic[REG_WIDTH-1:0]            start_cc_pointer,
     output  logic                           start_valid,
     output  logic                           finish,
     output  logic                           accept,
     output  logic                           error
 );
-    
+    localparam                       C_ADDR_OFFSET = $clog2(MEMORY_WIDTH/CHARACTER_WIDTH);
+
     localparam [CHARACTER_WIDTH-1:0  ] CHARACTER_TERMINATOR = { CHARACTER_WIDTH {1'b0}};
-    localparam [MEMORY_ADDR_WIDTH-1:0] start_pc = { MEMORY_ADDR_WIDTH{1'b0} };
-    logic      [MEMORY_ADDR_WIDTH:0]   cur_cc_pointer           , next_cc_pointer;
+    localparam [PC_WIDTH-1:0]          start_pc = { PC_WIDTH{1'b0} };
+    logic      [REG_WIDTH-1:0]         cur_cc_pointer           , next_cc_pointer;
     logic      [CHARACTER_WIDTH-1:0]   cur_cc                   , next_cc;
+    logic      [MEMORY_WIDTH-1   :0]   cur_ccs                  , next_ccs;
     logic                              cur_is_even_character   , next_is_even_character;
     
     
@@ -75,7 +79,7 @@ module regex_coprocessor_single_bb #(
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
     logic                           memory_ready_for_bb ;
     logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb  ;
-    logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb  ;
+    logic[MEMORY_WIDTH-1:0]         memory_data_for_bb  ;
     logic                           memory_valid_for_bb ;
 
     //signals for basic block
@@ -107,24 +111,28 @@ module regex_coprocessor_single_bb #(
         if(reset)
         begin
             cur_state               <= REGEX_COPRO_S_IDLE;
-            cur_cc_pointer          <= { (PC_WIDTH+1){1'b0}      };
-            cur_cc                  <= { (CHARACTER_WIDTH){1'b0} };
+            cur_cc_pointer          <= { REG_WIDTH{1'b0}      };
+            cur_ccs                 <= { MEMORY_WIDTH{1'b0} };
             cur_is_even_character   <= 1'b1;
         end
         else
         begin
             cur_state               <= next_state;
             cur_cc_pointer          <= next_cc_pointer;
-            cur_cc                  <= next_cc;
+            cur_ccs                 <= next_ccs;
             cur_is_even_character   <= next_is_even_character;
         end
     end
-
+    
     always_comb 
-    begin //realize next state function
+    begin
+        logic [REG_WIDTH-1:0] tmp_cur_cc_increment ;
+        tmp_cur_cc_increment    = cur_cc_pointer + 1; 
+        //realize next state function
         next_state              = cur_state;
         next_cc_pointer         = cur_cc_pointer;
-        next_cc                 = cur_cc;
+
+        next_ccs                = cur_ccs;
         next_is_even_character  = cur_is_even_character;
         //default signal
         start_valid             = 1'b0;
@@ -142,12 +150,14 @@ module regex_coprocessor_single_bb #(
         else                 subcomponent_reset = 1'b0;
         //basic bock computation default disabled
         bb_go                  = 1'b0;
+        cur_cc                 = cur_ccs[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
+        
         case(cur_state)
         REGEX_COPRO_S_IDLE:
         begin
             //prepare signals to fetch first character at the next clock cycle
             
-            memory_addr_for_cc  = start_cc_pointer;
+            memory_addr_for_cc  = start_cc_pointer[C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
             memory_valid_for_cc = 1'b1;
             
             //if memory answer affirmatively and start signal is raised start
@@ -157,14 +167,14 @@ module regex_coprocessor_single_bb #(
                 //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
                 //dual-word address. we have to concatenate a bit. 
                 //First char of the string is assumed to be allineated to 32 bits  
-                next_cc_pointer     = {start_cc_pointer, 1'b0};
+                next_cc_pointer     = start_cc_pointer;
                 start_valid         = 1'b1;
             end
         end
         REGEX_COPRO_S_FETCH_1ST_CC:
         begin
-            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                          next_cc    = memory_data[15:8];
+
+            next_ccs            = memory_data;
             
             override_pc         = start_pc; 
             override_pc_valid   = 1'b1;
@@ -179,56 +189,63 @@ module regex_coprocessor_single_bb #(
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
             
-            //memory is 2B width
-            // TODO: parametrize in function of MEMORY_WIDTH
-            if(cur_cc_pointer[0] == 1'b0) next_cc    = memory_data[ 7:0];
-            else                          next_cc    = memory_data[15:8];
+            next_ccs    = memory_data;
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
-            if(bb_running)  next_state = REGEX_COPRO_S_EXEC;
-            else            next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
-                   
+            if(bb_running)      next_state = REGEX_COPRO_S_EXEC;
+            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+                     
+        end
+        REGEX_COPRO_S_NO_FETCH_NEXT_CC:
+        begin
+            //Differently from REGEX_COPRO_S_FETCH_NEXT_CC basic bock computation enable
+            bb_go                         = 1'b1;
+            //if the basic block immediately show not to have any work to do
+            //for the current character
+            //means that the regular expression does not match the string.
+            if(bb_running)      next_state = REGEX_COPRO_S_EXEC;
+            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+            
         end
         REGEX_COPRO_S_EXEC:
         begin
-            //basic bock computation enable
-            bb_go                  = 1'b1;
+           //basic bock computation enable
+            bb_go          = 1'b1;
             if(bb_accepts)
             begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = REGEX_COPRO_S_COMPLETE_ACCEPTING;
             end
-            else if( ~ bb_running )
-            begin // if basic block has finished to execute instructions related to current char it's time to move to the next character
-                if( cur_cc == CHARACTER_TERMINATOR)
-                begin //if we reach the end of the string (i.e. current char is terminator) 
-                    next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
-                end
-                else  // otherwise we have still work to do
-                begin // ask for new current character
-                    //TODO: avoid asking character if tmp_cur_cc[0] == 1
-                    logic [MEMORY_ADDR_WIDTH:0] tmp_cur_cc_increment ;
-                    tmp_cur_cc_increment= cur_cc_pointer + 1;
-                    memory_valid_for_cc = 1'b1;
-                    //memory with 2B width support only even aligned adresses
-                    memory_addr_for_cc  = tmp_cur_cc_increment [1+: MEMORY_ADDR_WIDTH];
-                   
-                    if( memory_ready_for_cc)
-                    begin //if memory answers affermatively go to state where at next cc memory data is latched in current character register.
-                          //update is_even_character ff 
-                        next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
-                        next_cc_pointer         = tmp_cur_cc_increment;
-                        next_is_even_character  = ~ cur_is_even_character;
-                    end
-                end
-                
+            else if( ~ bb_running && cur_cc == CHARACTER_TERMINATOR)
+            begin //if we reach the end of the string (i.e. current char is terminator) 
+                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
             end
-            else if ( ~bb_input_pc_ready && bb_output_pc_valid)
-            begin // if bb want to produce an isntruction but does not have space to save it
-                  // go into an error state
-                  // TODO: signal outside error 
+            else if( ~ bb_running && cur_cc_pointer[C_ADDR_OFFSET] != tmp_cur_cc_increment[C_ADDR_OFFSET])
+            begin // if all basic blocks have finished to execute instructions related to current char 
+                  // and we have finished char to be examide it's time to move to the next character
+                memory_valid_for_cc = 1'b1;
+                memory_addr_for_cc  = tmp_cur_cc_increment [C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
+
+                if( memory_ready_for_cc)
+                begin //if memory answers affermatively go to state where at next cc memory data is 
+                      //latched in current character register. 
+                      //update is_even_character ff 
+                    next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
+                    next_cc_pointer         = tmp_cur_cc_increment;
+                    next_is_even_character  = ~ cur_is_even_character;
+                end
+            end
+            else if( ~ bb_running && cur_cc_pointer[C_ADDR_OFFSET] == tmp_cur_cc_increment[C_ADDR_OFFSET] )
+            begin
+                next_state              = REGEX_COPRO_S_NO_FETCH_NEXT_CC;
+                next_cc_pointer         = tmp_cur_cc_increment;
+                next_is_even_character  = ~ cur_is_even_character;
+            end  
+            else if( ~bb_input_pc_ready && bb_output_pc_valid) 
+            begin // if there's an instruction that should be saved but no one is able to save it 
                 next_state = REGEX_COPRO_S_ERROR;
-            end
+            end       
+            
         end
         REGEX_COPRO_S_COMPLETE_ACCEPTING:
         begin
@@ -318,8 +335,7 @@ module regex_coprocessor_single_bb #(
     );
     //memory data are broadcasted but only memory which receives ready 
     //knows that at next cc it would be its turn.
-    assign memory_data_for_bb = memory_data;
     assign memory_data_for_cc = memory_data;
-
+    assign memory_data_for_bb = memory_data;
 
 endmodule

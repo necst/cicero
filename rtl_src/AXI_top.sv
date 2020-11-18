@@ -38,7 +38,7 @@ logic     [ BRAM_WRITE_WIDTH      -1:0 ] bram_w;
 logic     [ BRAM_WE_WIDTH         -1:0 ] bram_w_valid;
 
 ///// Coprocessor
-localparam BB_N                      = 2;
+localparam BB_N                      = 1;
 localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;
@@ -210,12 +210,13 @@ bram #(
 
 if (BB_N == 1) begin : g1
     regex_coprocessor_single_bb #(
-        .PC_WIDTH               (PC_WIDTH                              ),
-        .CHARACTER_WIDTH        (CHARACTER_WIDTH                       ),
-        .MEMORY_WIDTH           (BRAM_READ_WIDTH                       ),
-        .MEMORY_ADDR_WIDTH      (BRAM_READ_ADDR_WIDTH                  ),
-        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                      ),
-        .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                 )
+        .PC_WIDTH               (PC_WIDTH                               ),
+        .CHARACTER_WIDTH        (CHARACTER_WIDTH                        ),
+        .MEMORY_WIDTH           (BRAM_READ_WIDTH                        ),
+        .MEMORY_ADDR_WIDTH      (BRAM_READ_ADDR_WIDTH                   ),
+        .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                       ),
+        .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                  ),
+        .REG_WIDTH              (REG_WIDTH                              )
     ) a_regex_coprocessor (
         .clk                (clk                                        ),
         .reset              (reset_master                               ),

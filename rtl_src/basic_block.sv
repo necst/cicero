@@ -92,8 +92,9 @@ module basic_block #(
     //storage part of the basic block
     //cache wires
     wire                        regex_cpu_memory_ready      ;
-    wire [CPU_MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr       ;
-    wire [I_WIDTH-1     :0]     regex_cpu_memory_data       ;
+    wire [CPU_MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr             ;
+    logic[CPU_MEMORY_ADDR_WIDTH-1:0]regex_cpu_memory_addr_saved       ;
+    logic[I_WIDTH-1     :0]     regex_cpu_memory_data       ;
     wire                        regex_cpu_memory_valid      ;
     //FIFO even signal 
     logic                       fifo_even_data_in_ready     ;
@@ -341,10 +342,21 @@ module basic_block #(
     //depending on CACHE_WIDTH_BITS
     if (CACHE_WIDTH_BITS <= 0)
     begin
-        assign memory_addr              = regex_cpu_memory_addr ;
+
+        //adapt memory bus to Instruction width
+        always_comb
+        begin
+            regex_cpu_memory_data       = memory_data[I_WIDTH*regex_cpu_memory_addr_saved[0+:OFFSET_I]+:I_WIDTH];
+        end
+
+        always_ff @( posedge clk ) begin 
+            regex_cpu_memory_addr_saved <= regex_cpu_memory_addr;
+        end
+
+        assign memory_addr              = regex_cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ];;
         assign memory_valid             = regex_cpu_memory_valid;  
         assign regex_cpu_memory_ready   = memory_ready          ;
-        assign regex_cpu_memory_data    = memory_data           ;   
+        //assign regex_cpu_memory_data    = memory_data           ;   
     end
     else
     begin
