@@ -1,0 +1,90 @@
+string;MAFSAEDVLKEYDRRRRMEALLLSLYYPNDRKLLDYKEWSPPRVQVECPKAPVEWNNPPSEKGLIVGHFSGIKYKGEKAQASEVDVNKMCCWVSKFKDAMRRYQGIQTCKIPGKVLSDLDAKIKAYNLTVEGVEGFVRYSRVTKQHVAAFLKELRHSKQYENVNLIHYILTDKRVDIQHLEKDLVKDFKALVESAHRMRQGHMINVKYILYQLLKKHGHGPDGPDILTVKTGSKGVLYDDSFRKIYTDLGWKFTPL;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1713;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;6799;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;364;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;362;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;382;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;455;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;433;0; 
+string;MSIIGATRLQNDKSDTYSAGPCYAGGCSAFTPRGTCGKDWDLGEQTCASGFCTSQPLCARIKKTQVCGLRYSSKGKDPLVSAEWDSRGAPYVRCTYDADLIDTQAQVDQFVSMFGESPSLAERYCMRGVKNTAGELVSRVSSDADPAGGWCRKWYSAHRGPDQDAALGSFCIKNPGAADCKCINRASDPVYQKVKTLHAYPDQCWYVPCAADVGELKMGTQRDTPTNCPTQVCQIVFNMLDDGSVTMDDVKNTINCDFSKYVPPPPPPKPTPPTPPTPPTPPTPPTPPTPPTPRPVHNRKVMFFVAGAVLVAILISTVRW;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;967;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;8471;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;5723;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;5646;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;6141;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;1220;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1223;0; 
+string;MASNTVSAQGGSNRPVRDFSNIQDVAQFLLFDPIWNEQPGSIVPWKMNREQALAERYPELQTSEPSEDYSGPVESLELLPLEIKLDIMQYLSWEQISWCKHPWLWTRWYKDNVVRVSAITFEDFQREYAFPEKIQEIHFTDTRAEEIKAILETTPNVTRLVIRRIDDMNYNTHGDLGLDDLEFLTHLMVEDACGFTDFWAPSLTHLTIKNLDMHPRWFGPVMDGIKSMQSTLKYLYIFETYGVNKPFVQWCTDNIETFYCTNSYRYENVPRPIYVWVLFQEDEWHGYRVEDNKFHRRYMYSTILHKRDTDWVENNPLKTPAQVEMYKFLLRISQLNRDGTGYESDSDPENEHFDDESFSSGEEDSSDEDDPTWAPDSDDSDWETETEEEPSVAARILEKGKLTITNLMKSLGFKPKPKKIQSIDRYFCSLDSNYNSEDEDFEYDSDSEDDDSDSEDDC;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;433;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;12123;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;3781;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;3736;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;4024;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;506;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;500;0; 
+string;MYQAINPCPQSWYGSPQLEREIVCKMSGAPHYPNYYPVHPNALGGAWFDTSLNARSLTTTPSLTTCTPPSLAACTPPTSLGMVDSPPHINPPRRIGTLCFDFGSAKSPQRCECVASDRPSTTSNTAPDTYRLLITNSKTRKNNYGTCRLEPLTYGI;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;2991;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;4164;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;4560;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;4514;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;4844;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;3713;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;3681;0; 
+string;MARPLLGKTSSVRRRLESLSACSIFFFLRKFCQKMASLVFLNSPVYQMSNILLTERRQVDRAMGGSDDDGVMVVALSPSDFKTVLGSALLAVERDMVHVVPKYLQTPGILHDMLVLLTPIFGEALSVDMSGATDVMVQQIATAGFVDVDPLHSSVSWKDNVSCPVALLAVSNAVRTMMGQPCQVTLIIDVGTQNILRDLVNLPVEMSGDLQVMAYTKDPLGKVPAVGVSVFDSGSVQKGDAHSVGAPDGLVSFHTHPVSSAVELNYHAGWPSNVDMSSLLTMKNLMHVVVAEEGLWTMARTLSMQRLTKVLTDAEKDVMRAAAFNLFLPLNELRVMGTKDSNNKSLKTYFEVFETFTIGALMKHSGVTPTAFVDRRWLDNTIYHMGFIPWGRDMRFVVEYDLDGTNPFLNTVPTLMSVKRKAKIQEMFDNMVSRMVTS;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;400;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;11605;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;11162;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;11104;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;11911;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;548;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;552;0; 
+string;MNAKYDTDQGVGRMLFLGTIGLAVVVGGLMAYGYYYDGKTPSSGTSFHTASPSFSSRYRY;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1667;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;1628;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;1782;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;1784;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;1924;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;2034;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;2019;0; 
+string;MRYTVLIALQGALLLLLLIDDGQGQSPYPYPGMPCNSSRQCGLGTCVHSRCAHCSSDGTLCSPEDPTMVWPCCPESSCQLVVGLPSLVNHYNCLPNQCTDSSQCPGGFGCMTRRSKCELCKADGEACNSPYLDWRKDKECCSGYCHTEARGLEGVCIDPKKIFCTPKNPWQLAPYPPSYHQPTTLRPPTSLYDSWLMSGFLVKSTTAPSTQEEEDDY;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1119;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;5755;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6315;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6262;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6689;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;1374;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1301;0; 
+string;MQNPLPEVMSPEHDKRTTTPMSKEANKFIRELDKKPGDLAVVSDFVKRNTGKRLPIGKRSNLYVRICDLSGTIYMGETFILESWEELYLPEPTKMEVLGTLESCCGIPPFPEWIVMVGEDQCVYAYGDEEILLFAYSVKQLVEEGIQETGISYKYPDDISDVDEEVLQQDEEIQKIRKKTREFVDKDAQEFQDFLNSLDASLLS;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1461;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;5411;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6130;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6085;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));False;6534;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;2050;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;2084;0; 
+string;MDSLNEVCYEQIKGTFYKGLFGDFPLIVDKKTGCFNATKLCVLGGKRFVDWNKTLRSKKLIQYYETRCDIKTESLLYEIKGDNNDEITKQITGTYLPKEFILDIASWISVEFYDKCNNIIINYFVNEYKTMDKKTLQSKINEVEEKMQKLLNEKEEELQEKNDKIDELILFSKRMEEDRKKDREMMIKQEKMLRELGIHLEDVSSQNNELIEKVDEQVEQNAVLNFKIDNIQNKLEIAVEDRAPQPKQNLKRERFILLKRNDDYYPYYTIRAQDINARSALKRQKNLYNEVSVLLDLTCHPNSKTLYVRVKDELKQKGVVFNLCKVSISNSKINEEELIKAMETINDEKRDV;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1346;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;9320;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;8236;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;8140;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;8864;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;2090;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;1755;0; 
+string;MYKMYFLKDQKFSLSGTIRINDKTQSEYGSVWCPGLSITGLHHDAIDHNMFEEMETEIIEYLGPWVQAEYRRIKG;;
+regex;result;copro;python re
+(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;560;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X));False;2013;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;907;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;917;0; 
+((L|X)(M|X)(A|X)(E|Z|Q|Z|X)(G|X)(L|X)(Y|X)(N|B|X))|((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X));True;974;0; 
+((R|X)(P|X)(C|X)(..........)?(C|X)(V|X)(S|X))|((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|((S|T|X).(R|K|X));True;771;0; 
+((R|K|X)(...?)?(D|B|E|Z|X)(...?)?(Y|X))|(.(G|X)(R|K|X)(R|K|X))|((S|T|X).(R|K|X));True;782;0; 
