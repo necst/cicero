@@ -140,7 +140,7 @@ module regex_cpu_pipelined #(
         end
     end
     
-        assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
+    assign FETCH_SEND_not_stall  = (                           ~FETCH_SEND_waits  &&  (~FETCH_REC_Instr_valid || FETCH_REC_not_stall)) ;
     assign  FETCH_REC_not_stall  = ( FETCH_REC_Instr_valid &&                         (     ~EXE1_Instr_valid ||      EXE1_not_stall)) ;
     assign       EXE1_not_stall  = (      EXE1_Instr_valid &&        ~EXE1_waits  && ((     ~EXE2_Instr_valid ||      EXE2_not_stall) || EXE1_completes_instr)) ;
     assign       EXE2_not_stall  = (      EXE2_Instr_valid &&        ~EXE2_waits                                                     ) ;

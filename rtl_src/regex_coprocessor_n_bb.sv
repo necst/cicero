@@ -284,7 +284,6 @@ module regex_coprocessor_n_bb #(
             begin // if there's an instruction that should be saved but no one is able to save it 
                 next_state = REGEX_COPRO_S_ERROR;
             end       
-            
         end
         REGEX_COPRO_S_COMPLETE_ACCEPTING:
         begin

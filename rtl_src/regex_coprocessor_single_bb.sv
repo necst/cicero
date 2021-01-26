@@ -79,7 +79,7 @@ module regex_coprocessor_single_bb #(
     //2. provide memory access for BB (note that to create a tree of arbiters are required 2*#BB -1 arbiters)
     logic                           memory_ready_for_bb ;
     logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr_for_bb  ;
-    logic[MEMORY_WIDTH-1:0]         memory_data_for_bb  ;
+    logic[MEMORY_WIDTH-1     :0]    memory_data_for_bb  ;
     logic                           memory_valid_for_bb ;
 
     //signals for basic block
@@ -335,7 +335,7 @@ module regex_coprocessor_single_bb #(
     );
     //memory data are broadcasted but only memory which receives ready 
     //knows that at next cc it would be its turn.
-    assign memory_data_for_cc = memory_data;
     assign memory_data_for_bb = memory_data;
+    assign memory_data_for_cc = memory_data;
 
 endmodule

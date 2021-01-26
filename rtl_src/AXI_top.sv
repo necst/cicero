@@ -100,61 +100,63 @@ begin
     case(status_register)
     STATUS_IDLE:
     begin   
-        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
-        begin      // addr_1, data_1, ..., cmd_nop.
-            
-            bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
-            bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
-            bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
-        end
-        else if(cmd_register == CMD_READ)
-        begin      
-            bram_r_addr         = address_register[BYTE_ADDR_OFFSET_IN_REG+:BRAM_READ_ADDR_WIDTH]; //use low
-            bram_r_valid        = 1'b1;
-            memory_addr_from_coprocessor_ready = 1'b0;
-            data_o_register     = bram_r[address_register[0+:BYTE_ADDR_OFFSET_IN_REG]*REG_WIDTH+:REG_WIDTH];
-        end
-        else if(cmd_register == CMD_START)
-        begin
-            //start_pc            = start_pc_register[0+:PC_WIDTH];
-            start_ready         = 1'b1;
-            bram_r_addr         = memory_addr_from_coprocessor;
-            bram_r_valid        = memory_addr_from_coprocessor_valid;
-            memory_addr_from_coprocessor_ready = 1'b1;
-            elapsed_cc_next     = {(REG_WIDTH){1'b0}};
-
-            if( start_valid )
-            begin
-                status_register_next = STATUS_RUNNING;
+        case(cmd_register) 
+            CMD_WRITE: // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
+            begin      // addr_1, data_1, ..., cmd_nop.
+                
+                bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
+                bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
+                bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
             end
-        end
-        else if(cmd_register == CMD_READ_ELAPSED_CLOCK)
-        begin
-            data_o_register     = elapsed_cc;
-        end
-        
+            CMD_READ:
+            begin      
+                bram_r_addr         = address_register[BYTE_ADDR_OFFSET_IN_REG+:BRAM_READ_ADDR_WIDTH]; //use low
+                bram_r_valid        = 1'b1;
+                memory_addr_from_coprocessor_ready = 1'b0;
+                data_o_register     = bram_r[address_register[0+:BYTE_ADDR_OFFSET_IN_REG]*REG_WIDTH+:REG_WIDTH];
+            end
+            CMD_START:
+            begin
+                //start_pc            = start_pc_register[0+:PC_WIDTH];
+                start_ready         = 1'b1;
+                bram_r_addr         = memory_addr_from_coprocessor;
+                bram_r_valid        = memory_addr_from_coprocessor_valid;
+                memory_addr_from_coprocessor_ready = 1'b1;
+                elapsed_cc_next     = {(REG_WIDTH){1'b0}};
+
+                if( start_valid )
+                begin
+                    status_register_next = STATUS_RUNNING;
+                end
+            end
+            CMD_READ_ELAPSED_CLOCK:
+            begin
+                data_o_register     = elapsed_cc;
+            end
+        endcase
     end
     STATUS_ACCEPTED, STATUS_REJECTED, STATUS_ERROR:
     begin   
-        if(cmd_register == CMD_WRITE) // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
+        case(cmd_register)
+        CMD_WRITE: // to write the content of memory write in seuqence addr_0, cmd_write, data_0, 
         begin      // addr_1, data_1, ..., cmd_nop.
             
             bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
             bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
             bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
         end
-        else if(cmd_register == CMD_READ)
+        CMD_READ:
         begin      
             bram_r_addr         = address_register[BYTE_ADDR_OFFSET_IN_REG+:BRAM_READ_ADDR_WIDTH]; //use low
             bram_r_valid        = 1'b1;
             memory_addr_from_coprocessor_ready = 1'b0;
             data_o_register     = bram_r[address_register[0+:BYTE_ADDR_OFFSET_IN_REG]*REG_WIDTH+:REG_WIDTH];
         end
-        else if(cmd_register == CMD_RESTART)
+        CMD_RESTART:
         begin
             status_register_next = STATUS_IDLE;
         end
-        else if(cmd_register == CMD_READ_ELAPSED_CLOCK)
+        CMD_READ_ELAPSED_CLOCK:
         begin
             data_o_register     = elapsed_cc;
         end

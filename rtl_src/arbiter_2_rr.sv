@@ -1,6 +1,7 @@
 `timescale 1ns/1ps
 /*
-Arbiters: Design Ideas and Coding Styles Matt Weber
+Taken from Arbiters: Design Ideas and Coding Styles by Matt Weber
+https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.86.550&rep=rep1&type=pdf
 */
 module arbiter_2_rr #(
     parameter DWIDTH      = 16 

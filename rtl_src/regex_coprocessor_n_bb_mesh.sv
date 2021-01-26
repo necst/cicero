@@ -517,9 +517,8 @@ module regex_coprocessor_n_bb_mesh #(
                 begin
                     //add a way to supply an instruction
                     //5.a for the first station close the loop and add a way to supply an instruction
-                    arbiter_fixed #(
-                        .DWIDTH(PC_WIDTH+1),
-                        .PRIORITY_0(1)
+                    arbiter_2_fixed #(
+                        .DWIDTH(PC_WIDTH+1)
                     ) arbiter_to_override_pc_at_bb_0_input (
                         .in_0_ready( override_pc_ready                                ),
                         .in_0_data ( override_pc_and_current                          ),
@@ -610,9 +609,8 @@ module regex_coprocessor_n_bb_mesh #(
     );
 
 
-    arbiter_fixed #(
-        .DWIDTH(MEMORY_ADDR_WIDTH),
-        .PRIORITY_0(1)
+    arbiter_2_fixed #(
+        .DWIDTH(MEMORY_ADDR_WIDTH)
     ) arbiter_for_memory_contention_bbs_and_cc (
         .in_0_ready( memory_ready_for_cc           ),
         .in_0_data ( memory_addr_for_cc            ),
