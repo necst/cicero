@@ -42,7 +42,7 @@ class re2copro_measurer(regular_expression_measurer):
         return cc_number
 
 class re2copro_compiler_size_measurer(regular_expression_measurer):
-    def __init__(self, O1=True): #100 for I5, ULTRA. 80 for PYNQ.
+    def __init__(self, O1=True):
         super().__init__("re2copro_compiler_size "+("optimized" if O1 else "unoptimized")+ " [instructions]")
 
         self.optimize  = O1
@@ -330,8 +330,8 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                     result = None
                     result = e.execute(regex=r, string=line, full_match = False, allow_prefix=True, O1=True, debug=args.debug )   
                 except Exception as exc:
-                    raise exc
                     print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
+                    raise exc
                 progress_bar.update(1)
                 
                 if isinstance(result, list):

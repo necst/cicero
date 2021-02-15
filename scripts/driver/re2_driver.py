@@ -27,9 +27,10 @@ class RE2_COPROCESSOR_REGISTER_OFFSET(Enum):
     DATA_IN   = 0
     ADDRESS   = 4
     START_CC  = 8
-    CMD       = 12
-    STATUS    = 16
-    DATA_O    = 20
+    END_CC    = 12
+    CMD       = 16
+    STATUS    = 20
+    DATA_O    = 24
 
 class re2_driver(DefaultIP):
     debug                               = False
@@ -57,6 +58,12 @@ class re2_driver(DefaultIP):
     
     def read_start_cc(self):
         return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.START_CC.value)
+
+    def write_end_cc(self, i):
+        self.write(RE2_COPROCESSOR_REGISTER_OFFSET.END_CC.value, i)
+    
+    def read_end_cc(self):
+        return self.read(RE2_COPROCESSOR_REGISTER_OFFSET.END_CC.value)
     
     def write_cmd(self, i:RE2_COPROCESSOR_COMMANDS):
         self.write(RE2_COPROCESSOR_REGISTER_OFFSET.CMD.value, i.value)
@@ -152,8 +159,9 @@ class re2_driver(DefaultIP):
         self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
         return 1
 
-    def start(self, start_string_address):
+    def start(self, start_string_address,end_string_address):
         self.write_start_cc( start_string_address      )
+        self.write_end_cc  ( end_string_address        )
         self.write_cmd( RE2_COPROCESSOR_COMMANDS.START )
         self.write_cmd( RE2_COPROCESSOR_COMMANDS.NOP   )
 
@@ -242,11 +250,11 @@ class re2_driver(DefaultIP):
 
         code_address_end        = self.load_code(code)
         string_address_start    = ceil(code_address_end/self.word_size_in_bytes)*self.word_size_in_bytes
-        _                       = self.load_string(string,string_address_start)
+        string_address_end      = self.load_string(string,string_address_start)
         if self.verbose or self.debug :
             print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
             print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
-        self.start(string_address_start)
+        self.start(string_address_start, string_address_end)
         has_accepted = self.wait_complete()
         if self.verbose or self.debug :
             print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
@@ -254,10 +262,10 @@ class re2_driver(DefaultIP):
     
 
 if __name__ == "__main__":
-    debug = False
+    debug = True
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
-    re2_coprocessor = Overlay('../bitstreams/re_copro16BBP_150.bit')
+    re2_coprocessor = Overlay('../../bitstreams/8_P_100.bit')
     if debug :
         print('test:',re2_coprocessor.ip_dict)
     re2_coprocessor.re2_copro_0.verbose     = True
