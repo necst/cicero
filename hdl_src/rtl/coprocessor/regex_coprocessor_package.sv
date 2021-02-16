@@ -1,6 +1,6 @@
 //contains signals used to interface regex_coprocessor
 //and AXI_top
-package Regex_coprocessor_package;
+package regex_coprocessor_package;
 
     localparam nr_bits_states = 3;
     typedef enum logic[nr_bits_states-1 : 0] {
@@ -11,4 +11,4 @@ package Regex_coprocessor_package;
                                                 REGEX_COPRO_S_ERROR                        
                                             } State;
 
-endpackage : Regex_coprocessor_package
+endpackage : regex_coprocessor_package

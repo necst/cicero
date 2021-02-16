@@ -1,7 +1,7 @@
 import AXI_package::*;
 
 //component intended to decouple the regex_coprocessor and the AXI interface.
-//It contains the memory of the regex_coprocessor so that is possible to show outside the contetn of the memory
+//It contains the memory of the regex_coprocessor so that is possible to show outside the content of the memory
 //It implements some commands that are intended to drive the regex_coprocessor and other component from software. 
 
 module AXI_top(
@@ -38,6 +38,8 @@ logic     [ BRAM_WE_WIDTH         -1:0 ] bram_w_valid;
 
 ///// Coprocessor
 localparam BB_N                      = 8;
+localparam BB_N_X                    = 2;
+localparam BB_N_Y                    = 2;
 localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;
@@ -217,6 +219,8 @@ regex_coprocessor_top#(
     .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                       ),
     .CHANNEL_COUNT_WIDTH    (CHANNEL_COUNT_WIDTH                    ),
     .BB_N                   (BB_N                                   ),
+    .BB_N_X                 (BB_N_X                                 ),
+    .BB_N_Y                 (BB_N_Y                                 ),
     .CACHE_BLOCK_WIDTH_BITS (CACHE_BLOCK_WIDTH_BITS                 ),      
     .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS                       ),
     .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                  ),

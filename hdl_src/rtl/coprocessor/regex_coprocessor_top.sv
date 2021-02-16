@@ -41,7 +41,7 @@
 //                      |                           +----------------+                                                                   |
 //                      +----------------------------------------------------------------------------------------------------------------
 //
-import Regex_coprocessor_package::*;
+import regex_coprocessor_package::*;
 
 module regex_coprocessor_top #(
     parameter  PC_WIDTH              = 8 ,
@@ -52,6 +52,8 @@ module regex_coprocessor_top #(
     parameter  MEMORY_WIDTH          = 16,
     parameter  MEMORY_ADDR_WIDTH     = 11,
     parameter  BB_N                  = 1 ,
+    parameter  BB_N_X                = 0,
+    parameter  BB_N_Y                = 0,
     parameter  CACHE_WIDTH_BITS      = 5 ,
     parameter  CACHE_BLOCK_WIDTH_BITS= 2 ,
     parameter  BASIC_BLOCK_PIPELINED = 0 ,
@@ -168,7 +170,7 @@ module regex_coprocessor_top #(
         REGEX_COPRO_S_FETCH_1ST_CC:
         begin
             
-            next_ccs            = memory_data;
+            next_ccs            = memory_for_cc.data;
             
             override_pc_pc      = start_pc; 
             override_pc.valid   = 1'b1;
@@ -183,7 +185,7 @@ module regex_coprocessor_top #(
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
             
-            next_ccs    = memory_data;
+            next_ccs    = memory_for_cc.data;
             //if the basic block immediately show not to have any work to do
             //for the current character
             //means that the regular expression does not match the string.
@@ -265,7 +267,36 @@ module regex_coprocessor_top #(
         endcase
     end
 
-    if(BB_N==1)
+    if( BB_N_X > 0 && BB_N_Y > 0)
+    begin
+        topology_mesh #(
+            .BB_N_X                     (BB_N_X                     ),
+            .BB_N_Y                     (BB_N_Y                     ),
+            .PC_WIDTH                   (PC_WIDTH                   ),
+            .LATENCY_COUNT_WIDTH        (LATENCY_COUNT_WIDTH        ),
+            .FIFO_COUNT_WIDTH           (FIFO_COUNT_WIDTH           ),
+            .CHARACTER_WIDTH            (CHARACTER_WIDTH            ),
+            .MEMORY_WIDTH               (MEMORY_WIDTH               ),
+            .MEMORY_ADDR_WIDTH          (MEMORY_ADDR_WIDTH          ),
+            .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ), 
+            .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
+            .PIPELINED                  (BASIC_BLOCK_PIPELINED      ),
+            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
+        )a_topology(
+            .clk                        (clk                        ),
+            .rst                        (rst                        ),
+            .cur_cc                     (cur_cc                     ),
+            .cur_is_even_character      (cur_is_even_character      ),
+            .memory                     (memory_muxed.out           ),
+            .override                   (override_pc                ),
+            .memory_cc                  (memory_for_cc              ),
+            .enable                     (bbs_go                     ),
+            .any_bb_accept              (any_bb_accept              ),
+            .any_bb_running             (any_bb_running             ),
+            .all_bb_full                (all_bb_full                )
+        );
+    end 
+    else if(BB_N==1)
     begin
         topology_single #(
             .PC_WIDTH                   (PC_WIDTH                   ),
