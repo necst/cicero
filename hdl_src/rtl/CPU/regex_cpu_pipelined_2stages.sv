@@ -1,4 +1,5 @@
-import instruction::*;
+//`include "instruction_package.sv"
+import instruction_package::*;
 //A simple processor of reg2_instructions
 // It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
 // the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
