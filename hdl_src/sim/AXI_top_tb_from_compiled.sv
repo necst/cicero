@@ -487,6 +487,10 @@ module AXI_top_tb_from_compiled();
 
         repeat(10)
             @(posedge clk);
+
+        $dumpfile("test.vcd");
+        $dumpvars;
+
         start_string = start_string << 2;
         start(/*start_code,*/ start_string, end_string<<2);
         
@@ -503,7 +507,7 @@ module AXI_top_tb_from_compiled();
             $display(" string rejected");
 
         end 
-
+        $dumpoff;
         $finish(0);
     end
 

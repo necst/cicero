@@ -487,6 +487,7 @@ module AXI_top_tb_from_file();
 
         repeat(10)
             @(posedge clk);
+            
         $dumpfile("test.vcd");
         $dumpvars;
 

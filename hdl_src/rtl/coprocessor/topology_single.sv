@@ -42,7 +42,7 @@ module topology_single #(
         .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
         .PIPELINED                  (PIPELINED                  ),
         .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
-    ) engine_interfaced(
+    ) anEngine(
         .clk                        (clk                        ),
         .rst                        (rst                        ),
         .current_character          (cur_cc                     ), 
