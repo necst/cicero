@@ -1,7 +1,7 @@
-module channel 
-#(
-    parameter PC_WIDTH,
-    parameter CHANNEL_COUNT_WIDTH
+module channel #(
+    parameter WIDTH              =10   ,
+    parameter CHANNEL_COUNT_WIDTH=10   ,
+    parameter LATENCY_COUNT_WIDTH=10
 )
 (
     input wire              clk,
@@ -13,10 +13,10 @@ module channel
     wire channel_output_valid   , channel_output_not_valid;
     wire [CHANNEL_COUNT_WIDTH-1:0]   fifo_count;
 
-    logic [CHANNEL_COUNT_WIDTH-1:0]  channel_old_latency, channel_old_latency_next;
+    logic [LATENCY_COUNT_WIDTH-1:0]  channel_old_latency, channel_old_latency_next;
 
     fifo #(
-        .DWIDTH     (PC_WIDTH+1                ),
+        .DWIDTH     (WIDTH                     ),
         .COUNT_WIDTH(CHANNEL_COUNT_WIDTH       )
     ) fifo_channel(
         .clk        (clk                       ), 
@@ -35,17 +35,20 @@ module channel
 
     //   compute ~estimated number of clock cycles the data is going to wait
     //   before being served.
-    assign in.latency                = channel_old_latency + fifo_count ;
+    //   assign in.latency                = channel_old_latency + fifo_count ;
     
     
     always_ff @( posedge clk ) begin 
-        if(rst)  channel_old_latency <= 2'b01;
+        if(rst)  channel_old_latency <= {{(LATENCY_COUNT_WIDTH-1){1'b0}}, 1'b1};
         else     channel_old_latency <= channel_old_latency_next;
     end 
 
     always_comb begin
         if( &(out.latency)==1'b1) channel_old_latency_next  = out.latency   ;
         else                      channel_old_latency_next  = out.latency +1;
+
+        if (channel_old_latency + fifo_count < {LATENCY_COUNT_WIDTH{1'b1}}) in.latency = channel_old_latency + fifo_count;
+        else                                                                in.latency = {LATENCY_COUNT_WIDTH{1'b1}};
     end 
     
     //always_ff @( posedge clk ) begin : create_tmp_channel_input_latency

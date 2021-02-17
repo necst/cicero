@@ -278,7 +278,7 @@ module engine #(
             regex_cpu_memory_addr_saved <= regex_cpu_memory_addr;
         end
 
-        assign memory_addr              = regex_cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ];;
+        assign memory_addr              = regex_cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ];
         assign memory_valid             = regex_cpu_memory_valid;  
         assign regex_cpu_memory_ready   = memory_ready          ;
         //assign regex_cpu_memory_data    = memory_data           ;   

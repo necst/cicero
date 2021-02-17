@@ -148,7 +148,7 @@ module topology_mesh #(
     assign all_bb_full    =  &(bb_full); 
     
 
-    //wires to connect to generic bit arbiter
+    //wires to connect to generic bit arbiter remember there are BB_N_Y*BB_N_X + 1 (memory_cc) requests
     wire                               memory_ready_muxed [BB_N_Y*BB_N_X:0];
     wire [MEMORY_ADDR_WIDTH-1:0]       memory_addr_muxed  [BB_N_Y*BB_N_X:0];
     wire                               memory_valid_muxed [BB_N_Y*BB_N_X:0];

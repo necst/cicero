@@ -99,8 +99,9 @@ module engine_and_station_xy#(
 
 //2. channels
 channel #(
-    .PC_WIDTH(PC_WIDTH),
-    .CHANNEL_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
+    .WIDTH(PC_WIDTH+1),
+    .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
+    .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_x_out(
     .clk(clk                ),
     .rst(rst                ),
@@ -109,8 +110,9 @@ channel #(
 );
 
 channel #(
-    .PC_WIDTH(PC_WIDTH),
-    .CHANNEL_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
+    .WIDTH(PC_WIDTH+1),
+    .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
+    .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_y_out(
     .clk(clk                ),
     .rst(rst                ),
@@ -119,8 +121,9 @@ channel #(
 );
 
 channel #(
-    .PC_WIDTH(PC_WIDTH),
-    .CHANNEL_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
+    .WIDTH(PC_WIDTH+1),
+    .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
+    .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_tmp(
     .clk(clk                ),
     .rst(rst                ),

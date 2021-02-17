@@ -41,6 +41,7 @@
 //                      |                           +----------------+                                                                   |
 //                      +----------------------------------------------------------------------------------------------------------------
 //
+//`include "regex_coprocessor_package.sv"
 import regex_coprocessor_package::*;
 
 module regex_coprocessor_top #(
@@ -94,6 +95,7 @@ module regex_coprocessor_top #(
 
     //to fill basic block 0 with first instruction
     logic [PC_WIDTH-1:0]            override_pc_pc;
+    wire   override_pc_directed_to_current;
     assign override_pc_directed_to_current  = 1'b1;
     assign override_pc.data          = {override_pc_pc, override_pc_directed_to_current};
 
