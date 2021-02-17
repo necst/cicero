@@ -1,3 +1,4 @@
+//`include "AXI_package.sv"
 import AXI_package::*;
 
 //component intended to decouple the regex_coprocessor and the AXI interface.
@@ -25,7 +26,6 @@ parameter BRAM_READ_WIDTH            = 64;
 parameter BRAM_READ_ADDR_WIDTH       = 9;
 parameter BRAM_WRITE_WIDTH           = 32;
 parameter BRAM_WRITE_ADDR_WIDTH      = 10;
-parameter BRAM_WE_WIDTH              =  BRAM_WRITE_WIDTH/8;
 
 localparam BYTE_ADDR_OFFSET_IN_REG   =  $clog2(BRAM_READ_WIDTH/REG_WIDTH);
 
@@ -34,7 +34,7 @@ logic     [ BRAM_READ_ADDR_WIDTH  -1:0 ] bram_r_addr;
 logic                                    bram_r_valid;
 logic     [ BRAM_WRITE_ADDR_WIDTH -1:0 ] bram_w_addr;
 logic     [ BRAM_WRITE_WIDTH      -1:0 ] bram_w;
-logic     [ BRAM_WE_WIDTH         -1:0 ] bram_w_valid;
+logic                                    bram_w_valid;
 
 ///// Coprocessor
 localparam BB_N                      = 8;
@@ -92,7 +92,7 @@ begin
     bram_r_valid                       = 1'b0;
     bram_w_addr                        = { (BRAM_WRITE_ADDR_WIDTH) {1'b0} };
     bram_w                             = { (BRAM_WRITE_WIDTH){1'b0} };
-    bram_w_valid                       = { (BRAM_WE_WIDTH){1'b0}};
+    bram_w_valid                       = 1'b0;
 
     memory_addr_from_coprocessor_ready = 1'b0;
     
@@ -106,7 +106,7 @@ begin
             begin      // addr_1, data_1, ..., cmd_nop.
                 
                 bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
-                bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
+                bram_w_valid        = 1'b1;
                 bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
             end
             CMD_READ:
@@ -143,7 +143,7 @@ begin
         begin      // addr_1, data_1, ..., cmd_nop.
             
             bram_w_addr         = address_register[0+:BRAM_WRITE_ADDR_WIDTH]; //use low
-            bram_w_valid        = { (BRAM_WE_WIDTH) {1'b1} };
+            bram_w_valid        = 1'b1;
             bram_w              = data_in_register[0+:BRAM_WRITE_WIDTH];
         end
         CMD_READ:
@@ -197,8 +197,7 @@ bram #(
     .READ_WIDTH      ( BRAM_READ_WIDTH      ),            
     .READ_ADDR_WIDTH ( BRAM_READ_ADDR_WIDTH ),            
     .WRITE_WIDTH     ( BRAM_WRITE_WIDTH     ),       
-    .WRITE_ADDR_WIDTH( BRAM_WRITE_ADDR_WIDTH),    
-    .WE_WIDTH        ( BRAM_WE_WIDTH        )           
+    .WRITE_ADDR_WIDTH( BRAM_WRITE_ADDR_WIDTH)   
 ) abram (
     .clk             (     clk               ),
     .rst             (     rst_master      ),
