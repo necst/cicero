@@ -23,7 +23,8 @@ module arbiter_2_rr #(
 wire              in_valid[2-1:0];
 wire              in_ready[2-1:0];
 wire [DWIDTH-1:0] in_data [2-1:0];
-assign in_valid   = {in_1_valid, in_0_valid};
+assign in_valid[0]= in_0_valid;
+assign in_valid[1]= in_1_valid;
 assign in_data[0] = in_0_data;
 assign in_data[1] = in_1_data;
 assign in_0_ready = in_ready[0];

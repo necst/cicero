@@ -17,7 +17,7 @@ wire  [N-1:0] grant_unmasked  ;
 always_ff @(posedge clk)
 begin
     if (rst)
-        old_grant <= { N{2'b0}};
+        old_grant <= { N{1'b0}};
     else
         old_grant <= grant     ;
 end
