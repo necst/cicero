@@ -450,7 +450,7 @@ module AXI_top_tb_from_compiled();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_1.out","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_22_regex.out","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -462,7 +462,7 @@ module AXI_top_tb_from_compiled();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_1.csv","r");
+        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_1_string.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_ok.csv");

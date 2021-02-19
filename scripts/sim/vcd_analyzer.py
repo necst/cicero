@@ -11,31 +11,7 @@ import matplotlib.pyplot as plt
 
 
 HIERARCHY_DELIMITER = '.'
-#
-#class Hierarchy:
-#
-#    def __init__(self, vcd, id, debug = False) -> None:
-#        self.id     = id
-#        self.vcd    = vcd
-#        self.subSignals = []
-#        
-#        for subSignal in vcd[re.compile('^'+re.escape(id)+'\..*')]:
-#            self.subSignals.append(subSignal[len(id):])
-#        if debug:
-#            print(f'found {len(self.subSignals)} subsignal{"s" if len(subSignal)>1 else ""} below {id}')
-#            print(self.subSignals)
-#
-#    def __getitem__(self, refname):
-#        if isinstance(refname,re.Pattern):
-#            return self.vcd[re.compile(re.escape(self.id)+HIERARCHY_DELIMITER+refname.pattern)]
-#        if refname in self.subSignals:
-#            return self.vcd[lower_hierarchy(self.id, refname)]
-#        else :
-#            return []
-#
-#    def __len__ (self):
-#        return len(self.subSignals)
-#
+
 def lower_hierarchy(path, subPath):
     
     return path+HIERARCHY_DELIMITER+subPath
@@ -51,24 +27,17 @@ def getSignalsByRegex(vcd, reg_string):
     regex = re.compile(reg_string)
     return vcd[regex]
 
-#def getEngines(vcd):
-#    reg             = re.compile(".*anEngine\.clk$")
-#    valid_signals   = vcd[reg]
-#    engines_prefix  = map(lambda x: raise_hierarchy(x,2), valid_signals)
-#    engines         = list(map(lambda x: Hierarchy(vcd,x), engines_prefix))
-#
-#    return engines
-#
-#def getModule(vcd, module_name):
-#    reg             = re.compile(f".*{module_name}\.clk$")
-#    valid_signals   = vcd[reg]
-#    engines_prefix  = map(lambda x: raise_hierarchy(x,2), valid_signals)
-#    engines         = list(map(lambda x: Hierarchy(vcd,x), engines_prefix))
-#
-#    return engines
+def getEngines(vcd):
+    reg    = re.compile(".*anEngine\.clk$")
+    return  vcd[reg]
+
+def getModule(vcd, module_name):
+    reg     = re.compile(f".*{module_name}$")
+    return  vcd[reg]
+    
 
 def getClockPeriod(vcd):
-    clk_signal = vcd[re.compile(".*clk")][0]
+    clk_signal = getSignalsByRegex(vcd, ".*clk")[0]
     clk_signal = vcd[clk_signal].tv
     clk_period = (clk_signal[2][0] - clk_signal[1][0])*2
     return clk_period
@@ -91,7 +60,7 @@ if len(sys.argv) > 1:
     vcd_path = sys.argv[1]
 else:
     #vcd_path = "C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\proj\\regex_copro\\regex_copro.sim\\sim_1\\behav\\xsim\\test.vcd"
-    vcd_path = "test_2x2.vcd"
+    vcd_path = "test4_regex22_string1.vcd"
     #vcd_path = "test_1.vcd"
     #print('Give me a vcd file to parse')
     #sys.exit(-1)
@@ -156,23 +125,43 @@ for cc_i, (start_cc, end_cc) in enumerate(start_end_cc):
         exe_per_engine[cc_i, e_i] = len(valid_data)
         print(f'\tEngine_{e_i} executed {len(valid_data)} instruction{ "s" if len(valid_data)> 1 else ""}')
 
-def plot_valid_for_engines(engine_scopes, fetch_instant):
-    fig, axes = plt.subplots(len(engine_scopes), sharex=True, sharey=True)
+def plot_engine_valid_in(engine_scopes, fetch_instant):
+    fig, axes = plt.subplots(max(len(engine_scopes),2), sharex=True, sharey=True)
     for e_i,e in enumerate(engine_scopes):
+        #in
         in_boundle = vcd[e]['in']
-        in_valid_ready_boundle = list(map(lambda x: x[0]=='1' and x[1]=='1' , zip(in_boundle['valid'][start_exe:end_exe:clk_period], in_boundle['ready'][start_exe:end_exe:clk_period])))
+        in_valid_ready_boundle = list(map(lambda x: x[0]=='1' and x[1]=='1' , zip(in_boundle['valid'][start_exe:end_exe:clk_period] , in_boundle['ready'][start_exe:end_exe:clk_period])))
+        #out
+        out_boundle = vcd[e]['out']
+        out_valid_ready_boundle = list(map(lambda x: x[0]=='1' and x[1]=='1', zip(out_boundle['valid'][start_exe:end_exe:clk_period], out_boundle['ready'][start_exe:end_exe:clk_period])))
+        
+        #plot valid&ready input signal
         axes[e_i].axhline(0, color='.5')
-        for x in range(start_exe,end_exe,clk_period):
-            axes[e_i].axvline(x, color='.5', linestyle='--', linewidth=0.5)
-        axes[e_i].step(np.arange(start_exe,end_exe,clk_period), in_valid_ready_boundle,'r')
+        plot_digital_signal(axes[e_i], np.arange(start_exe,end_exe,clk_period), in_valid_ready_boundle, label="in")
+
+        offset = 1.5
+        axes[e_i].axhline(offset, color='.5')
+        plot_digital_signal(axes[e_i], np.arange(start_exe,end_exe,clk_period), offset+np.array(out_valid_ready_boundle),label='out', colour='blue')
 
         for f in fetch_instant:
             axes[e_i].axvline(f, color='g')
         
-        axes[e_i].set_ylabel('Engine_'+str(e_i))
-    plt.show()
+        latency_signal = list(map(lambda x: int(x,2),in_boundle[re.compile('latency.*')][start_exe:end_exe:clk_period]))
+        axes[e_i].step(np.arange(start_exe,end_exe,clk_period), offset*2+np.array(latency_signal), label='latency_in')
+    
+        axes[e_i].set_ylabel(f'Engine_{e_i}')
         
-plot_valid_for_engines(engine_scopes, fetch_instant)
+    axes[0].legend()
+    plt.show()
+
+def plot_digital_signal(ax, x,y, clock_ticks=True, colour='r', label=''):
+    ax.axhline(0, color='.5')
+    if(clock_ticks):
+        for a_x in x:
+            ax.axvline(a_x, color='.5', linestyle='--', linewidth=0.5)
+    ax.step(x, y, colour, label=label)
+        
+plot_engine_valid_in(engine_scopes, fetch_instant)
 
 def plotHeatmap(heatmap, x_labels, y_labels ):
     fig, ax = plt.subplots()
@@ -187,7 +176,8 @@ def plotHeatmap(heatmap, x_labels, y_labels ):
     # Loop over data dimensions and create text annotations.
     for i in range(len(y_labels)):
         for j in range(len(x_labels)):
-            text = ax.text(j, i, heatmap[i, j],ha="center", va="center", color="w")
+            if heatmap[i, j] > 0:
+                ax.text(j, i,f'{heatmap[i, j]} ({int(100*heatmap[i, j]/sum(heatmap[i,:])) }%)',ha="center", va="center", color="w")
     ax.set_title("Instructions executed by each Engine per each character")
     fig.tight_layout()
     plt.show()

@@ -387,7 +387,7 @@ class Scope(collections.MutableMapping):
         return self.subElements.__contains__(o)
 
     def __repr__(self):
-        return self.name +'{\n' +'\n\t'.join(self.subElements)+'\n}'
+        return self.name +'\n{\n\t' +'\n\t'.join(self.subElements)+'\n}'
     
 class StreamParserCallbacks(object):
     def enddefinitions(
