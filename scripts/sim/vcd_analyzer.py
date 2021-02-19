@@ -5,6 +5,7 @@ import sys
 import re
 from typing import Text
 from vcdvcd import VCDVCD
+import bisect
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -59,9 +60,9 @@ def remove_non_maximal_scopes(scopes):
 if len(sys.argv) > 1:
 	vcd_path = sys.argv[1]
 else:
-	#vcd_path = "C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\proj\\regex_copro\\regex_copro.sim\\sim_1\\behav\\xsim\\test.vcd"
-	vcd_path = "test4_regex22_string1.vcd"
-	vcd_path = "test2x2_regex22_string1.vcd"
+	vcd_path = "C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\proj\\regex_copro\\regex_copro.sim\\sim_1\\behav\\xsim\\test.vcd"
+	#vcd_path = "test4_regex22_string1.vcd"
+	#vcd_path = "test2x2_regex22_string1.vcd"
 	#vcd_path = "test_1.vcd"
 	#print('Give me a vcd file to parse')
 	#sys.exit(-1)
@@ -185,7 +186,7 @@ def press_handler_creator(draw_graph_i, num_graphs):
 
 def plot_engine_valid_in(engine_scopes, fetch_instant):
 	
-	data = {}
+	engine_data = {}
 	for e_i,e in enumerate(engine_scopes):
 		#in
 		in_boundle = vcd[e]['in']
@@ -196,19 +197,22 @@ def plot_engine_valid_in(engine_scopes, fetch_instant):
 		
 		latency_signal 			 = list(map(lambda x: int(x,2),in_boundle[re.compile('latency.*')][start_exe:end_exe:clk_period]))
 		#plot valid&ready input signal
-		data[e] = {}
-		data[e]['in'        ] 	 = in_validANDready_boundle
-		data[e]['out'       ] 	 = out_validANDready_signal
-		data[e]['latency_in'] 	 = latency_signal
-		data[e]['fetch_instant'] = list(map(lambda x: (x-start_exe)//clk_period ,fetch_instant))
+		engine_data[e] = {}
+		engine_data[e]['in'        ] 	 = in_validANDready_boundle
+		engine_data[e]['out'       ] 	 = out_validANDready_signal
+		engine_data[e]['latency_in'] 	 = latency_signal
+
+	fetch_instant_data = list(map(lambda x: (x-start_exe)//clk_period ,fetch_instant))
 	
+	memory_data = list(map(lambda x: x[0]=='1', vcd[re.compile('.*a?(b|B)ram$')]['r_valid'][start_exe:end_exe:clk_period]))
 
 	n_elements_per_subPlot = 100
 	tot_number_of_subgraph = ((end_exe-start_exe)//clk_period)//n_elements_per_subPlot
 	
 	def plot_i_esim(i):
-		
-		nonlocal data
+		nonlocal memory_data
+		nonlocal engine_data
+		nonlocal fetch_instant_data
 		nonlocal n_elements_per_subPlot
 		offset = 1.5
 		fig = plt.figure(0)
@@ -216,30 +220,51 @@ def plot_engine_valid_in(engine_scopes, fetch_instant):
 
 		start_exe = i*n_elements_per_subPlot
 		end_exe   = (i+1)*n_elements_per_subPlot
-		n_engines = len(data.keys())
-		for e_i,e in enumerate(data):
+		n_engines = len(engine_data.keys())
+		f_start = bisect.bisect_left(fetch_instant_data,start_exe)
+		for e_i,e in enumerate(engine_data):
 			if e_i == 0:
-				ax = fig.add_subplot(n_engines,1,(e_i+1))
+				ax = fig.add_subplot(n_engines+1,1,(e_i+2))
 			else:
-				ax = fig.add_subplot(n_engines,1,(e_i+1), sharex=ax, sharey=ax)
-
+				ax = fig.add_subplot(n_engines+1,1,(e_i+2), sharex=ax, sharey=ax)
+			#display instruction in/out and latency reported for each engine
 			ax.axhline(0, color='.5')
-			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), data[e]['in'     ][start_exe:end_exe], label="in")
+			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), engine_data[e]['in'     ][start_exe:end_exe], label="in")
 			
 			ax.axhline(offset, color='.5')
-			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), offset+np.array(data[e]['out'    ][start_exe:end_exe]),label='out', colour='blue')
+			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), offset+np.array(engine_data[e]['out'    ][start_exe:end_exe]),label='out', colour='blue')
 
-			for f in data[e]['fetch_instant']:
+			ax.axhline(offset*2, color='.5')
+			ax.step(np.arange(start_exe,end_exe,1), offset*2+np.array(engine_data[e]['latency_in'    ][start_exe:end_exe]), label=f'latency_in + {offset*2}')
+		
+			#mark each time we moved to a new char
+			for f in fetch_instant_data[f_start:]:
 				if f >= start_exe and f < end_exe:
 					#print(f)
 					ax.axvline(f, color='g')
-			
-			ax.step(np.arange(start_exe,end_exe,1), offset*2+np.array(data[e]['latency_in'    ][start_exe:end_exe]), label=f'latency_in + {offset*2}')
-		
+				else:
+					break
 			ax.set_ylabel(f'Engine_{e_i}')
-			
+
+		#Memory utilization
+		ax = fig.add_subplot(n_engines+1,1,1, sharex=ax)
+		plot_digital_signal(ax, np.arange(start_exe,end_exe,1), memory_data[start_exe:end_exe] ,label='memory_req', colour='blue')
+		#Add a textual repr
+		for start_ch, end_ch in zip(fetch_instant_data[f_start:], fetch_instant_data[f_start+1:]):
+			if start_ch >= start_exe and start_ch < end_exe:
+				#print(f)
+				ax.axvline(start_ch, color='g')
+				memory_line_in_period = memory_data[start_ch:end_ch]
+				memory_request        = sum(memory_line_in_period)
+				ax.text((start_ch+end_ch)//2, 0.5,f'{memory_request} ({int(100*memory_request/(end_ch-start_ch))}%)',ha="center", va="center")
 				
+			else:
+				break
+		ax.set_yticks([0,1])
+		ax.set_ylabel('Memory access')
+
 		fig.tight_layout()
+		fig.canvas.set_window_title(vcd_path)
 		plt.draw()
 		plt.legend( loc='upper left')
 		plt.pause(0.001)
@@ -275,6 +300,7 @@ def plotLargeHeatmap(heatmap, x_labels, y_labels):
 
 	fig = plt.figure(0)
 	fig.clf()
+	fig.canvas.set_window_title(vcd_path)
 	plot_i_esim(0)
 	press_handler = press_handler_creator(plot_i_esim,tot_number_of_subgraph)
 	#print(press_handler)
