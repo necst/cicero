@@ -329,4 +329,4 @@ valid_data_ready_boundle = BramScope['r_valid'][start_exe:end_exe:clk_period]
 valid_data_ready         = list(filter(lambda x: x[0]=='1', valid_data_ready_boundle))
 print(f'Memory utilization: {len(valid_data_ready)} / {duration_exe_cc} cc ({int(100*len(valid_data_ready)*clk_period/vcd.endtime)}% )')
 
-print(f'~ CPI {duration_exe_cc//len(executed_instructions)} ')
+print(f'~ CPI {round(duration_exe_cc/len(executed_instructions),2)} ')
