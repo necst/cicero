@@ -1,26 +1,28 @@
 `timescale 1ns / 10ps
 
-import instruction::*;
+import instruction_package::*;
 
 module regex_cpu_end_without_accepting_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
     parameter  PC_WIDTH          = 8;
+    parameter  CC_ID_BITS        = 1;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
     parameter  MEMORY_ADDR_WIDTH = 11;
 
-    logic                               clk                             ;
-    logic                             rst                             ; 
-    logic[CHARACTER_WIDTH-1:0]        current_character                 ;
+    logic                             clk                               ;
+    logic                             rst                               ;
+    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters     ;
     logic                             input_pc_valid                    ;
+    logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
     logic                             input_pc_ready                    ;
     logic                             memory_ready                      ;
     logic[MEMORY_ADDR_WIDTH-1:0]      memory_addr                       ;
     logic[MEMORY_WIDTH-1     :0]      memory_data                       ;
     logic                             memory_valid                      ;
-    logic                             output_pc_is_directed_to_current  ;
+    logic[CC_ID_BITS-1:0]             output_cc_id                      ;
     logic                             output_pc_valid                   ;
     logic[PC_WIDTH-1:0]               output_pc                         ;
     logic                             output_pc_ready                   ;
@@ -28,21 +30,23 @@ module regex_cpu_end_without_accepting_tb();
 
     regex_cpu #(
         .PC_WIDTH          (PC_WIDTH          ),
+        .CC_ID_BITS        (CC_ID_BITS        ),
         .CHARACTER_WIDTH   (CHARACTER_WIDTH   ),
         .MEMORY_WIDTH      (MEMORY_WIDTH      ),
         .MEMORY_ADDR_WIDTH (MEMORY_ADDR_WIDTH )
-    ) abb (
+    ) a_cpu (
         .clk                             (  clk                           ),   
-        .rst                           (rst                           ),
-        .current_character               (current_character               ),
+        .rst                             (rst                             ),
+        .current_characters              (current_characters              ),
         .input_pc_valid                  (input_pc_valid                  ),
+        .input_cc_id                     (input_cc_id                     ),
         .input_pc                        (input_pc                        ),
         .input_pc_ready                  (input_pc_ready                  ),
         .memory_ready                    (memory_ready                    ),
         .memory_addr                     (memory_addr                     ),
         .memory_data                     (memory_data                     ),
         .memory_valid                    (memory_valid                    ),
-        .output_pc_is_directed_to_current(output_pc_is_directed_to_current),
+        .output_cc_id                    (output_cc_id                    ),
         .output_pc_valid                 (output_pc_valid                 ),
         .output_pc                       (output_pc                       ),
         .output_pc_ready                 (output_pc_ready                 ),
@@ -54,7 +58,8 @@ module regex_cpu_end_without_accepting_tb();
         #CLOCK_SEMI_PERIOD clk = ~ clk;
     end
 
-    task load_pc(  input reg[PC_WIDTH-1    :0] pc);
+   task load_pc(  input reg[PC_WIDTH-1    :0] pc, 
+                  input reg[CC_ID_BITS-1  :0] cc_id);
     begin
         if(input_pc_ready !== 1'b1)
         begin
@@ -62,6 +67,7 @@ module regex_cpu_end_without_accepting_tb();
             $stop();
         end
         input_pc_valid <= 1'b1;
+        input_cc_id    <= cc_id;
         input_pc       <= pc;
         @(posedge clk);
         input_pc_valid <= 1'b0;
@@ -96,7 +102,7 @@ module regex_cpu_end_without_accepting_tb();
         @(posedge clk);
         if(memory_valid == 1'b1)
         begin
-            $display("basic block want something frem memory even if it had just fetched!");
+            $display("basic block want something from memory even if it had just fetched!");
             $stop();
         end
         
@@ -104,8 +110,8 @@ module regex_cpu_end_without_accepting_tb();
     end
     endtask
 
-    task wait_pc_output( input reg[MEMORY_ADDR_WIDTH-1:0] expected_pc,
-                         input reg                        expected_is_directed_to_current,
+    task wait_pc_output( input reg[PC_WIDTH-1:0]          expected_pc,
+                         input reg[CC_ID_BITS-1:0]        expected_output_cc_id,
                          input reg                        wait_immediately_after );
     begin
         @(posedge clk);
@@ -121,9 +127,9 @@ module regex_cpu_end_without_accepting_tb();
             $display("basic block output pc %h != %h", output_pc, expected_pc);
             $stop();
         end
-        if(output_pc_is_directed_to_current !== expected_is_directed_to_current)
+        if(output_cc_id !== expected_output_cc_id)
         begin
-            $display("basic block output pc %h != %h", output_pc_is_directed_to_current, expected_is_directed_to_current);
+            $display("basic block output pc %h != %h", output_cc_id, expected_output_cc_id);
             $stop();
         end
         @(posedge clk);
@@ -150,7 +156,7 @@ module regex_cpu_end_without_accepting_tb();
         max_pc          = 'd128;
         max_character   = 'd64;
         a_random_payload= 'd32;
-
+        
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -166,10 +172,9 @@ module regex_cpu_end_without_accepting_tb();
         for ( a_pc=0 ; a_pc < max_pc ; a_pc+=1) begin
             for ( a_character=0 ; a_character<max_character ; a_character+=1) begin
                 for ( a_random_payload=0 ; a_random_payload < max_random_payload; a_random_payload+=1 ) begin
-                    
-                    current_character <= a_character;
+                    current_characters <= {(2**CC_ID_BITS){a_character}};
 
-                    load_pc(a_pc);
+                    load_pc(a_pc, '0);
                     supply_memory({END_WITHOUT_ACCEPTING, a_random_payload } ,a_pc);
                     @(posedge clk);
                     if( output_pc_valid == 1'b1)
