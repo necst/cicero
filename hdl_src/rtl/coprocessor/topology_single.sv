@@ -9,25 +9,26 @@ module topology_single #(
     parameter  CACHE_WIDTH_BITS         = 0, 
     parameter  CACHE_BLOCK_WIDTH_BITS   = 2 ,
     parameter  PIPELINED                = 0,
-    parameter  CONSIDER_PIPELINE_FIFO   = 0
+    parameter  CONSIDER_PIPELINE_FIFO   = 0,
+    parameter  CC_ID_BITS               =  1
 ) (
-    input   wire                            clk,
-    input   wire                            rst,
-
-    input   wire [CHARACTER_WIDTH-1  :0]    cur_cc, 
-    input   wire                            cur_is_even_character,
-    memory_read_iface.out                   memory,
-    channel_iface.in                        override,
-    memory_read_iface.in                    memory_cc,
-    input   wire                            enable,
-    output  logic                           any_bb_accept,
-    output  logic                           any_bb_running,
-    output  logic                           all_bb_full     
+    input   wire                                            clk,
+    input   wire                                            rst,
+    output  logic                                           any_bb_accept,
+    output  logic                                           any_bb_running,
+    output  logic                                           all_bb_full,     
+    input   wire [(2**CC_ID_BITS)-1:0]                      enable_chars,
+    output  wire [(2**CC_ID_BITS)-1:0]                      elaborating_chars,
+    input   wire [(2**CC_ID_BITS)*CHARACTER_WIDTH-1  :0]    cur_ccs, 
+    input   wire                                            new_char,
+    memory_read_iface.out                                   memory,
+    channel_iface.in                                        override,
+    memory_read_iface.in                                    memory_cc
 );
     //2. provide memory access for BB (note that to create a tree of arbiters  are required 2*#BB -1 arbiters)
     memory_read_iface               #(.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH), .MEMORY_WIDTH(MEMORY_WIDTH)) memory_bb[0:0]();
     //2 channel interface 0 input 1 output
-    channel_iface                   #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) channel_i [1:0] ();
+    channel_iface                   #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) channel_i [1:0] ();
 
     /// sub modules 
     
@@ -41,24 +42,26 @@ module topology_single #(
         .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ), 
         .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
         .PIPELINED                  (PIPELINED                  ),
-        .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
+        .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     ),
+        .CC_ID_BITS                 (CC_ID_BITS                 )
     ) anEngine(
         .clk                        (clk                        ),
         .rst                        (rst                        ),
-        .current_character          (cur_cc                     ), 
-        .cur_is_even_character      (cur_is_even_character      ),
-        .memory                     (memory_bb[0]               ),
-        .in                         (channel_i[0].in            ),
-        .out                        (channel_i[1].out           ),
-        .enable                     (enable                     ),
         .accepts                    (any_bb_accept              ),      
         .running                    (any_bb_running             ),      
-        .full                       (all_bb_full                )
+        .full                       (all_bb_full                ),
+        .enable_chars               (enable_chars               ),
+        .elaborating_chars          (elaborating_chars          ),
+        .current_characters         (cur_ccs                    ), 
+        .new_char                   (new_char                   ),
+        .memory                     (memory_bb[0]               ),
+        .in                         (channel_i[0].in            ),
+        .out                        (channel_i[1].out           )
     );
 
 
     arbiter_2_fixed #(
-        .DWIDTH(PC_WIDTH+1)
+        .DWIDTH(PC_WIDTH+CC_ID_BITS)
     ) arbiter_tree_to_cope_with_pc_insertion (
         .in_0_ready  ( override.ready            ),
         .in_0_data   ( override.data             ),

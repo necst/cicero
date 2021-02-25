@@ -31,7 +31,7 @@ module regex_cpu #(
     output  logic[PC_WIDTH-1:0]             output_pc,
     input   logic                           output_pc_ready,
 
-    output  logic[CC_ID_BITS-1:0]           elaborating_chars,
+    output  logic[(2**CC_ID_BITS)-1:0]      elaborating_chars,
     output  logic                           accepts,
     output  logic                           running
 );

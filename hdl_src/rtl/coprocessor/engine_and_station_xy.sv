@@ -141,7 +141,7 @@ switch station_xy (
 ); 
 
 //2. output switch 
-switch station_x_out (
+switch station_cpu_or_x_out (
     .in_0   (cpu2switch.in      ),
     .out_0  (switch2cpu.out     ),
     .in_1   (ch_tmp2s.in        ),

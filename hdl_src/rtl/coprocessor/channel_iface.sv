@@ -31,10 +31,4 @@ interface channel_iface #(
         input    latency
     );
 
-   modport out_engine (
-        import   send,
-        output   valid,
-        output   data,
-        input    ready
-    );
 endinterface //cpu

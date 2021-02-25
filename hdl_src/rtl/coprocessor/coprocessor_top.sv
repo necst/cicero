@@ -42,9 +42,9 @@
 //                      +----------------------------------------------------------------------------------------------------------------
 //
 //`include "regex_coprocessor_package.sv"
-import regex_coprocessor_package::*;
+import coprocessor_package::*;
 
-module regex_coprocessor_top #(
+module coprocessor_top #(
     parameter  PC_WIDTH              = 8 ,
     parameter  LATENCY_COUNT_WIDTH   = 8 ,
     parameter  FIFO_COUNT_WIDTH      = 6 ,
@@ -59,7 +59,8 @@ module regex_coprocessor_top #(
     parameter  CACHE_BLOCK_WIDTH_BITS= 2 ,
     parameter  BASIC_BLOCK_PIPELINED = 0 ,
     parameter  REG_WIDTH             = 32,
-    parameter  CONSIDER_PIPELINE_FIFO=0
+    parameter  CONSIDER_PIPELINE_FIFO= 0,
+    parameter  CC_ID_BITS            = 2
 )
 (
     input   logic                           clk,
@@ -74,66 +75,90 @@ module regex_coprocessor_top #(
     output logic                            ready,
     input   logic[REG_WIDTH-1        :0]    start_cc_pointer,
     input   logic[REG_WIDTH-1        :0]    end_cc_pointer,
+
     output  logic                           done,
     output  logic                           accept,
     output  logic                           error
 );
-    localparam                       C_ADDR_OFFSET = $clog2(MEMORY_WIDTH/CHARACTER_WIDTH);
+    localparam                       C_BUFFER_ADDR_OFFSET = $clog2(MEMORY_WIDTH/CHARACTER_WIDTH);
+    localparam                       C_WINDOW_SIZE_IN_CHARS= 2**CC_ID_BITS; 
+    localparam                       C_WINDOW_SIZE_IN_BITS= C_WINDOW_SIZE_IN_CHARS*CHARACTER_WIDTH;
 
-    localparam [PC_WIDTH-1       :0] start_pc               =  '0;
-    logic      [REG_WIDTH-1      :0] cur_cc_pointer           , next_cc_pointer;
-    logic      [CHARACTER_WIDTH-1:0] cur_cc                   , next_cc;
-    logic      [MEMORY_WIDTH-1   :0] cur_ccs                  , next_ccs;
-    logic                            cur_is_even_character    , next_is_even_character;
-      
-    
-    //MEMORY
+    localparam [PC_WIDTH-1       :0]               start_pc               =  '0;
+    //Signals current characters (ccs)
+    logic      [REG_WIDTH-1      :0]               cur_ccs_window_pointer_end        , next_ccs_window_pointer_end;
+    logic      [C_WINDOW_SIZE_IN_CHARS*CHARACTER_WIDTH-1:0] cur_ccs_window           , next_ccs_window;
+    logic      [MEMORY_WIDTH-1   :0]               cur_ccs_buffer           , next_ccs_buffer;
+    logic      [C_WINDOW_SIZE_IN_CHARS-1:0]        cur_ccs_enable           , next_ccs_enable;
+    logic      [C_WINDOW_SIZE_IN_CHARS-1:0]        cur_ccs_first_cc         , next_ccs_first_cc;
+    logic      [C_WINDOW_SIZE_IN_CHARS-1:0]        cur_ccs_end_of_s         , next_ccs_end_of_s;
+    logic      [C_WINDOW_SIZE_IN_CHARS-1:0]        cur_ccs_after_end_of_s   , next_ccs_after_end_of_s;
+    logic                                          move_next_character      ;
+    //Signals MEMORY
+    always @(posedge clk) begin
+    //ASSERTIONS    
+    assert ( C_WINDOW_SIZE_IN_BITS <= MEMORY_WIDTH ) else $error("Assertion memory_cc_width failed!");
+    end
     memory_read_iface                #(.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH), .MEMORY_WIDTH(MEMORY_WIDTH)) memory_for_cc();
     memory_read_iface                #(.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH), .MEMORY_WIDTH(MEMORY_WIDTH)) memory_muxed();
+    //SIgnals channel
     //2 channel interface 0 input 1 output
-    channel_iface                   #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) override_pc ();
+    channel_iface                   #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) override_pc ();
+    
+    //to fill topology with first instruction and cc_id
+    logic [PC_WIDTH-1  :0] override_pc_pc;
+    wire  [CC_ID_BITS-1:0] override_cc_id;
+    assign override_cc_id            = {start_cc_pointer[0+:CC_ID_BITS]};
+    assign override_pc.data          = {override_pc_pc, override_cc_id};
 
-    //to fill basic block 0 with first instruction
-    logic [PC_WIDTH-1:0]            override_pc_pc;
-    wire   override_pc_directed_to_current;
-    assign override_pc_directed_to_current  = 1'b1;
-    assign override_pc.data          = {override_pc_pc, override_pc_directed_to_current};
-
-    logic                           bbs_go, any_bb_accept, any_bb_running, all_bb_full;
-
+    //info from topology
+    logic                           any_bb_accept, any_bb_running, all_bb_full;
     logic                           subcomponent_rst;
-
-    //FSM surpevisioning the basic block
+    logic [C_WINDOW_SIZE_IN_CHARS-1:0]       elaborating_chars;
+    
+    //FSM surpevisioning the topology
     State cur_state, next_state;
     always_ff @( posedge clk ) begin
          
         if(rst)
         begin
-            cur_state               <= REGEX_COPRO_S_IDLE;
-            cur_cc_pointer          <= '0;
-            cur_ccs                 <= '0;
-            cur_is_even_character   <= 1'b1;
+            cur_state                   <= CICERO_IDLE;
+            cur_ccs_window_pointer_end  <= '0;
+            cur_ccs_window              <= '0;
+            cur_ccs_buffer              <= '0;
+            cur_ccs_enable              <= '0;
+            cur_ccs_first_cc            <= '0;
+            cur_ccs_end_of_s            <= '0;
+            cur_ccs_after_end_of_s      <= '0;
         end
         else
         begin
-            cur_state               <= next_state;
-            cur_cc_pointer          <= next_cc_pointer;
-            cur_ccs                 <= next_ccs;
-            cur_is_even_character   <= next_is_even_character;
+            cur_state                   <= next_state;
+            cur_ccs_window_pointer_end  <= next_ccs_window_pointer_end;
+            cur_ccs_window              <= next_ccs_window;
+            cur_ccs_buffer              <= next_ccs_buffer;
+            cur_ccs_enable              <= next_ccs_enable;
+            cur_ccs_first_cc            <= next_ccs_first_cc;
+            cur_ccs_end_of_s            <= next_ccs_end_of_s;
+            cur_ccs_after_end_of_s      <= next_ccs_after_end_of_s;
         end
     end
 
     always_comb 
     begin
-        logic [REG_WIDTH-1:0] tmp_cur_cc_increment ;
-        tmp_cur_cc_increment    = cur_cc_pointer + 1; 
+        logic [REG_WIDTH-1:0] tmp_incr_cc_window_pointer_end;
+        tmp_incr_cc_window_pointer_end   = cur_ccs_window_pointer_end+1;
         //realize next state function
-        next_state              = cur_state;
-        next_cc_pointer         = cur_cc_pointer;
-        
-        next_ccs                = cur_ccs;
-        next_is_even_character  = cur_is_even_character;
-        //default signal
+        next_state                       = cur_state;
+        next_ccs_window_pointer_end      = cur_ccs_window_pointer_end;
+        next_ccs_window                  = cur_ccs_window;
+        next_ccs_buffer                  = cur_ccs_buffer;
+        next_ccs_enable                  = cur_ccs_enable;
+        next_ccs_first_cc                = cur_ccs_first_cc;
+        next_ccs_end_of_s                = cur_ccs_end_of_s;
+        next_ccs_after_end_of_s          = cur_ccs_after_end_of_s;
+        //default signals value
+        //output
         ready                   = 1'b0;
         done                    = 1'b0;
         accept                  = 1'b0;
@@ -146,130 +171,163 @@ module regex_coprocessor_top #(
         override_pc.valid      = 1'b0;
         //to flush sub components
         if (rst)             subcomponent_rst = 1'b1;
-        else                 subcomponent_rst = 1'b0;
-        //basic bock computation default disabled
-        bbs_go                 = 1'b0;
-        cur_cc                 = cur_ccs[CHARACTER_WIDTH*cur_cc_pointer[0+:C_ADDR_OFFSET]+:CHARACTER_WIDTH];
+        else                 subcomponent_rst = 1'b0; 
+        //to move to next cc
+        move_next_character = 1'b0;
         case(cur_state)
-        REGEX_COPRO_S_IDLE:
+        CICERO_IDLE:
         begin
             ready = memory_for_cc.ready;
-            //prepare signals to fetch first character at the next clock cycle
+            //prepare to fetch first characters at the next clock cycle
             
-            memory_for_cc.addr  = start_cc_pointer[C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
+            memory_for_cc.addr  = start_cc_pointer[C_BUFFER_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
             memory_for_cc.valid = 1'b1;
+
             
-            //if memory answer affirmatively and start signal is raised start
-            if(valid && memory_for_cc.ready ) 
-            begin
-                next_state          = REGEX_COPRO_S_FETCH_1ST_CC;
-                //start_cc_pointer is a quad-word address while regex_coprocessor_memory interface handles
-                //dual-word address. we have to concatenate a bit. 
-                //First char of the string is assumed to be aligned to 32 bits  
-                next_cc_pointer     = start_cc_pointer;
+
+            if(start_cc_pointer[0+:CC_ID_BITS] != {(CC_ID_BITS){1'b0}})
+            begin //assumption * : start_cc pointer bits dedicated to CC_ID are all 0. It simplifies startup!
+                next_state              = CICERO_ERROR;
+            end
+            else if(valid && memory_for_cc.ready ) 
+            begin //if memory answer affirmatively and start signal is raised start
+                next_state              = CICERO_FETCH_1ST;
+                
+                next_ccs_window_pointer_end= start_cc_pointer;
             end
         end
-        REGEX_COPRO_S_FETCH_1ST_CC:
+        CICERO_FETCH_1ST:
         begin
             
-            next_ccs            = memory_for_cc.data;
+            next_ccs_buffer             = memory_for_cc.data;
+            //thanks to previous assumption * :
+            //0. we can load the window in a bunch
+            //$display("%d %d \n", cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS], cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS], cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS);
+            next_ccs_window             = memory_for_cc.data[cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS+:C_WINDOW_SIZE_IN_BITS];
+            //1. enable and first char in a fixed position
+            next_ccs_enable             = {1'b0,{(C_WINDOW_SIZE_IN_CHARS-1){1'b1}}};
+            next_ccs_first_cc           = {{(C_WINDOW_SIZE_IN_CHARS-1){1'b0}}, 1'b1};
             
-            override_pc_pc      = start_pc; 
-            override_pc.valid   = 1'b1;
-            if(override_pc.ready)
+            //2. next_ccs_window_pointer_end
+            next_ccs_window_pointer_end = cur_ccs_window_pointer_end + C_WINDOW_SIZE_IN_CHARS;
+            override_pc_pc              = start_pc; 
+            override_pc.valid           = 1'b1;
+            if(!override_pc.ready)      next_state      = CICERO_ERROR;
+            else                        next_state      = CICERO_EXE;
+            
+            if ( start_cc_pointer[REG_WIDTH-1:CC_ID_BITS] == end_cc_pointer[REG_WIDTH-1:CC_ID_BITS])
             begin
-                next_state      = REGEX_COPRO_S_EXEC;
+                next_ccs_end_of_s[end_cc_pointer[0+:CC_ID_BITS]]   = 1'b1;
+                for (int i=end_cc_pointer[0+:CC_ID_BITS]; i<C_WINDOW_SIZE_IN_CHARS; ++i) begin
+                    next_ccs_after_end_of_s[i] = 1'b1;
+                end
+                
             end
+
             
         end
-        REGEX_COPRO_S_FETCH_NEXT_CC:
+        CICERO_FETCH_CCS_BUFFER:
         begin
             //at the previous clock cycle the memory has been requested to issue the next
             //current character
             
-            next_ccs    = memory_for_cc.data;
-            //if the basic block immediately show not to have any work to do
-            //for the current character
+            next_ccs_buffer                     = memory_for_cc.data;
+            next_ccs_window[0+:CHARACTER_WIDTH] = memory_for_cc.data[0+:CHARACTER_WIDTH];
+            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end;
+            
+            next_ccs_end_of_s[cur_ccs_window_pointer_end[0+:CC_ID_BITS]] = (cur_ccs_window_pointer_end == end_cc_pointer);
+            
+            //if the engines shows not to have any work to do
             //means that the regular expression does not match the string.
-            if(any_bb_running)  next_state = REGEX_COPRO_S_EXEC;
-            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+            if(any_bb_accept)        next_state = CICERO_COMPLETED_ACCEPTING;
+            else if (any_bb_running) next_state = CICERO_EXE;
+            else                     next_state = CICERO_COMPLETED_WITHOUT_ACCEPTING;
               
         end
-        REGEX_COPRO_S_NO_FETCH_NEXT_CC:
+        CICERO_FETCH_FROM_CCS_BUFFER:
         begin
-            //Differently from REGEX_COPRO_S_FETCH_NEXT_CC basic bock computation enable
-            bbs_go                         = 1'b1;
-            //if the basic block immediately show not to have any work to do
-            //for the current character
+            //next_ccs_window[cur_ccs_window_pointer_end[0+:CC_ID_BITS]*CHARACTER_WIDTH+:CHARACTER_WIDTH]  = cur_ccs_buffer[cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS +:CHARACTER_WIDTH];
+            next_ccs_window[cur_ccs_window_pointer_end[0+:CC_ID_BITS]*CHARACTER_WIDTH+:CHARACTER_WIDTH]  = cur_ccs_buffer[cur_ccs_window_pointer_end[0+:C_BUFFER_ADDR_OFFSET]*CHARACTER_WIDTH +:CHARACTER_WIDTH];
+            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end;
+
+            next_ccs_end_of_s[cur_ccs_window_pointer_end[0+:CC_ID_BITS]] = (cur_ccs_window_pointer_end == end_cc_pointer);
+            
+            //if the engines shows not to have any work to do
             //means that the regular expression does not match the string.
-            if(any_bb_running)  next_state = REGEX_COPRO_S_EXEC;
-            else                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+            if(any_bb_accept)        next_state = CICERO_COMPLETED_ACCEPTING;
+            else if (any_bb_running) next_state = CICERO_EXE;
+            else                     next_state = CICERO_COMPLETED_WITHOUT_ACCEPTING;
             
         end
-        REGEX_COPRO_S_EXEC:
+        CICERO_EXE:
         begin
+            logic first_window_char_executing = |(cur_ccs_first_cc & elaborating_chars);
+            logic first_window_char_is_end_of_s = |(cur_ccs_end_of_s & first_window_char_executing);
             //basic bock computation enable
-            bbs_go          = 1'b1;
-            casez({ any_bb_accept, all_bb_full, ~ any_bb_running,  cur_cc_pointer == end_cc_pointer, cur_cc_pointer[C_ADDR_OFFSET] != tmp_cur_cc_increment[C_ADDR_OFFSET] })
+            casez({ any_bb_accept, all_bb_full, first_window_char_executing,  first_window_char_is_end_of_s || !any_bb_running, cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:0] == 0})
             5'b1????:
             begin // if during execution phase one basic block raise accept: end computations!
-                next_state  = REGEX_COPRO_S_COMPLETE_ACCEPTING;
+                next_state  = CICERO_COMPLETED_ACCEPTING;
             end
             5'b01???:
             begin // if there's an instruction that should be saved but no one is able to save it 
-                next_state = REGEX_COPRO_S_ERROR;
+                next_state = CICERO_ERROR;
             end  
-            5'b0011?:
+            5'b0001?:
             begin //if we reach the end of the string (i.e. current char is terminator) 
-                next_state = REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING;
+                next_state = CICERO_COMPLETED_WITHOUT_ACCEPTING;
             end
-            5'b00101:
+            5'b00001:
             begin // if all basic blocks have finished to execute instructions related to current char 
                   // then it's time to move to the next character
                 memory_for_cc.valid = 1'b1;
-                memory_for_cc.addr  = tmp_cur_cc_increment [C_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
+                memory_for_cc.addr  = cur_ccs_window_pointer_end [C_BUFFER_ADDR_OFFSET+: MEMORY_ADDR_WIDTH];
 
                 if( memory_for_cc.ready)
                 begin //if memory answers affirmatively go to state where at next cc memory data is 
                       //latched in current character register. 
                       //update is_even_character ff 
-                    next_state              = REGEX_COPRO_S_FETCH_NEXT_CC;
-                    next_cc_pointer         = tmp_cur_cc_increment;
-                    next_is_even_character  = ~ cur_is_even_character;
+                    next_state                  = CICERO_FETCH_CCS_BUFFER;
+                    next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | {cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
+                    next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
+                    next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
+                    move_next_character         = 1'b1;
                 end
             end
-            5'b00100:
+            5'b00000:
             begin
-                next_state              = REGEX_COPRO_S_NO_FETCH_NEXT_CC;
-                next_cc_pointer         = tmp_cur_cc_increment;
-                next_is_even_character  = ~ cur_is_even_character;
+                next_state                  = CICERO_FETCH_FROM_CCS_BUFFER;
+                next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | { cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
+                next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
+                next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
+                move_next_character         = 1'b1;
             end  
             endcase
         end
-        REGEX_COPRO_S_COMPLETE_ACCEPTING:
+        CICERO_COMPLETED_ACCEPTING:
         begin
             done = 1'b1;
             accept = 1'b1;
-            next_state = REGEX_COPRO_S_IDLE;
+            next_state = CICERO_IDLE;
             //flush subcomponents (e.g. fifos inside bb)
             subcomponent_rst = 1'b1;
         end
-        REGEX_COPRO_S_COMPLETED_WITHOUT_ACCEPTING:
+        CICERO_COMPLETED_WITHOUT_ACCEPTING:
         begin
             done = 1'b1;
             accept = 1'b0;
-            next_state = REGEX_COPRO_S_IDLE;
+            next_state = CICERO_IDLE;
             //flush subcomponents (e.g. fifos inside bb)
             subcomponent_rst = 1'b1;
         end
-        REGEX_COPRO_S_ERROR:
+        CICERO_ERROR:
         begin
             error = 1'b1;
         end
         endcase
     end
 
-    if( BB_N_X > 0 && BB_N_Y > 0)
+    /*if( BB_N_X > 0 && BB_N_Y > 0)
     begin
         topology_mesh #(
             .BB_N_X                     (BB_N_X                     ),
@@ -283,7 +341,8 @@ module regex_coprocessor_top #(
             .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ), 
             .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
             .PIPELINED                  (BASIC_BLOCK_PIPELINED      ),
-            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
+            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     ),
+            .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
             .rst                        (rst                        ),
@@ -299,7 +358,7 @@ module regex_coprocessor_top #(
         );
     end 
     else if(BB_N==1)
-    begin
+    begin*/
         topology_single #(
             .PC_WIDTH                   (PC_WIDTH                   ),
             .LATENCY_COUNT_WIDTH        (LATENCY_COUNT_WIDTH        ),
@@ -310,21 +369,23 @@ module regex_coprocessor_top #(
             .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ), 
             .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
             .PIPELINED                  (BASIC_BLOCK_PIPELINED      ),
-            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
+            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     ),
+            .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
             .rst                        (rst                        ),
-            .cur_cc                     (cur_cc                     ),
-            .cur_is_even_character      (cur_is_even_character      ),
-            .memory                     (memory_muxed.out           ),
-            .override                   (override_pc                ),
-            .memory_cc                  (memory_for_cc              ),
-            .enable                     (bbs_go                     ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
-            .all_bb_full                (all_bb_full                )
+            .all_bb_full                (all_bb_full                ),
+            .enable_chars               (cur_ccs_enable             ),
+            .elaborating_chars          (elaborating_chars          ),
+            .cur_ccs                    (cur_ccs_window             ),
+            .new_char                   (move_next_character        ),
+            .memory                     (memory_muxed.out           ),
+            .override                   (override_pc                ),
+            .memory_cc                  (memory_for_cc              )
         );
-    end
+    /*end
     else 
     begin
         topology_token_ring #(
@@ -338,7 +399,8 @@ module regex_coprocessor_top #(
             .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ), 
             .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
             .PIPELINED                  (BASIC_BLOCK_PIPELINED      ),
-            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     )
+            .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     ),
+            .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
             .rst                        (rst                        ),
@@ -352,7 +414,7 @@ module regex_coprocessor_top #(
             .any_bb_running             (any_bb_running             ),
             .all_bb_full                (all_bb_full                )
         );
-    end
+    end*/
 
     assign  memory_muxed.ready =    memory_ready;
     assign  memory_addr        =    memory_muxed.addr;

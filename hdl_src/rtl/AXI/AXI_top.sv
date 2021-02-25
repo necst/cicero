@@ -37,17 +37,18 @@ logic     [ BRAM_WRITE_WIDTH      -1:0 ] bram_w;
 logic                                    bram_w_valid;
 
 ///// Coprocessor
-localparam BB_N                      = 8;
-localparam BB_N_X                    = 2;
-localparam BB_N_Y                    = 2;
+localparam BB_N                      = 1;
+localparam BB_N_X                    = 0;
+localparam BB_N_Y                    = 0;
 localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;
 localparam CACHE_WIDTH_BITS          = 4;
 localparam CACHE_BLOCK_WIDTH_BITS    = 2;
-localparam BASIC_BLOCK_PIPELINED     = 1;
+localparam BASIC_BLOCK_PIPELINED     = 0;
 localparam PC_WIDTH                  = 8;
 localparam CHARACTER_WIDTH           = 8;
+localparam CC_ID_BITS                = 2;
 
 
 logic                                   memory_addr_from_coprocessor_ready;
@@ -209,7 +210,7 @@ bram #(
     .w_valid         (     bram_w_valid      )
 );
 
-regex_coprocessor_top#(
+coprocessor_top#(
     .PC_WIDTH               (PC_WIDTH                               ),
     .CHARACTER_WIDTH        (CHARACTER_WIDTH                        ),
     .MEMORY_WIDTH           (BRAM_READ_WIDTH                        ),
