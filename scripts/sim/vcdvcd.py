@@ -5,11 +5,10 @@ import math
 import re
 import collections
 from decimal import Decimal
-
 from pprint import PrettyPrinter
 
 pp = PrettyPrinter()
-endtime = 0
+
 class VCDVCD(object):
 
     # Verilog standard terminology.
@@ -140,9 +139,7 @@ class VCDVCD(object):
                     if first_time:
                         self.begintime = time
                         first_time = False
-                    self.endtime = time
-                    global  endtime      
-                    endtime = time
+                    self.endtime = time                    
                     self.signal_changed = False
                 elif '$enddefinitions' in line:
                     if only_sigs:
@@ -157,13 +154,11 @@ class VCDVCD(object):
                         new_scope                    = Scope(full_scope_name,self)
                         scopes_stack[-1][scope_name] = new_scope
                         self.scopes[full_scope_name] = new_scope
-                        scopes_stack.append(new_scope)
-                    
+                        scopes_stack.append(new_scope)                    
                 elif '$upscope' in line:
                     hier.pop()
                     if store_scopes:
                         scopes_stack.pop()
-
                 elif '$var' in line:
                     ls = line.split()
                     type = ls[1]
@@ -177,7 +172,7 @@ class VCDVCD(object):
                     if (reference in signals) or all_sigs:
                         self.signals.append(reference)
                         if identifier_code not in self.data:
-                            self.data[identifier_code] = Signal( size, type)
+                            self.data[identifier_code] = Signal(size, type)
                         self.data[identifier_code].references.append(reference)
                         self.references_to_ids[reference] = identifier_code
                         cur_sig_vals[identifier_code] = 'x'
@@ -206,10 +201,14 @@ class VCDVCD(object):
                     self.timescale["magnitude"] = magnitude
                     self.timescale["unit"]   = unit
                     self.timescale["factor"] = Decimal(factor)
-        if save_hierarchy:
-            import json
-            with open(save_hierarchy, 'w', encoding='utf-8') as f:
-                json.dump(self.hierarchy, f, ensure_ascii=False, indent=4)
+        
+            for aSignal in filter( lambda x: isinstance(x, Signal),self.data):
+                aSignal.endtime = self.endtime
+
+            if save_hierarchy:
+                import json
+                with open(save_hierarchy, 'w', encoding='utf-8') as f:
+                    json.dump(self.hierarchy, f, ensure_ascii=False, indent=4)
 
     def _add_value_identifier_code(
         self, time, value, identifier_code,
@@ -232,7 +231,7 @@ class VCDVCD(object):
 
     def __getitem__(self, refname):
         """
-        :type refname: str
+        :type refname: str or re.Pattern
         :param refname: human readable name of a signal (reference) or a regular_expression
 
         :return: the signal for the given reference
@@ -320,6 +319,7 @@ class Signal(object):
         self.var_type   = var_type
         self.references = []
         self.tv         = []
+        self.endtime    = None
 
     def __getitem__(self, time):
         """
@@ -329,9 +329,10 @@ class Signal(object):
         :rtype time: str
         """
         if isinstance( time, slice ) :
-            global endtime
+            if not self.endtime:
+                self.endtime = self.tv[-1][0]
             #Get the start, stop, and step from the slice
-            return [self[ii] for ii in range(*time.indices(endtime))]
+            return [self[ii] for ii in range(*time.indices(self.endtime))]
         elif isinstance( time, int ) :
             if time < 0 : #Handle negative indices
                 time = 0
