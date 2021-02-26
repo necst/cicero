@@ -232,13 +232,15 @@ module engine #(
     if(PIPELINED)
     begin : g
         
-        /*regex_cpu_pipelined #(
+        regex_cpu_pipelined #(
             .PC_WIDTH                           (PC_WIDTH                           ),
             .CHARACTER_WIDTH                    (CHARACTER_WIDTH                    ),
-            .MEMORY_WIDTH                       (I_WIDTH                       ),
+            .MEMORY_WIDTH                       (I_WIDTH                       		),
             .MEMORY_ADDR_WIDTH                  (CPU_MEMORY_ADDR_WIDTH              ),
-            .FIFO_WIDTH_POWER_OF_2              (REGEX_CPU_FIFO_WIDTH_POWER_OF_2    )
-        ) a_regex_cpu (
+            .FIFO_WIDTH_POWER_OF_2              (REGEX_CPU_FIFO_WIDTH_POWER_OF_2    ),
+			.CC_ID_BITS                         (CC_ID_BITS                         )
+        ) a_regex_cpu  (
+            .clk                                (clk                                ),
             .rst                                (rst                                ), 
             .current_characters                 (current_characters                 ),
             .input_pc_ready                     (regex_cpu_input_pc_ready           ),
@@ -249,14 +251,14 @@ module engine #(
             .memory_addr                        (regex_cpu_memory_addr              ),
             .memory_data                        (regex_cpu_memory_data              ),   
             .memory_valid                       (regex_cpu_memory_valid             ),
-            .output_pc_is_directed_to_current   (output_pc_is_directed_to_current   ),
             .output_pc_ready                    (output_pc_ready                    ),
             .output_pc                          (output_pc                          ),
+            .output_cc_id                       (output_cc_id                       ),
             .output_pc_valid                    (output_pc_valid                    ),
             .accepts                            (accepts                            ),
             .running                            (regex_cpu_running                  ),
-            .latency                            (regex_cpu_latency                  )
-        );*/
+            .elaborating_chars                  (regex_cpu_elaborating_chars        )
+        );
     end
     else
     begin : g 
@@ -298,10 +300,11 @@ module engine #(
         //adapt memory bus to Instruction width based on previous cycle request
         always_comb
         begin
-            regex_cpu_memory_data       = memory_data[I_WIDTH*regex_cpu_memory_addr_saved[0+:OFFSET_I]+:I_WIDTH];
+            regex_cpu_memory_data       = memory_data[regex_cpu_memory_addr_saved[0+:OFFSET_I]*I_WIDTH+:I_WIDTH];
         end
 
-        always_ff @( posedge clk ) begin 
+        always_ff @( posedge clk ) 
+		begin 
             regex_cpu_memory_addr_saved <= regex_cpu_memory_addr;
         end
 

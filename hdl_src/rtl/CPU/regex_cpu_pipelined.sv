@@ -4,17 +4,20 @@ import instruction_package::*;
 // It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
 // the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
 module regex_cpu_pipelined #(
-    parameter  PC_WIDTH             = 8 ,
-    parameter  CHARACTER_WIDTH      = 8 ,
-    parameter  MEMORY_WIDTH         = 16,
-    parameter  MEMORY_ADDR_WIDTH    = 11,
+    parameter  PC_WIDTH          = 8 ,
+    parameter  CC_ID_BITS        = 2 ,            
+    parameter  CHARACTER_WIDTH   = 8 ,
+    parameter  MEMORY_WIDTH      = 16,
+    parameter  MEMORY_ADDR_WIDTH = 11,
     parameter  FIFO_WIDTH_POWER_OF_2= 2    
 )(
     input   wire                            clk,
     input   wire                            rst, 
-    input   logic[CHARACTER_WIDTH-1:0]      current_character,
+    input   logic[CHARACTER_WIDTH*(2**CC_ID_BITS)-1:0]      current_characters,
+    //input   wire                            is_last_char,      
 
     input   logic                           input_pc_valid,
+    input   logic[CC_ID_BITS-1:0]           input_cc_id, 
     input   logic[PC_WIDTH-1:0]             input_pc, 
     output  logic                           input_pc_ready,
 
@@ -24,37 +27,38 @@ module regex_cpu_pipelined #(
     output  logic                           memory_valid,
 
  
-    output  logic                           output_pc_is_directed_to_current,
     output  logic                           output_pc_valid,
+    output  logic[CC_ID_BITS-1:0]           output_cc_id,
     output  logic[PC_WIDTH-1:0]             output_pc,
     input   logic                           output_pc_ready,
 
+    output  logic[(2**CC_ID_BITS)-1:0]      elaborating_chars,
     output  logic                           accepts,
-    output  logic                           running,
-    output  logic[FIFO_WIDTH_POWER_OF_2:0]  latency
+    output  logic                           running
 );
-    
+    localparam C_WINDOW_SIZE_IN_CHAR = 2**CC_ID_BITS ;
     //stage status
     logic [PC_WIDTH-1:0]                                         FETCH_REC_Pc            ,EXE1_Pc          , EXE2_Pc            ;
+	logic [CC_ID_BITS-1:0]										 FETCH_REC_Cc_id		 ,EXE1_Cc_id	   , EXE2_Cc_id			;
     logic [INSTRUCTION_WIDTH-1:0]                                FETCH_REC_Instr         ,EXE1_Instr       , EXE2_Instr         ;
     logic                                                        FETCH_REC_Instr_valid   ,EXE1_Instr_valid , EXE2_Instr_valid   ;
     logic                                                        FETCH_REC_has_to_save                                          ;
     //stage outputs
     logic                           FETCH_SEND_waits                                     , EXE1_waits             , EXE2_waits  ;                                           
-    logic [INSTRUCTION_WIDTH-1:0]                                FETCH_REC_Instr_next                                           ;         
-    logic                           FETCH_SEND_not_stall           , FETCH_REC_not_stall         , EXE1_not_stall             , EXE2_not_stall  ;
+    logic [INSTRUCTION_WIDTH-1:0]   FETCH_REC_Instr_next;         
+    logic                           FETCH_SEND_not_stall      , FETCH_REC_not_stall      , EXE1_not_stall         , EXE2_not_stall  ;
     logic                                                                                  EXE1_accepts           , EXE2_accepts;
     logic                                                                                  EXE1_completes_instr                 ;    
     
     //for cpu exe_. stages
-    logic                           EXE1_output_pc_not_ready                      , EXE2_output_pc_not_ready             ; 
-    logic                           EXE1_output_pc_ready                          , EXE2_output_pc_ready                 ;
-    logic                           EXE1_output_pc_is_directed_to_current         , EXE2_output_pc_is_directed_to_current;
-    logic [PC_WIDTH-1:0]            EXE1_output_pc                                , EXE2_output_pc                       ;
-    logic [PC_WIDTH  :0]            EXE1_output_pc_and_current                    , EXE2_output_pc_and_current           ;
-    logic                           EXE1_output_pc_valid                          , EXE2_output_pc_valid                 ;
-    // output arbiter
-    logic [PC_WIDTH  :0]            output_pc_and_current;
+    logic                             EXE1_output_pc_not_ready                      , EXE2_output_pc_not_ready             	; 
+    logic                             EXE1_output_pc_ready                          , EXE2_output_pc_ready                 	;
+    logic [CC_ID_BITS-1:0]			  EXE1_output_cc_id				            	, EXE2_output_cc_id		           		;
+    logic [PC_WIDTH-1:0]              EXE1_output_pc                                , EXE2_output_pc                       	;
+    logic [PC_WIDTH+CC_ID_BITS-1:0]   EXE1_output_pc_and_cc_id                      , EXE2_output_pc_and_cc_id             	;
+    logic                             EXE1_output_pc_valid                          , EXE2_output_pc_valid                 	;
+    // output arbiter  
+    logic [PC_WIDTH+CC_ID_BITS-1:0]   output_pc_and_cc_id;
 
     always_ff @(posedge clk ) 
     begin 
@@ -65,12 +69,15 @@ module regex_cpu_pipelined #(
             FETCH_REC_Instr_valid <= 1'b0;
                  EXE1_Instr_valid <= 1'b0;
                  EXE2_Instr_valid <= 1'b0; 
-            FETCH_REC_Pc          <= { (PC_WIDTH){1'b0} };
-                 EXE1_Pc          <= { (PC_WIDTH){1'b0} };                
-                 EXE2_Pc          <= { (PC_WIDTH){1'b0} }; 
+            FETCH_REC_Pc          <= {   (PC_WIDTH){1'b0}};
+                 EXE1_Pc          <= {   (PC_WIDTH){1'b0}};                
+                 EXE2_Pc          <= {   (PC_WIDTH){1'b0}}; 
             FETCH_REC_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};
                  EXE1_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};          
-                 EXE2_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}};                                  
+                 EXE2_Instr       <= {END_WITHOUT_ACCEPTING, { (INSTRUCTION_DATA_WIDTH) {1'b0}}}; 
+			FETCH_REC_Cc_id       <= {(CC_ID_BITS){1'b0}};
+                 EXE1_Cc_id       <= {(CC_ID_BITS){1'b0}};          
+                 EXE2_Cc_id       <= {(CC_ID_BITS){1'b0}};                             
             
         end
         else
@@ -83,9 +90,10 @@ module regex_cpu_pipelined #(
             end
             else
             begin //if stage stalled mantain state
-                EXE2_Pc             <= EXE2_Pc;
-                EXE2_Instr          <= EXE2_Instr;
+                EXE2_Pc             <= EXE2_Pc		   ;
+                EXE2_Instr          <= EXE2_Instr	   ;
                 EXE2_Instr_valid    <= EXE2_Instr_valid;
+				EXE2_Cc_id			<= EXE2_Cc_id	   ;
             end
 
 
@@ -102,13 +110,15 @@ module regex_cpu_pipelined #(
                     EXE2_Pc         <= EXE1_Pc         ;
                     EXE2_Instr      <= EXE1_Instr      ;
                     EXE2_Instr_valid<= EXE1_Instr_valid;
+					EXE2_Cc_id		<= EXE1_Cc_id      ;
                 end
             end
             else
             begin //if stage stalled mantain state
-                EXE1_Pc             <= EXE1_Pc;
-                EXE1_Instr          <= EXE1_Instr;    
-                EXE1_Instr_valid    <= EXE1_Instr_valid;
+                EXE1_Pc             <= EXE1_Pc			;
+                EXE1_Instr          <= EXE1_Instr		;    
+                EXE1_Instr_valid    <= EXE1_Instr_valid ;
+				EXE1_Cc_id			<= EXE1_Cc_id		;
             end
             
             
@@ -121,17 +131,20 @@ module regex_cpu_pipelined #(
                 EXE1_Pc             <= FETCH_REC_Pc         ;
                 EXE1_Instr          <= FETCH_REC_Instr_next ;
                 EXE1_Instr_valid    <= FETCH_REC_Instr_valid;
+				EXE1_Cc_id			<= FETCH_REC_Cc_id		;
             end
             else
             begin
-                FETCH_REC_Pc         <= FETCH_REC_Pc;
-                FETCH_REC_Instr      <= FETCH_REC_Instr_next;    
-                FETCH_REC_Instr_valid<= FETCH_REC_Instr_valid;
+                FETCH_REC_Pc         	<= FETCH_REC_Pc;
+                FETCH_REC_Instr      	<= FETCH_REC_Instr_next;    
+                FETCH_REC_Instr_valid	<= FETCH_REC_Instr_valid;
+				FETCH_REC_Cc_id			<= FETCH_REC_Cc_id;
             end
 
             if(FETCH_SEND_not_stall )
             begin //FETCH stall accounts for non ready FETCH_REC_stage
                 FETCH_REC_Pc                 <= input_pc    ;
+				FETCH_REC_Cc_id				 <= input_cc_id ;
                 FETCH_REC_Instr_valid        <= 1'b1        ;
                 FETCH_REC_has_to_save        <= 1'b1        ;
             end
@@ -179,7 +192,7 @@ module regex_cpu_pipelined #(
         EXE1_accepts                          = 1'b0;
         EXE1_output_pc_valid                  = 1'b0;
         EXE1_output_pc                        = EXE1_Pc + 1;
-        EXE1_output_pc_is_directed_to_current = 1'b1;
+        EXE1_output_cc_id				  	  = EXE1_Cc_id ;
         //not requires to go through other stages
         EXE1_completes_instr                  = 1'b1;
         EXE1_waits                            = 1'b0;
@@ -190,34 +203,34 @@ module regex_cpu_pipelined #(
             case(EXE1_Instr[INSTRUCTION_TYPE_START:INSTRUCTION_TYPE_END])
                 ACCEPT:
                 begin
-                    if( current_character == { (CHARACTER_WIDTH){1'b0}} ) begin
-                        EXE1_accepts                         = 1'b1;
-                        EXE1_completes_instr                 = 1'b1;
+                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] == { (CHARACTER_WIDTH){1'b0}} ) begin
+                        EXE1_accepts                        = 1'b1;
+                        EXE1_completes_instr                = 1'b1;
                     end
                 end
                 ACCEPT_PARTIAL:
                 begin
-                    EXE1_accepts         = 1'b1;
-                    EXE1_completes_instr                 = 1'b1;
+                    EXE1_accepts         					= 1'b1;
+                    EXE1_completes_instr                 	= 1'b1;
                 end
                 SPLIT:
                 begin
                     
-                    EXE1_output_pc_valid                     = 1'b1;
-                    EXE1_output_pc                           = EXE1_Pc + 1;
-                    EXE1_output_pc_is_directed_to_current    = 1'b1;
-                    EXE1_completes_instr                     = 1'b0;
+                    EXE1_output_pc_valid                    = 1'b1;
+                    EXE1_output_pc                          = EXE1_Pc + 1;
+					EXE1_output_cc_id					  	= EXE1_Cc_id ;
+                    EXE1_completes_instr                    = 1'b0;
                     if(~EXE1_output_pc_ready)
                     begin
-                        EXE1_waits                           = 1'b1;
+                        EXE1_waits                          = 1'b1;
                     end
                 end
                 MATCH:
                 begin
-                    if( current_character == EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END]) begin
+                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] == EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END] ) begin
                         EXE1_output_pc_valid                 = 1'b1;
                         EXE1_output_pc                       = EXE1_Pc + 1;
-                        EXE1_output_pc_is_directed_to_current= 1'b0;
+						EXE1_output_cc_id 					 = EXE1_Cc_id + 1;
                         if(~EXE1_output_pc_ready)
                         begin
                             EXE1_waits                       = 1'b1;
@@ -229,7 +242,7 @@ module regex_cpu_pipelined #(
                    
                     EXE1_output_pc_valid                 = 1'b1;
                     EXE1_output_pc                       = EXE1_Pc + 1;
-                    EXE1_output_pc_is_directed_to_current= 1'b0;
+                    EXE1_output_cc_id 					 = EXE1_Cc_id + 1;
                     if(~EXE1_output_pc_ready)
                     begin
                         EXE1_waits                       = 1'b1;
@@ -238,12 +251,12 @@ module regex_cpu_pipelined #(
                 end
                 JMP:
                 begin
-                    EXE1_output_pc_valid                     = 1'b1;
-                    EXE1_output_pc                           = EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
-                    EXE1_output_pc_is_directed_to_current    = 1'b1;
+                    EXE1_output_pc_valid                    = 1'b1;
+                    EXE1_output_pc                          = EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                    EXE1_output_cc_id				     	= EXE1_Cc_id;
                     if( ~EXE1_output_pc_ready)
                     begin
-                        EXE1_waits                           = 1'b1;
+                        EXE1_waits                          = 1'b1;
                     end   
                 end
                 END_WITHOUT_ACCEPTING:
@@ -261,7 +274,7 @@ module regex_cpu_pipelined #(
         EXE2_accepts                          = 1'b0;
         EXE2_output_pc_valid                  = 1'b0;
         EXE2_output_pc                        = EXE2_Pc + 1;
-        EXE2_output_pc_is_directed_to_current = 1'b1;
+        EXE2_output_cc_id					  = EXE2_Cc_id;
         //not requires to go through other stages
         EXE2_waits                            = 1'b0;
         if( EXE2_Instr_valid ) 
@@ -271,7 +284,7 @@ module regex_cpu_pipelined #(
                 begin
                     EXE2_output_pc_valid                  = 1'b1;
                     EXE2_output_pc                        = EXE2_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
-                    EXE2_output_pc_is_directed_to_current = 1'b1;
+                    EXE2_output_cc_id					  = EXE2_Cc_id;
                     if(~EXE2_output_pc_ready)
                     begin
                         EXE2_waits                        = 1'b1;
@@ -281,32 +294,48 @@ module regex_cpu_pipelined #(
         end
     end
 
+	//elaborating chars computing
+	always_comb begin
+		elaborating_chars 					= {(C_WINDOW_SIZE_IN_CHAR){1'b0}};
+		if (FETCH_REC_Instr_valid )
+		begin
+			elaborating_chars[FETCH_REC_Cc_id] 	= 1'b1;
+		end
+		if (EXE1_Instr_valid 	  )
+		begin
+			elaborating_chars[EXE1_Cc_id]		= 1'b1;
+		end
 
-    assign EXE1_output_pc_and_current   = {EXE1_output_pc, EXE1_output_pc_is_directed_to_current};
+		if (EXE2_Instr_valid	  )
+		begin
+			elaborating_chars[EXE2_Cc_id] 		= 1'b1;
+		end
+	end
 
-    assign EXE2_output_pc_and_current   = {EXE2_output_pc, EXE2_output_pc_is_directed_to_current};
+
+    assign EXE1_output_pc_and_cc_id   = {EXE1_output_pc, EXE1_output_cc_id				 };
+    assign EXE2_output_pc_and_cc_id   = {EXE2_output_pc, EXE2_output_cc_id				 };
     
 
     //round robin arbiter for EXE1_output
     arbiter_2_rr #(
-        .DWIDTH(PC_WIDTH+1                                    )
-        
+        .DWIDTH(PC_WIDTH+CC_ID_BITS                           )
     ) arbiter_output_pc_port (
         .clk       ( clk                                      ),
-        .rst     ( rst                                      ),
+        .rst       ( rst                                      ),
         .in_0_ready( EXE1_output_pc_ready                     ),
-        .in_0_data ( EXE1_output_pc_and_current               ),
+        .in_0_data ( EXE1_output_pc_and_cc_id                 ),
         .in_0_valid( EXE1_output_pc_valid                     ),
         .in_1_ready( EXE2_output_pc_ready                     ),
-        .in_1_data ( EXE2_output_pc_and_current               ),
+        .in_1_data ( EXE2_output_pc_and_cc_id                 ),
         .in_1_valid( EXE2_output_pc_valid                     ),
         .out_ready ( output_pc_ready                          ),
-        .out_data  ( output_pc_and_current                    ),
+        .out_data  ( output_pc_and_cc_id                      ),
         .out_valid ( output_pc_valid                          )
     );
 
-    assign output_pc                        = output_pc_and_current[1+:PC_WIDTH];
-    assign output_pc_is_directed_to_current = output_pc_and_current[          0];
+    assign output_pc                        = output_pc_and_cc_id[CC_ID_BITS +:PC_WIDTH];
+    assign output_cc_id				        = output_pc_and_cc_id[CC_ID_BITS-1:0];
     assign accepts =                          EXE1_accepts      || EXE2_accepts ;
     assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid ;
     assign latency = 0; //EXE1_buffered_count + EXE2_buffered_count;

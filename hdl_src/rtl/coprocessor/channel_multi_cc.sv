@@ -61,7 +61,7 @@ module channel_multi_cc #(
     //create present_cc_id[i]    
     always_ff @(posedge ck) 
     begin
-        if(rst):
+        if(rst)
         begin
             for (int i=0; i<2**CC_ID_BITS; ++i) begin
                 cc_id_count[i] <= {(CHANNEL_COUNT_WIDTH){1'b0}};

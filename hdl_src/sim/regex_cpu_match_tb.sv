@@ -150,7 +150,7 @@ module regex_cpu_match_tb();
     initial begin
         reg [CHARACTER_WIDTH-1:0]   a_character, a_different_character;
         reg [PC_WIDTH-1:0]          a_pc;
-        reg [CC_ID_BITS-1:0]        a_cc_id;
+		reg [CC_ID_BITS-1:0]		expected_res_cc_id;
         reg [CHARACTER_WIDTH-1:0]   max_character;
         reg [CHARACTER_WIDTH-1:0]   max_character_difference;
         reg [PC_WIDTH-1:0]          max_pc;
@@ -171,13 +171,15 @@ module regex_cpu_match_tb();
 
         for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
             for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
-                for( a_cc_id=0; a_cc_id < (2**CC_ID_BITS)-1; a_cc_id +=1) begin
+                for( int a_cc_id=0; a_cc_id < (2**CC_ID_BITS); a_cc_id +=1) begin
 
                     current_characters <= {(2**CC_ID_BITS){a_character}};
                     //expected match
-                    load_pc(a_pc, a_cc_id);
+                    load_pc(a_pc, a_cc_id[CC_ID_BITS-1:0]);
                     supply_memory({MATCH,a_character } ,a_pc);
-                    wait_pc_output(a_pc+8'h01, a_cc_id+1, 1'b0);
+					if  ( a_cc_id[CC_ID_BITS-1:0] == {(CC_ID_BITS){1'b1}} ) expected_res_cc_id =  { {(CC_ID_BITS-1){1'b0}}, 1'b1} ;
+					else 													expected_res_cc_id = a_cc_id+1;
+                    wait_pc_output(a_pc+8'h01, expected_res_cc_id[CC_ID_BITS-1:0], 1'b0);
                     //ensure it can wait other instructions
                     repeat (10)
                         begin

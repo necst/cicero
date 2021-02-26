@@ -113,19 +113,18 @@ module regex_cpu #(
             MATCH:
             begin
                 if( current_characters[currCcId*CHARACTER_WIDTH+:CHARACTER_WIDTH] == currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END]) begin
-                    output_pc_fromInstruction_valid                  = 1'b1;
-                    output_pc_fromInstruction                        = currPc + 1;
-                    output_cc_id_fromInstruction                     = currCcId + 1;
-                    nextState_fromInstruction                        = S_IDLE;
+                    output_pc_fromInstruction_valid                 = 1'b1;
+                    output_pc_fromInstruction                       = currPc + 1;
+					output_cc_id_fromInstruction = currCcId + 1;
+                    nextState_fromInstruction                       = S_IDLE;
                 end
             end
             MATCH_ANY:
             begin
                 
-                output_pc_fromInstruction_valid                  = 1'b1;
-                output_pc_fromInstruction                        = currPc + 1;
-                output_cc_id_fromInstruction                     = currCcId + 1;
-                nextState_fromInstruction                        = S_IDLE;
+                output_pc_fromInstruction_valid                 = 1'b1;
+                output_cc_id_fromInstruction = currCcId + 1;
+                nextState_fromInstruction                       = S_IDLE;
                 
             end
             JMP:
@@ -157,6 +156,7 @@ module regex_cpu #(
                  
         nextState                        = curState;
         nextInstr                        = currInstr;
+		nextCcId        				 = currCcId;
         nextPc                           = currPc;
 
         elaborating_chars                = {(CC_ID_BITS){1'b0}};

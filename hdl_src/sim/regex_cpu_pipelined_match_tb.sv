@@ -1,69 +1,77 @@
 `timescale 1ns / 10ps
 
-import instruction::*;
+import instruction_package::*;
 
 module regex_cpu_pipelined_match_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
     parameter  PC_WIDTH          = 8;
+	parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
     parameter  MEMORY_ADDR_WIDTH = 11;
 
     logic                             clk                               ;
     logic                             rst                             ; 
-    logic[CHARACTER_WIDTH-1:0]        current_character                 ;
+    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters                 ;
     logic                             input_pc_valid                    ;
+	logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
     logic                             input_pc_ready                    ;
     logic                             memory_ready                      ;
     logic[MEMORY_ADDR_WIDTH-1:0]      memory_addr                       ;
     logic[MEMORY_WIDTH-1     :0]      memory_data                       ;
     logic                             memory_valid                      ;
-    logic                             output_pc_is_directed_to_current  ;
+	logic[CC_ID_BITS-1:0]             output_cc_id                      ;
     logic                             output_pc_valid                   ;
     logic[PC_WIDTH-1:0]               output_pc                         ;
     logic                             output_pc_ready                   ;
     logic                             accepts                           ;
     logic                             running                           ;
+	logic[(2**CC_ID_BITS)-1:0]        elaborating_chars     ;
 
     regex_cpu_pipelined #(
-        .PC_WIDTH             (PC_WIDTH             ),
-        .CHARACTER_WIDTH      (CHARACTER_WIDTH      ),
-        .MEMORY_WIDTH         (MEMORY_WIDTH         ),
-        .MEMORY_ADDR_WIDTH    (MEMORY_ADDR_WIDTH    ),
-        .FIFO_WIDTH_POWER_OF_2(2                    )   
+        .PC_WIDTH             	(PC_WIDTH             	),
+        .CHARACTER_WIDTH      	(CHARACTER_WIDTH      	),
+        .MEMORY_WIDTH         	(MEMORY_WIDTH         	),
+        .MEMORY_ADDR_WIDTH    	(MEMORY_ADDR_WIDTH    	),
+        .FIFO_WIDTH_POWER_OF_2	(2                    	),
+		.CC_ID_BITS        	  	(CC_ID_BITS        		)   
     )a_cpu_under_test(
-        .clk                               ( clk                               ),
-        .rst                             ( rst                             ), 
-        .current_character                 ( current_character                 ),
-        .input_pc_valid                    ( input_pc_valid                    ),
-        .input_pc                          ( input_pc                          ), 
-        .input_pc_ready                    ( input_pc_ready                    ),
-        .memory_ready                      ( memory_ready                      ),
-        .memory_addr                       ( memory_addr                       ),
-        .memory_data                       ( memory_data                       ),
-        .memory_valid                      ( memory_valid                      ),
-        .output_pc_is_directed_to_current  ( output_pc_is_directed_to_current  ),
-        .output_pc_valid                   ( output_pc_valid                   ),
-        .output_pc                         ( output_pc                         ),
-        .output_pc_ready                   ( output_pc_ready                   ),
-        .accepts                           ( accepts                           ),
-        .running                           ( running                           )
-);
+        .clk           	                    ( clk                               ),
+        .rst                             	( rst                             	), 
+        .current_characters                 ( current_characters                ),
+        .input_pc_valid                    	( input_pc_valid                    ),
+		.input_cc_id                     	( input_cc_id                       ),
+        .input_pc                          	( input_pc                          ), 
+        .input_pc_ready                    	( input_pc_ready                    ),
+        .memory_ready                      	( memory_ready                      ),
+        .memory_addr                       	( memory_addr                       ),
+        .memory_data                       	( memory_data                       ),
+        .memory_valid                      	( memory_valid                      ),
+        .output_pc_valid                   	( output_pc_valid                   ),
+        .output_cc_id                   	( output_cc_id                      ),
+        .output_pc                         	( output_pc                         ),
+        .output_pc_ready                   	( output_pc_ready                   ),
+        .accepts                           	( accepts                           ),
+        .elaborating_chars                  ( elaborating_chars                 ),
+		.running							( running)
+	);
 
     // clock generator  
     always begin
         #CLOCK_SEMI_PERIOD clk = ~ clk;
     end
 
-    task load_pc_and_supply_memory(  input reg[PC_WIDTH-1    :0] pc,
-                                    input reg[MEMORY_WIDTH-1     :0] value
+   task load_pc_and_supply_memory(  input reg[PC_WIDTH-1    :0] pc,
+                                    input reg[MEMORY_WIDTH-1:0] value,
+									input reg[CC_ID_BITS-1  :0] a_cc_id
                                     );
     begin
         
         input_pc_valid <= 1'b1;
         input_pc       <= pc;
+		input_cc_id	   <= a_cc_id;
         @(posedge clk);
         memory_ready   <= 1'b1;
         @(posedge clk);
@@ -86,7 +94,7 @@ module regex_cpu_pipelined_match_tb();
             $display("regex_cpu want something frem memory even if it had just fetched!");
             $stop();
         end
-        if(running !== 1'b1)
+        if(elaborating_chars[a_cc_id] !== 1'b1)
         begin
             $display("regex_cpu seems not having received instruction");
             $stop();
@@ -95,8 +103,8 @@ module regex_cpu_pipelined_match_tb();
     end
     endtask
 
-    task wait_pc_output( input reg[MEMORY_ADDR_WIDTH-1:0] expected_pc,
-                         input reg                        expected_is_directed_to_current,
+      task wait_pc_output( input reg[MEMORY_ADDR_WIDTH-1:0] expected_pc,
+                         input reg[CC_ID_BITS-1:0]        expected_cc_id,
                          input reg                        wait_immediately_after );
     begin
 
@@ -107,8 +115,9 @@ module regex_cpu_pipelined_match_tb();
                 $display("regex_cpu stopped running without producing any pc!");
                 $stop();
             end
-        @(posedge clk);
         output_pc_ready    <= 1'b1;
+        @(posedge clk);
+        
 
         if( output_pc_valid !== 1'b1)
         begin
@@ -120,9 +129,9 @@ module regex_cpu_pipelined_match_tb();
             $display("regex_cpu output pc %h != %h", output_pc, expected_pc);
             $stop();
         end
-        if(output_pc_is_directed_to_current !== expected_is_directed_to_current)
+        if(output_cc_id !== expected_cc_id)
         begin
-            $display("regex_cpu output pc %h != %h", output_pc_is_directed_to_current, expected_is_directed_to_current);
+            $display("regex_cpu output cc id %h != %h", output_cc_id, expected_cc_id);
             $stop();
         end
         @(posedge clk);
@@ -162,58 +171,61 @@ module regex_cpu_pipelined_match_tb();
 
         for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
             for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
-                current_character <= a_character;
-                @(posedge clk);
-                //expected match
-                load_pc_and_supply_memory(a_pc,{MATCH,a_character } );
-                wait_pc_output(a_pc+8'h01, 1'b0, 1'b0);
-                //ensure it can wait other instructions
-                repeat (3)
-                    begin
-                        @(posedge clk);
-                        if( running == 1'b1)
-                        begin
-                            $display("regex_cpu still running!");
-                            $stop();
-                        end
-                        if( output_pc_valid == 1'b1)
-                        begin
-                            $display("basic block didn't need to produce pc!");
-                            $stop();
-                        end
-                    end
-                $display("%h positive match with %c ok", a_pc, a_character);
-                //test non match
-                for (logic [CHARACTER_WIDTH-1:0] character_difference=1  ; character_difference < max_character_difference && a_character+character_difference < {CHARACTER_WIDTH{1'b1}} ; character_difference+=1 ) begin
-                    //expect a non match no output and wait for another instruction raised.
-                    a_different_character  = a_character+character_difference;
-                    current_character      <= a_character;
-                    $display("%h start negative match with currchar=%c, match_char=%c", a_pc, a_character, a_different_character);
-                    load_pc_and_supply_memory(a_pc,{MATCH,a_different_character });
-                    while(running)
-                    begin
-                        if( output_pc_valid == 1'b1)
-                        begin
-                            $display("basic block didn't need to produce pc!");
-                            $stop();
-                        end
-                        @(posedge clk);
-                    end
-                    $display("%h %c ok", a_pc, a_different_character);
-                    repeat (3)
-                    begin
-                        @(posedge clk);
-                        if( running == 1'b1)
-                        begin
-                            $display("regex_cpu still running!");
-                            $stop();
-                        end
-                        if( output_pc_valid == 1'b1)
-                        begin
-                            $display("basic block didn't need to produce pc!");
-                            $stop();
-                        end
-                    end
+				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id++) begin
+					
+					current_characters <= {(2**CC_ID_BITS){a_character}};
+					@(posedge clk);
+					//expected match
+					load_pc_and_supply_memory(a_pc,{MATCH,a_character }, a_cc_id );
+					wait_pc_output(a_pc+8'h01, a_cc_id+1, 1'b0);
+					//ensure it can wait other instructions
+					repeat (3)
+						begin
+							@(posedge clk);
+							if( running == 1'b1)
+							begin
+								$display("regex_cpu still running!");
+								$stop();
+							end
+							if( output_pc_valid == 1'b1)
+							begin
+								$display("basic block didn't need to produce pc!");
+								$stop();
+							end
+						end
+					$display("%h positive match with %c ok", a_pc, a_character);
+					//test non match
+					for (logic [CHARACTER_WIDTH-1:0] character_difference=1  ; character_difference < max_character_difference && a_character+character_difference < {CHARACTER_WIDTH{1'b1}} ; character_difference+=1 ) begin
+						//expect a non match no output and wait for another instruction raised.
+						a_different_character  = a_character+character_difference;
+						current_characters <= {(2**CC_ID_BITS){a_character}};
+						$display("%h start negative match with currchar=%c, match_char=%c", a_pc, a_character, a_different_character);
+						load_pc_and_supply_memory(a_pc,{MATCH,a_different_character }, a_cc_id);
+						while(running)
+						begin
+							if( output_pc_valid == 1'b1)
+							begin
+								$display("basic block didn't need to produce pc!");
+								$stop();
+							end
+							@(posedge clk);
+						end
+						$display("%h %c ok", a_pc, a_different_character);
+						repeat (3)
+						begin
+							@(posedge clk);
+							if( running == 1'b1)
+							begin
+								$display("regex_cpu still running!");
+								$stop();
+							end
+							if( output_pc_valid == 1'b1)
+							begin
+								$display("basic block didn't need to produce pc!");
+								$stop();
+							end
+						end
+					end
                 end
             end
         end

@@ -57,7 +57,7 @@ module coprocessor_top #(
     parameter  BB_N_Y                = 0,
     parameter  CACHE_WIDTH_BITS      = 5 ,
     parameter  CACHE_BLOCK_WIDTH_BITS= 2 ,
-    parameter  BASIC_BLOCK_PIPELINED = 0 ,
+    parameter  BASIC_BLOCK_PIPELINED = 1 ,
     parameter  REG_WIDTH             = 32,
     parameter  CONSIDER_PIPELINE_FIFO= 0,
     parameter  CC_ID_BITS            = 2
@@ -217,11 +217,10 @@ module coprocessor_top #(
             
             if ( start_cc_pointer[REG_WIDTH-1:CC_ID_BITS] == end_cc_pointer[REG_WIDTH-1:CC_ID_BITS])
             begin
-                next_ccs_end_of_s[end_cc_pointer[0+:CC_ID_BITS]]   = 1'b1;
-                for (int i=end_cc_pointer[0+:CC_ID_BITS]; i<C_WINDOW_SIZE_IN_CHARS; ++i) begin
-                    next_ccs_after_end_of_s[i] = 1'b1;
-                end
+                next_ccs_end_of_s		[end_cc_pointer[0+:CC_ID_BITS]]   = 1'b1;
                 
+				next_ccs_after_end_of_s [C_WINDOW_SIZE_IN_CHARS-1:0]	  = {next_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0} | {next_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0};
+				                
             end
 
             
@@ -233,7 +232,7 @@ module coprocessor_top #(
             
             next_ccs_buffer                     = memory_for_cc.data;
             next_ccs_window[0+:CHARACTER_WIDTH] = memory_for_cc.data[0+:CHARACTER_WIDTH];
-            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end;
+            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end ;
             
             next_ccs_end_of_s[cur_ccs_window_pointer_end[0+:CC_ID_BITS]] = (cur_ccs_window_pointer_end == end_cc_pointer);
             
@@ -248,7 +247,7 @@ module coprocessor_top #(
         begin
             //next_ccs_window[cur_ccs_window_pointer_end[0+:CC_ID_BITS]*CHARACTER_WIDTH+:CHARACTER_WIDTH]  = cur_ccs_buffer[cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS +:CHARACTER_WIDTH];
             next_ccs_window[cur_ccs_window_pointer_end[0+:CC_ID_BITS]*CHARACTER_WIDTH+:CHARACTER_WIDTH]  = cur_ccs_buffer[cur_ccs_window_pointer_end[0+:C_BUFFER_ADDR_OFFSET]*CHARACTER_WIDTH +:CHARACTER_WIDTH];
-            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end;
+            next_ccs_window_pointer_end = tmp_incr_cc_window_pointer_end ;
 
             next_ccs_end_of_s[cur_ccs_window_pointer_end[0+:CC_ID_BITS]] = (cur_ccs_window_pointer_end == end_cc_pointer);
             
