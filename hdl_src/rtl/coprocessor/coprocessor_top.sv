@@ -218,8 +218,10 @@ module coprocessor_top #(
             if ( start_cc_pointer[REG_WIDTH-1:CC_ID_BITS] == end_cc_pointer[REG_WIDTH-1:CC_ID_BITS])
             begin
                 next_ccs_end_of_s		[end_cc_pointer[0+:CC_ID_BITS]]   = 1'b1;
-                
-				next_ccs_after_end_of_s [C_WINDOW_SIZE_IN_CHARS-1:0]	  = {next_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0} | {next_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0};
+                for (int i=end_cc_pointer[0+:CC_ID_BITS]; i<2**CC_ID_BITS; ++i) begin
+					next_ccs_after_end_of_s [i] = 1'b1;
+				end 								  
+				//next_ccs_after_end_of_s [C_WINDOW_SIZE_IN_CHARS-1:0]	  = {next_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0} | {next_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0};
 				                
             end
 
@@ -287,18 +289,18 @@ module coprocessor_top #(
                       //latched in current character register. 
                       //update is_even_character ff 
                     next_state                  = CICERO_FETCH_CCS_BUFFER;
-                    next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | {cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
-                    next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
-                    next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
+                    next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | {cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
+                    next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
+                    next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
                     move_next_character         = 1'b1;
                 end
             end
             5'b00000:
             begin
                 next_state                  = CICERO_FETCH_FROM_CCS_BUFFER;
-                next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | { cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
-                next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
-                next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-1:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
+                next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | { cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};
+                next_ccs_enable             = { cur_ccs_enable   [C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_enable    [C_WINDOW_SIZE_IN_CHARS-1]} & ~next_ccs_after_end_of_s;
+                next_ccs_first_cc           = { cur_ccs_first_cc [C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_first_cc  [C_WINDOW_SIZE_IN_CHARS-1]};
                 move_next_character         = 1'b1;
             end  
             endcase

@@ -115,7 +115,7 @@ module regex_cpu #(
                 if( current_characters[currCcId*CHARACTER_WIDTH+:CHARACTER_WIDTH] == currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END]) begin
                     output_pc_fromInstruction_valid                 = 1'b1;
                     output_pc_fromInstruction                       = currPc + 1;
-					output_cc_id_fromInstruction = currCcId + 1;
+					output_cc_id_fromInstruction 					= currCcId + 1;
                     nextState_fromInstruction                       = S_IDLE;
                 end
             end
