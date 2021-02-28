@@ -44,7 +44,7 @@ for (j=0; j< DWIDTH; j++)
 begin
     for (i=0; i< N     ; i++)
     begin
-        assign data_masked[j][i]    = in_data[i][j] & in_ready[i];
+        assign data_masked[j][i]    = in_data[i][j] & in_ready_packed[i];
     end
     assign out_data   [j]       = |(data_masked [j]);
 end

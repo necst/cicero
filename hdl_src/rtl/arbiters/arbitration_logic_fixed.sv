@@ -5,9 +5,9 @@ module arbitration_logic_fixed #(
     output logic [N-1:0] grant 
 );
 
-//this module encapsule the combinational 
+//this module encapsulate the combinational 
 //logic needed to realize a fixed_priority_arbiter,
-//so that req[i] has higher priority than req[i+j] where j > 0
+//so that req[i] has higher priority than req[i+j] when j > 0
 //grant[i] = req[i] & ~ higher_prio_req[i-1]
 wire [N-1:0] higher_prio_req;
 assign higher_prio_req[0]      = 1'b0;
