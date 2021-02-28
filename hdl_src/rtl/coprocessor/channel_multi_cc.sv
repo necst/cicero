@@ -1,6 +1,6 @@
 module channel_multi_cc #(
     parameter PC_WIDTH           =8    ,
-    parameter CC_ID              =2    ,
+    parameter CC_ID_BITS         =2    ,
     parameter CHANNEL_COUNT_WIDTH=10   ,
     parameter LATENCY_COUNT_WIDTH=10   
 )
@@ -9,19 +9,19 @@ module channel_multi_cc #(
     input wire              rst,
     channel_iface.in        in,
     channel_iface.out       out,
-    output wire [2**CC_ID-1:0] present_cc_id  
+    output logic [2**CC_ID_BITS-1:0] present_cc_id  
 );
     wire channel_input_ready    , channel_input_not_ready;
     wire channel_output_valid   , channel_output_not_valid;
     wire [CHANNEL_COUNT_WIDTH-1:0]   fifo_count;
 
-    wire [CHANNEL_COUNT_WIDTH-1:0]   cc_id_count [2**CC_ID_BITS-1:0];
+    logic [CHANNEL_COUNT_WIDTH-1:0]   cc_id_count [2**CC_ID_BITS-1:0];
 
     logic [LATENCY_COUNT_WIDTH-1:0]  channel_old_latency, channel_old_latency_next;
 
     fifo #(
-        .DWIDTH     (WIDTH                     ),
-        .COUNT_WIDTH(PC_WIDTH+CC_ID            )
+        .DWIDTH     (PC_WIDTH+CC_ID_BITS       ),
+        .COUNT_WIDTH(CHANNEL_COUNT_WIDTH       )
     ) fifo_channel(
         .clk        (clk                       ), 
         .rst        (rst                       ), 
@@ -58,8 +58,8 @@ module channel_multi_cc #(
     end 
 
 
-    //create present_cc_id[i]    
-    always_ff @(posedge ck) 
+    //create present_cc_id_BITS[i]    
+    always_ff @(posedge clk) 
     begin
         if(rst)
         begin
@@ -71,12 +71,12 @@ module channel_multi_cc #(
         begin
             if (in.valid && channel_input_ready)
             begin
-                cc_id_count[in.data[0+:CC_ID]] <= cc_id_count[in.data[0+:CC_ID]]+1;
+                cc_id_count[in.data[0+:CC_ID_BITS]] <= cc_id_count[in.data[0+:CC_ID_BITS]]+1;
             end
 
             if (out.ready && channel_output_valid)
             begin
-                cc_id_count[in.data[0+:CC_ID]] <= cc_id_count[in.data[0+:CC_ID]]-1;
+                cc_id_count[in.data[0+:CC_ID_BITS]] <= cc_id_count[in.data[0+:CC_ID_BITS]]-1;
             end
         end
     end
@@ -84,7 +84,7 @@ module channel_multi_cc #(
     always_comb 
     begin
         for (int i=0; i<2**CC_ID_BITS; ++i) begin
-            present_cc_id[i] =  (cc_id_count[in.data[0+:CC_ID]] == 0);
+            present_cc_id[i] =  (cc_id_count[in.data[0+:CC_ID_BITS]] == 0);
         end
     end
 

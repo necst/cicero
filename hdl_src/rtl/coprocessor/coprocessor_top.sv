@@ -218,10 +218,12 @@ module coprocessor_top #(
             if ( start_cc_pointer[REG_WIDTH-1:CC_ID_BITS] == end_cc_pointer[REG_WIDTH-1:CC_ID_BITS])
             begin
                 next_ccs_end_of_s		[end_cc_pointer[0+:CC_ID_BITS]]   = 1'b1;
-                for (int i=end_cc_pointer[0+:CC_ID_BITS]; i<2**CC_ID_BITS; ++i) begin
-					next_ccs_after_end_of_s [i] = 1'b1;
-				end 								  
-				//next_ccs_after_end_of_s [C_WINDOW_SIZE_IN_CHARS-1:0]	  = {next_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0} | {next_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0};
+                //for (int i=end_cc_pointer[0+:CC_ID_BITS]; i<2**CC_ID_BITS; i++) begin
+				//	next_ccs_after_end_of_s [i] = 1'b1;
+
+				//end 								  
+				next_ccs_after_end_of_s									  = '0;
+				next_ccs_after_end_of_s [C_WINDOW_SIZE_IN_CHARS-1:0]	  = {next_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0} | {next_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1:1], 1'b0};
 				                
             end
 
@@ -358,8 +360,9 @@ module coprocessor_top #(
             .all_bb_full                (all_bb_full                )
         );
     end 
-    else if(BB_N==1)
-    begin*/
+    else*/
+	if(BB_N==1)
+    begin
         topology_single #(
             .PC_WIDTH                   (PC_WIDTH                   ),
             .LATENCY_COUNT_WIDTH        (LATENCY_COUNT_WIDTH        ),
@@ -386,7 +389,7 @@ module coprocessor_top #(
             .override                   (override_pc                ),
             .memory_cc                  (memory_for_cc              )
         );
-    /*end
+    end
     else 
     begin
         topology_token_ring #(
@@ -405,17 +408,18 @@ module coprocessor_top #(
         )a_topology(
             .clk                        (clk                        ),
             .rst                        (rst                        ),
-            .cur_cc                     (cur_cc                     ),
-            .cur_is_even_character      (cur_is_even_character      ),
-            .memory                     (memory_muxed.out           ),
-            .override                   (override_pc                ),
-            .memory_cc                  (memory_for_cc              ),
-            .enable                     (bbs_go                     ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
-            .all_bb_full                (all_bb_full                )
+            .all_bb_full                (all_bb_full                ),
+            .enable_chars               (cur_ccs_enable             ),
+            .elaborating_chars          (elaborating_chars          ),
+            .cur_ccs                    (cur_ccs_window             ),
+            .new_char                   (move_next_character        ),
+            .memory                     (memory_muxed.out           ),
+            .override                   (override_pc                ),
+            .memory_cc                  (memory_for_cc              )
         );
-    end*/
+    end
 
     assign  memory_muxed.ready =    memory_ready;
     assign  memory_addr        =    memory_muxed.addr;
