@@ -338,6 +338,6 @@ module regex_cpu_pipelined #(
     assign output_cc_id				        = output_pc_and_cc_id[CC_ID_BITS-1:0];
     assign accepts =                          EXE1_accepts      || EXE2_accepts ;
     assign running = FETCH_REC_Instr_valid || EXE1_Instr_valid  || EXE2_Instr_valid ;
-    assign latency = 0; //EXE1_buffered_count + EXE2_buffered_count;
+
     
 endmodule 

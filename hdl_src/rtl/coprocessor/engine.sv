@@ -97,7 +97,6 @@ module engine #(
     logic [C_WINDOW_SIZE_IN_CHARS-1:0]  regex_cpu_elaborating_chars;
 
     localparam                          REGEX_CPU_FIFO_WIDTH_POWER_OF_2 = 2;
-    logic [REGEX_CPU_FIFO_WIDTH_POWER_OF_2:0] regex_cpu_latency;
     //storage part of the basic block
     //cache wires
     wire                                regex_cpu_memory_ready      ;
@@ -107,7 +106,7 @@ module engine #(
     wire                                regex_cpu_memory_valid      ;
     
     //FIFO signals
-    logic                               fifo_data_in_ready          [C_WINDOW_SIZE_IN_CHARS-1:0] ;
+    logic [C_WINDOW_SIZE_IN_CHARS-1:0]  fifo_data_in_ready           ;
     logic [C_WINDOW_SIZE_IN_CHARS-1:0]  fifo_data_in_not_ready      ;
     logic [PC_WIDTH+CC_ID_BITS-1:0]     fifo_data_in                [C_WINDOW_SIZE_IN_CHARS-1:0] ;
     logic                               fifo_data_in_valid          [C_WINDOW_SIZE_IN_CHARS-1:0] ;
@@ -142,8 +141,11 @@ module engine #(
         for (int j=0; j < C_WINDOW_SIZE_IN_CHARS; ++j) begin
             fifo_data_in_valid [j]        = 1'b0;
         end
-        fifo_data_in_valid[input_cc_id]   = input_pc_valid;
-        input_pc_ready                    = fifo_data_in_ready[input_cc_id];
+        if ( input_pc_valid )
+        begin
+            fifo_data_in_valid[input_cc_id]   = 1'b1;        
+        end
+        input_pc_ready                    = &fifo_data_in_ready;
     end
 
     //FIFOs
@@ -288,7 +290,6 @@ module engine #(
             .running                            (regex_cpu_running                  ),
             .elaborating_chars                  (regex_cpu_elaborating_chars        )
         );
-        assign regex_cpu_latency = 0;
     end
 
 

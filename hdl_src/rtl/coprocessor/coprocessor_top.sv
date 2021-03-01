@@ -203,7 +203,9 @@ module coprocessor_top #(
             //thanks to previous assumption * :
             //0. we can load the window in a bunch
             //$display("%d %d \n", cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS], cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS], cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS);
-            next_ccs_window             = memory_for_cc.data[cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS+:C_WINDOW_SIZE_IN_BITS];
+            if (CC_ID_BITS == C_BUFFER_ADDR_OFFSET)     next_ccs_window             = memory_for_cc.data;
+            else                                        next_ccs_window             = memory_for_cc.data[cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:CC_ID_BITS]*C_WINDOW_SIZE_IN_BITS+:C_WINDOW_SIZE_IN_BITS];
+                                    
             //1. enable and first char in a fixed position
             next_ccs_enable             = {1'b0,{(C_WINDOW_SIZE_IN_CHARS-1){1'b1}}};
             next_ccs_first_cc           = {{(C_WINDOW_SIZE_IN_CHARS-1){1'b0}}, 1'b1};
@@ -264,10 +266,12 @@ module coprocessor_top #(
         end
         CICERO_EXE:
         begin
-            logic first_window_char_executing = |(cur_ccs_first_cc & elaborating_chars);
+            logic first_window_char_executing   = |(cur_ccs_first_cc & elaborating_chars);
             logic first_window_char_is_end_of_s = |(cur_ccs_end_of_s & first_window_char_executing);
+            logic no_other_work_to_do           = !(|(elaborating_chars));
+            logic time_to_fetch_ccs_buffer      = cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:0] == 0;
             //basic bock computation enable
-            casez({ any_bb_accept, all_bb_full, first_window_char_executing,  first_window_char_is_end_of_s || !any_bb_running, cur_ccs_window_pointer_end[C_BUFFER_ADDR_OFFSET-1:0] == 0})
+            casez({ any_bb_accept, all_bb_full, !first_window_char_executing,  first_window_char_is_end_of_s || no_other_work_to_do , time_to_fetch_ccs_buffer})
             5'b1????:
             begin // if during execution phase one basic block raise accept: end computations!
                 next_state  = CICERO_COMPLETED_ACCEPTING;
@@ -276,11 +280,11 @@ module coprocessor_top #(
             begin // if there's an instruction that should be saved but no one is able to save it 
                 next_state = CICERO_ERROR;
             end  
-            5'b0001?:
+            5'b0011?:
             begin //if we reach the end of the string (i.e. current char is terminator) 
                 next_state = CICERO_COMPLETED_WITHOUT_ACCEPTING;
             end
-            5'b00001:
+            5'b00101:
             begin // if all basic blocks have finished to execute instructions related to current char 
                   // then it's time to move to the next character
                 memory_for_cc.valid = 1'b1;
@@ -297,7 +301,7 @@ module coprocessor_top #(
                     move_next_character         = 1'b1;
                 end
             end
-            5'b00000:
+            5'b00100:
             begin
                 next_state                  = CICERO_FETCH_FROM_CCS_BUFFER;
                 next_ccs_after_end_of_s     = cur_ccs_after_end_of_s | {cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_after_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]} | { cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-2:0],cur_ccs_end_of_s[C_WINDOW_SIZE_IN_CHARS-1]};

@@ -95,7 +95,7 @@ module AXI_top_tb_from_compiled();
             $display("%d,%d,%d,%d",itype1, idata1, itype0, idata0);
             data               = {itype1, idata1, itype0, idata0};
             @(posedge clk);
-            address_register  <= address;
+            address_register  <= (address>>2);
             @(posedge clk);
             data_in_register  <= data;
             if(flag)
@@ -104,7 +104,7 @@ module AXI_top_tb_from_compiled();
                 cmd_register  <= CMD_WRITE;
                 flag           = 1'b0;
             end
-            address += 1;
+            address += 4;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
@@ -113,14 +113,16 @@ module AXI_top_tb_from_compiled();
 
     task write_string_file( int fp,
                      input  reg [REG_WIDTH-1:0] start_address ,
-                     output reg [REG_WIDTH-1:0] address);
+                     output reg [REG_WIDTH-1:0] address_cur );
     begin
         int bytes_read;
         reg [7:0]           c [3:0];
         reg [REG_WIDTH-1:0]   data;
         reg                   flag;
+        reg [REG_WIDTH-1:0] tmp_address;
         flag    = 1'b1;  
-        address = start_address;
+        tmp_address  = start_address;
+        address_cur  = start_address;
         
         while (! $feof(fp)) 
         begin
@@ -129,9 +131,10 @@ module AXI_top_tb_from_compiled();
                 if( ! $feof(fp))
                 begin
                     bytes_read = $fscanf(fp,"%d\n", c[i]);
-                   
+                    tmp_address+=1;
                     if(bytes_read == -1)begin
                         c[i] = {8{1'b0}};
+                        
                     end
                 end
                 else
@@ -143,7 +146,7 @@ module AXI_top_tb_from_compiled();
             $display("%d,%d,%d,%d",c[3], c[2], c[1], c[0]);
             data                = {c[3], c[2], c[1], c[0]};
             @(posedge clk);
-            address_register  <= address;
+            address_register  <= (address_cur >>2);
             @(posedge clk);
             data_in_register  <= data;
             if(flag)
@@ -152,7 +155,7 @@ module AXI_top_tb_from_compiled();
                 cmd_register  <= CMD_WRITE;
                 flag           = 1'b0;
             end
-            address += 1;
+            address_cur        = tmp_address;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
@@ -169,14 +172,14 @@ module AXI_top_tb_from_compiled();
         reg [REG_WIDTH-1:0] data;
         reg                 flag;
         flag    = 1'b1;  
-        address = {start_address, 1'b0};
+        address = start_address;
         
         while (! $feof(fp)) 
         begin
             c = $fscanf(fp,"%d ; %d\n", itype0, idata0);
             $display("%d,%d",itype0, idata0);
             
-            address_register  <= address[1+:REG_WIDTH];
+            address_register  <= (address >> 2);
             @(posedge clk);
             if(flag)
             begin
@@ -188,13 +191,13 @@ module AXI_top_tb_from_compiled();
             
            
             @(posedge clk);
-            if ( data_o_register[(address % 2)*16+:16]  !== { itype0, idata0})
+            if ( data_o_register[((address>>1) % 2)*16+:16]  !== { itype0, idata0})
             begin
                 $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , itype0, idata0);
                 $stop;
             end
 
-            address += 1;
+            address += 2;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
@@ -210,7 +213,7 @@ module AXI_top_tb_from_compiled();
         reg [REG_WIDTH-1:0]   data;
         reg                 flag;
         flag    = 1'b1;  
-        address = {start_address, 1'b0};
+        address = start_address;
         
         while (! $feof(fp)) 
         begin
@@ -225,7 +228,7 @@ module AXI_top_tb_from_compiled();
             $display("%d,%d", c[1], c[0]);
             data          = { c[1], c[0]};
             
-            address_register  <= address[1+:REG_WIDTH];
+            address_register  <= (address >> 2);
             @(posedge clk);
             if(flag)
             begin
@@ -237,13 +240,13 @@ module AXI_top_tb_from_compiled();
             
            
             @(posedge clk);
-            if ( data_o_register[(address % 2)*16+:16]  !== { c[1], c[0] })
+            if ( data_o_register[((address>>1) % 2)*16+:16]  !== { c[1], c[0] })
             begin
                 $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , c[1], c[0]);
                 $stop;
             end
 
-            address += 1;
+            address += 2;
         end
         @(posedge clk);
         cmd_register  <= CMD_NOP;
@@ -258,9 +261,9 @@ module AXI_top_tb_from_compiled();
         //@(posedge clk);
         //start_pc_register         <= start_code_address;
         @(posedge clk);
-        start_cc_pointer_register <= start_string_address;
+        start_cc_pointer_register <= start_string_address ;
         @(posedge clk);
-        end_cc_pointer_register   <= end_string_address;
+        end_cc_pointer_register   <= end_string_address   ;
         @(posedge clk);
         cmd_register              <= CMD_START;
         
@@ -302,131 +305,7 @@ module AXI_top_tb_from_compiled();
     end
     endtask
 
-    localparam BB_N = 16;
-    int  bb_cc_active [BB_N-1:0] ;
-
-    task display_utilization(input logic [REG_WIDTH-1:0] cc_taken);
-    begin
-        int i;
-        real u;
-        $write("BB utilization ");
-        for (i = 0 ; i< BB_N ; i+=1) 
-        begin
-            u = $itor(bb_cc_active[i])/$itor(cc_taken);
-            $write("\t %f",u);
-        end
-        $write("\n");
-    end
-    endtask
-    localparam UTILIZATON_ENABLED = 1'b0;
-
-    genvar i;
-    generate
-
-        if(UTILIZATON_ENABLED)
-        begin
-            for(i = 0; i<BB_N; i+=1)begin
-                always @( posedge clk)
-                begin
-                   
-                    if (rst)
-                    begin
-                            bb_cc_active[i] <= 32'd0;
-                    end
-                    else if(dut.g1.a_regex_coprocessor.bbs_go == 1'b0)
-                    begin
-                            if(i==0)
-                            begin
-                                int j, tot;
-                                real u;
-                                tot=0;
-                                for (j = 0 ; j< BB_N ; j+=1) 
-                                begin
-                                    tot += (bb_cc_active[j]);
-                                end
-                                if(tot !== 0)begin
-                                    $write("BB utilization this iteration");
-                                    for (j = 0 ; j< BB_N ; j+=1) 
-                                    begin
-                                        u = $itor(bb_cc_active[j])/$itor(tot);
-                                        $write("\t %f",u);
-                                    end
-                                    $write("\n");
-                                    bb_cc_active[i] <= 32'd0;
-                                end
-                                
-                            end
-                            
-                    end
-                    else
-                    begin
-                        if(BB_N > 1)
-                        begin
-                            
-                            if( dut.g1.a_regex_coprocessor.g[i].abb.g.aregex_cpu.running)
-                            begin
-                                bb_cc_active[i] <= bb_cc_active[i]+1;
-                            end
-                        end
-                        //else
-                        //begin
-                        //    if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
-                        //    begin
-                        //        bb_cc_active[i] <= bb_cc_active[i]+1;
-                        //    end
-                        //end
-                    end
-                    
-                end
-            end
-        end
-    endgenerate 
-    /*always @( posedge clk)
-    begin
-        int i;
-        
-        if (rst)
-        begin
-            for (i = 0 ; i< BB_N ; i+=1) begin
-                bb_cc_active[i] <= 32'd0;
-            end
-        end
-        else 
-        begin
-            if(BB_N > 1)
-            begin
-                //for 1bb
-                //if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
-                //begin
-                //    bb_cc_active[0] <= bb_cc_active[0]+1;
-                //end
-                if( dut.g1.a_regex_coprocessor.g[0].abb.g.aregex_cpu.running)
-                begin
-                    bb_cc_active[0] <= bb_cc_active[0]+1;
-                end
-                if( dut.g1.a_regex_coprocessor.g[1].abb.g.aregex_cpu.running)
-                begin
-                    bb_cc_active[1] <= bb_cc_active[1]+1;
-                end
-                if( dut.g1.a_regex_coprocessor.g[2].abb.g.aregex_cpu.running)
-                begin
-                    bb_cc_active[2] <= bb_cc_active[2]+1;
-                end
-                if( dut.g1.a_regex_coprocessor.g[3].abb.g.aregex_cpu.running)
-                begin
-                    bb_cc_active[3] <= bb_cc_active[3]+1;
-                end
-            end
-            //else
-            //begin
-            //    if( dut.g1.a_regex_coprocessor.g.abb.g.aregex_cpu.running)
-            //    begin
-            //        bb_cc_active[i] <= bb_cc_active[i]+1;
-            //    end
-            //end
-        end
-        
-    end*/
+   
 
     initial
     begin
@@ -471,6 +350,10 @@ module AXI_top_tb_from_compiled();
         
         //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
         start_string = end_code;
+        while(start_string[0+:2]!==0)
+        begin
+            start_string = start_string + 1;
+        end 
         //write string
         $display("writing string from %h",start_string);
         write_string_file(fp_string, start_string, end_string  );
@@ -487,30 +370,24 @@ module AXI_top_tb_from_compiled();
 
         repeat(10)
             @(posedge clk);
-
+            
         $dumpfile("test.vcd");
         $dumpvars;
 
-        start_string = start_string << 2;
-        start(/*start_code,*/ start_string, end_string<<2);
+        start(/*start_code,*/ start_string, end_string-1);
         
         wait_result(res);
         get_cc_elapsed(cc_taken);
         $display("cc taken: %d", cc_taken);
-        display_utilization(cc_taken);
         if( res == 1)
         begin
             $display("string accepted");
         end
         else
         begin
-            $display(" string rejected");
-
+            $display("string rejected");
         end 
         $dumpoff;
         $finish(0);
-    end
-
-    
-
+    end 
 endmodule

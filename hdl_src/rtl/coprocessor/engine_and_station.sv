@@ -104,7 +104,7 @@ switch station (
 ); 
 
 	assign elaborating_chars = elaborating_chars_channel | elaborating_chars_engine;
-    assign bb_full    = !switch2channel.ready && engine_full;
-    assign bb_running = switch2channel.valid || engine_running ;
+    assign bb_full           = !switch2channel.ready && engine_full;
+    assign bb_running        = switch2channel.valid || engine_running ;
 
 endmodule

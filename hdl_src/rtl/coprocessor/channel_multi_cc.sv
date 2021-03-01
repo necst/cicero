@@ -9,13 +9,14 @@ module channel_multi_cc #(
     input wire              rst,
     channel_iface.in        in,
     channel_iface.out       out,
-    output logic [2**CC_ID_BITS-1:0] present_cc_id  
+    output logic [(2**CC_ID_BITS)-1:0] present_cc_id  
 );
     wire channel_input_ready    , channel_input_not_ready;
     wire channel_output_valid   , channel_output_not_valid;
     wire [CHANNEL_COUNT_WIDTH-1:0]   fifo_count;
 
-    logic [CHANNEL_COUNT_WIDTH-1:0]   cc_id_count [2**CC_ID_BITS-1:0];
+    logic [CHANNEL_COUNT_WIDTH-1:0]  cur_cc_id_count [(2**CC_ID_BITS)-1:0];
+    logic [CHANNEL_COUNT_WIDTH-1:0] next_cc_id_count [(2**CC_ID_BITS)-1:0];
 
     logic [LATENCY_COUNT_WIDTH-1:0]  channel_old_latency, channel_old_latency_next;
 
@@ -63,29 +64,43 @@ module channel_multi_cc #(
     begin
         if(rst)
         begin
-            for (int i=0; i<2**CC_ID_BITS; ++i) begin
-                cc_id_count[i] <= {(CHANNEL_COUNT_WIDTH){1'b0}};
+            for (int i=0; i<(2**CC_ID_BITS); ++i) begin
+                cur_cc_id_count[i] <= {(CHANNEL_COUNT_WIDTH){1'b0}};
             end
         end
         else
         begin
-            if (in.valid && channel_input_ready)
+            for (int i=0; i<(2**CC_ID_BITS); ++i) 
             begin
-                cc_id_count[in.data[0+:CC_ID_BITS]] <= cc_id_count[in.data[0+:CC_ID_BITS]]+1;
-            end
-
-            if (out.ready && channel_output_valid)
-            begin
-                cc_id_count[in.data[0+:CC_ID_BITS]] <= cc_id_count[in.data[0+:CC_ID_BITS]]-1;
+                cur_cc_id_count[i] <= next_cc_id_count[i];
             end
         end
     end
 
     always_comb 
     begin
-        for (int i=0; i<2**CC_ID_BITS; ++i) begin
-            present_cc_id[i] =  (cc_id_count[in.data[0+:CC_ID_BITS]] == 0);
+        for (int i=0; i<(2**CC_ID_BITS); ++i) 
+        begin
+            present_cc_id[i] =  (cur_cc_id_count[i] != 0);
         end
+
+        for (int i=0; i<(2**CC_ID_BITS); ++i) 
+        begin
+            next_cc_id_count[i] = cur_cc_id_count[i];
+        end
+         
+
+        if(in.valid && channel_input_ready )
+        begin
+            next_cc_id_count[in.data[0+:CC_ID_BITS]] = cur_cc_id_count[in.data[0+:CC_ID_BITS]]+1;
+        end
+
+        if( out.ready && channel_output_valid )
+        begin
+            next_cc_id_count[out.data[0+:CC_ID_BITS]] = next_cc_id_count[out.data[0+:CC_ID_BITS]]-1;
+        end
+        
+
     end
 
 

@@ -36,6 +36,7 @@ class re2_driver(DefaultIP):
     debug                               = False
     verbose                             = False
     word_size_in_bytes                  = 4
+    window_size_in_chars                = 8
     def __init__(self, description):
         super().__init__(description=description)
 
@@ -97,11 +98,14 @@ class re2_driver(DefaultIP):
 
     def load_code(self, code):
         list_bytes_big_endian = self.__code_to_bytes(code)
-        return self.__write_bytes(list_bytes_big_endian,0, "BIG")
+        tmp_address = self.__write_bytes(list_bytes_big_endian,0, "BIG")
+        tmp_address = ceil(tmp_address/self.window_size_in_chars)*self.window_size_in_chars
+        return tmp_address
         
     def load_string(self, string, start_address):
         list_bytes_big_endian = self.__string_to_byte(string)
-        return self.__write_bytes(list_bytes_big_endian, start_address, "BIG")
+        tmp_start_address = ceil(start_address/self.window_size_in_chars)*self.window_size_in_chars
+        return self.__write_bytes(list_bytes_big_endian, tmp_start_address, "BIG")
 
     def __write_bytes(self, bytes_list, starting_address=0, endianness = "BIG"):
         byteorder   = 'little' if endianness == "BIG" else 'big'
@@ -265,7 +269,7 @@ if __name__ == "__main__":
     debug = True
     #IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
     #ADDRESS_RANGE   = 6*4
-    re2_coprocessor = Overlay('../../bitstreams/8_P_100.bit')
+    re2_coprocessor = Overlay('../../bitstreams/4_P_100_8W.bit')
     if debug :
         print('test:',re2_coprocessor.ip_dict)
     re2_coprocessor.re2_copro_0.verbose     = True
