@@ -90,6 +90,18 @@ class re_measurer(regular_expression_measurer):
             print('minimum time', min_time_re, 'ns')
         return min_time_re
 
+class RESULT_measurer(regular_expression_measurer):
+    def __init__(self):
+        super().__init__("RESULT")
+
+    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+        import re 
+        regex = re.compile(regex)
+        res = not(regex.search(string,pos=0) is None)
+    
+        return res
+
+
 class emulated_re2_copro_asap_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("emulated_re2copro_asap")
@@ -265,7 +277,7 @@ bitstream_filename = ""  if not args.copro else os.path.basename(args.bitstream)
 # These methods are encapsulated into an instance of measurer subclass,
 # which expose a method(execute()) to measure time required to match.  
 # measurer_list is filled by measurer depending on user requests.
-measurer_list = []
+measurer_list = [RESULT_measurer()]
 if args.copro:
     measurer_list.append(re2copro_measurer(args.bitstream, args.copro_not_check))
 if args.coprocompiler:
@@ -313,12 +325,11 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                 names += [*e.get_name()]
             else:
                 names.append(e.get_name())
-        fout.writerow(['regex', 'result', *names])
+        fout.writerow(['regex', *names])
         
         #foreach regex
         for r_number, r in enumerate(regex_lines):
             #result todo: report regex match result.
-            has_accepted = "UNK"
             #eliminate end of line from regex
             r            = r[:-1]
             results      = [ ]
@@ -338,7 +349,7 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                     results +=[*result]
                 else:
                     results.append(result)
-            fout.writerow([r,has_accepted,  *results ])
+            fout.writerow([r,  *results ])
                     
 
 
