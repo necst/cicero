@@ -6,11 +6,11 @@ module topology_token_ring #(
     parameter  CHARACTER_WIDTH          = 8 ,
     parameter  MEMORY_WIDTH             = 16,
     parameter  MEMORY_ADDR_WIDTH        = 11,
-    parameter  CACHE_WIDTH_BITS         = 0, 
+    parameter  CACHE_WIDTH_BITS         = 0 , 
     parameter  CACHE_BLOCK_WIDTH_BITS   = 2 ,
-    parameter  PIPELINED                = 0,
-    parameter  CONSIDER_PIPELINE_FIFO   = 0,
-    parameter  CC_ID_BITS               =  1
+    parameter  PIPELINED                = 0 ,
+    parameter  CONSIDER_PIPELINE_FIFO   = 0 ,
+    parameter  CC_ID_BITS               = 1 
 ) (
     input   wire                                            clk,
     input   wire                                            rst,

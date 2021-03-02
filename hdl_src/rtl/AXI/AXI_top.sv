@@ -38,8 +38,8 @@ logic                                    bram_w_valid;
 
 ///// Coprocessor
 localparam BB_N                      = 4;
-localparam BB_N_X                    = 0;
-localparam BB_N_Y                    = 0;
+localparam BB_N_X                    = 2;
+localparam BB_N_Y                    = 2;
 localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;

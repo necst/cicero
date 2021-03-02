@@ -1,4 +1,3 @@
-
 //
 //                                                             +-----------------+
 //                                                             |                 |
@@ -43,32 +42,33 @@ module engine_and_station_xy#(
     parameter  CACHE_WIDTH_BITS    = 0, 
     parameter  CACHE_BLOCK_WIDTH_BITS   = 2 ,
     parameter  PIPELINED                = 0,
-    parameter  CONSIDER_PIPELINE_FIFO   = 0
+    parameter  CONSIDER_PIPELINE_FIFO   = 0,
+	parameter  CC_ID_BITS   			= 2
 )(
-    input wire          clk,
-    input wire          rst,
-    input wire [CHARACTER_WIDTH-1  :0]    cur_cc, 
-    input wire                            cur_is_even_character,
+    input 	wire          	clk,
+    input 	wire          	rst,
+    output  wire          	bb_accepts,      
+    output  wire          	bb_running,      
+    output  wire          	bb_full   ,
+    input	wire [(2**CC_ID_BITS)-1:0]                      enable_chars,
+	output  wire [(2**CC_ID_BITS)-1:0]                      elaborating_chars,
+    input 	wire [((2**CC_ID_BITS)*CHARACTER_WIDTH)-1  :0]  current_characters, 
+	input 	wire										    new_char,
     memory_read_iface.out memory,
-
     channel_iface.in      x_in,
     channel_iface.in      y_in,
     channel_iface.out     x_out,
-    channel_iface.out     y_out,
-
-    input   wire          enable,
-    output  wire          bb_accepts,      
-    output  wire          bb_running,      
-    output  wire          bb_full   
+    channel_iface.out     y_out
 );
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) switch2cpu() ;
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) cpu2switch() ;
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2x_out()    ;
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2y_out()    ;
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2ch_tmp()   ;
-    channel_iface                  #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) ch_tmp2s()   ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) switch2cpu() ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) cpu2switch() ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2x_out()    ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2y_out()    ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) s2ch_tmp()   ;
+    channel_iface                  #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)) ch_tmp2s()   ;
     //station for each bb.
     wire engine_full, engine_running;
+    wire [(2**CC_ID_BITS)-1:0] elaborating_chars_channel_x_out, elaborating_chars_channel_y_out, elaborating_chars_channel_tmp, elaborating_chars_engine;
    
     //1. basic block
     engine_interfaced #(
@@ -80,55 +80,63 @@ module engine_and_station_xy#(
         .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
         .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               ),
         .CACHE_BLOCK_WIDTH_BITS (CACHE_BLOCK_WIDTH_BITS         ),
-        .PIPELINED              (PIPELINED                      )
+        .PIPELINED              (PIPELINED                      ),
+		.CC_ID_BITS				(CC_ID_BITS						)
     ) anEngine (
         .clk                    (clk                            ),
         .rst                    (rst                            ), 
-        .cur_is_even_character  (cur_is_even_character          ),
-        .current_character      (cur_cc                         ),
-        .enable                 (enable                         ),
-        .running                (engine_running                 ),
         .accepts                (bb_accepts                     ),
+        .running                (engine_running                 ),
+        .full                   (engine_full                    ),
+        .enable_chars			(enable_chars			        ),
+		.elaborating_chars		(elaborating_chars_engine		),
+        .current_characters     (current_characters             ),
+        .new_char               (new_char                       ),
         .memory                 (memory                         ),
         .in                     (switch2cpu.in                  ),
-        .out                    (cpu2switch.out                 ),
-        .full                   (engine_full                    )
+        .out                    (cpu2switch.out                 )
     );
 //memory data are broadcasted but only module which receives a ready 
 //knows that it has won arbitration
 
 //2. channels
-channel #(
-    .WIDTH(PC_WIDTH+1),
+channel_multi_cc #(
+    .PC_WIDTH(PC_WIDTH),
+    .CC_ID_BITS(CC_ID_BITS),
     .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
     .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_x_out(
     .clk(clk                ),
     .rst(rst                ),
     .in (s2x_out.in         ),
-    .out(x_out              )
+    .out(x_out              ),
+    .present_cc_id(elaborating_chars_channel_x_out)
 );
 
-channel #(
-    .WIDTH(PC_WIDTH+1),
+channel_multi_cc #(
+    .PC_WIDTH(PC_WIDTH),
+    .CC_ID_BITS(CC_ID_BITS),
     .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
     .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_y_out(
     .clk(clk                ),
     .rst(rst                ),
     .in (s2y_out.in         ),
-    .out(y_out              )
+    .out(y_out              ),
+    .present_cc_id(elaborating_chars_channel_y_out)
 );
 
-channel #(
-    .WIDTH(PC_WIDTH+1),
+channel_multi_cc #(
+    .PC_WIDTH(PC_WIDTH),
+    .CC_ID_BITS(CC_ID_BITS),
     .CHANNEL_COUNT_WIDTH(FIFO_COUNT_WIDTH),
     .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH)
 )ch_tmp(
     .clk(clk                ),
     .rst(rst                ),
     .in (s2ch_tmp.in        ),
-    .out(ch_tmp2s.out       )
+    .out(ch_tmp2s.out       ),
+    .present_cc_id(elaborating_chars_channel_tmp)
 );
 
 
@@ -147,8 +155,8 @@ switch station_cpu_or_x_out (
     .in_1   (ch_tmp2s.in        ),
     .out_1  (s2x_out.out )
 ); 
-
-    assign bb_full    = !s2y_out.ready && !s2x_out.ready && !s2ch_tmp.ready && engine_full ;
-    assign bb_running = y_out.valid || x_out.valid || ch_tmp2s.valid || engine_running ;
+    assign elaborating_chars = elaborating_chars_channel_x_out | elaborating_chars_channel_y_out |elaborating_chars_channel_tmp | elaborating_chars_engine;
+    assign bb_full          = !s2y_out.ready && !s2x_out.ready && !s2ch_tmp.ready && engine_full ;
+    assign bb_running       = y_out.valid || x_out.valid || ch_tmp2s.valid || engine_running ;
 
 endmodule

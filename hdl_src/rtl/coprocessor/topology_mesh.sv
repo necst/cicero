@@ -7,33 +7,47 @@ module topology_mesh #(
     parameter  CHARACTER_WIDTH          = 8 ,
     parameter  MEMORY_WIDTH             = 16,
     parameter  MEMORY_ADDR_WIDTH        = 11,
-    parameter  CACHE_WIDTH_BITS         = 0, 
+    parameter  CACHE_WIDTH_BITS         = 0 , 
     parameter  CACHE_BLOCK_WIDTH_BITS   = 2 ,
-    parameter  PIPELINED                = 0,
-    parameter  CONSIDER_PIPELINE_FIFO   = 0
-)(
-    input   wire                            clk,
-    input   wire                            rst,
-
-    input   wire [CHARACTER_WIDTH-1  :0]    cur_cc, 
-    input   wire                            cur_is_even_character,
-
-    memory_read_iface.out                   memory,
-    channel_iface.in                        override,
-    memory_read_iface.in                    memory_cc,
-    input   wire                            enable,
-    output  logic                           any_bb_accept,
-    output  logic                           any_bb_running,
-    output  logic                           all_bb_full    
+    parameter  PIPELINED                = 0 ,
+    parameter  CONSIDER_PIPELINE_FIFO   = 0 ,
+    parameter  CC_ID_BITS               = 1
+) (
+    input   wire                                            clk,
+    input   wire                                            rst,
+    output  logic                                           any_bb_accept,
+    output  logic                                           any_bb_running,
+    output  logic                                           all_bb_full,     
+    input   wire [(2**CC_ID_BITS)-1:0]                      enable_chars,
+    output  logic[(2**CC_ID_BITS)-1:0]                      elaborating_chars,
+    input   wire [(2**CC_ID_BITS)*CHARACTER_WIDTH-1  :0]    cur_ccs, 
+    input   wire                                            new_char,
+    memory_read_iface.out                                   memory,
+    channel_iface.in                                        override,
+    memory_read_iface.in                                    memory_cc   
 );
     //2. provide memory access for BB (note that to create a tree of arbiters  are required 2*#BB -1 arbiters)
     memory_read_iface               #(.MEMORY_ADDR_WIDTH(MEMORY_ADDR_WIDTH), .MEMORY_WIDTH(MEMORY_WIDTH))  memory_bb [BB_N_Y-1:0][BB_N_X-1:0] ();
     //signals for basic blocks
     wire  [BB_N_X*BB_N_Y-1:0]       bb_running, bb_accepts, bb_full ;
     //station for each bb.
-    channel_iface                   #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH))           channel_x [BB_N_Y:0][BB_N_X:0] ();
-    channel_iface                   #(.N(PC_WIDTH+1), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH))           channel_y [BB_N_Y:0][BB_N_X:0] ();
-
+    channel_iface                   #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH))           channel_x [BB_N_Y:0][BB_N_X:0] ();
+    channel_iface                   #(.N(PC_WIDTH+CC_ID_BITS), .LATENCY_COUNT_WIDTH(LATENCY_COUNT_WIDTH))           channel_y [BB_N_Y:0][BB_N_X:0] ();
+    //
+	logic [(2**CC_ID_BITS)-1:0]    bb_elaborating_chars [BB_N_Y:0][BB_N_X:0];
+	always_comb 
+	begin
+		for (int j=0; j<(2**CC_ID_BITS) ; j++) 
+		begin
+			reg [BB_N_Y*BB_N_X-1:0] tmp_elaborating_chars_i;
+			for (int y=0; y < BB_N_Y ; y++) 
+                for (int x=0; x < BB_N_X ; x++) 
+                begin
+                    tmp_elaborating_chars_i[y*BB_N_X+x] = bb_elaborating_chars[y][x][j];
+                end
+			elaborating_chars[j] = |( tmp_elaborating_chars_i );
+		end
+	end
     /// sub modules 
     genvar x,y;
     
@@ -42,30 +56,32 @@ module topology_mesh #(
         begin
             
             engine_and_station_xy #(
-                .PC_WIDTH               (PC_WIDTH                       ),
-                .LATENCY_COUNT_WIDTH    (LATENCY_COUNT_WIDTH            ),
-                .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH               ),
-                .CHARACTER_WIDTH        (CHARACTER_WIDTH                ),
-                .MEMORY_WIDTH           (MEMORY_WIDTH                   ),
-                .MEMORY_ADDR_WIDTH      (MEMORY_ADDR_WIDTH              ),
-                .CACHE_WIDTH_BITS       (CACHE_WIDTH_BITS               ),
-                .CACHE_BLOCK_WIDTH_BITS (CACHE_BLOCK_WIDTH_BITS         ),
-                .PIPELINED              (PIPELINED                      ),
-                .CONSIDER_PIPELINE_FIFO (CONSIDER_PIPELINE_FIFO         )
+                .PC_WIDTH                   (PC_WIDTH                   ),
+                .LATENCY_COUNT_WIDTH        (LATENCY_COUNT_WIDTH        ),
+                .FIFO_COUNT_WIDTH           (FIFO_COUNT_WIDTH           ),
+                .CHARACTER_WIDTH            (CHARACTER_WIDTH            ),
+                .MEMORY_WIDTH               (MEMORY_WIDTH               ),
+                .MEMORY_ADDR_WIDTH          (MEMORY_ADDR_WIDTH          ),
+                .CACHE_WIDTH_BITS           (CACHE_WIDTH_BITS           ),
+                .CACHE_BLOCK_WIDTH_BITS     (CACHE_BLOCK_WIDTH_BITS     ),
+                .PIPELINED                  (PIPELINED                  ),
+                .CONSIDER_PIPELINE_FIFO     (CONSIDER_PIPELINE_FIFO     ),
+                .CC_ID_BITS                 (CC_ID_BITS                 )
             )engine_and_station_i(
                 .clk                    (clk                            ),
                 .rst                    (rst                            ),
-                .cur_cc                 (cur_cc                         ), 
-                .cur_is_even_character  (cur_is_even_character          ),
+                .bb_accepts             (bb_accepts [y*BB_N_X+x]        ),      
+                .bb_running             (bb_running [y*BB_N_X+x]        ),      
+                .bb_full                (bb_full    [y*BB_N_X+x]        ),
+                .enable_chars           (enable_chars                   ),
+                .elaborating_chars      (bb_elaborating_chars[y][x]     ), 
+                .current_characters     (cur_ccs                        ),
+                .new_char               (new_char                       ),
                 .memory                 (memory_bb  [y  ][x]            ),
                 .x_in                   (channel_x  [y  ][x].in         ),
                 .x_out                  (channel_x  [y  ][x+1].out      ),
                 .y_in                   (channel_y  [y  ][x].in         ),
-                .y_out                  (channel_y  [y+1][x].out        ),
-                .enable                 (enable                         ),
-                .bb_accepts             (bb_accepts [y*BB_N_X+x]        ),      
-                .bb_running             (bb_running [y*BB_N_X+x]        ),      
-                .bb_full                (bb_full    [y*BB_N_X+x]        )
+                .y_out                  (channel_y  [y+1][x].out        )
             );
 
         end
@@ -87,7 +103,7 @@ module topology_mesh #(
     //        +--------------------+
 
     arbiter_2_fixed #(
-        .DWIDTH(PC_WIDTH+1)
+        .DWIDTH(PC_WIDTH+CC_ID_BITS)
     ) arbiter_tree_to_cope_with_pc_insertion (
         .in_0_ready  ( override.ready            ),
         .in_0_data   ( override.data             ),

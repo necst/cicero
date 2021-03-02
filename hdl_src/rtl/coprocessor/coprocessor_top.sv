@@ -334,7 +334,7 @@ module coprocessor_top #(
         endcase
     end
 
-    /*if( BB_N_X > 0 && BB_N_Y > 0)
+    if( BB_N_X > 0 && BB_N_Y > 0)
     begin
         topology_mesh #(
             .BB_N_X                     (BB_N_X                     ),
@@ -353,18 +353,19 @@ module coprocessor_top #(
         )a_topology(
             .clk                        (clk                        ),
             .rst                        (rst                        ),
-            .cur_cc                     (cur_cc                     ),
-            .cur_is_even_character      (cur_is_even_character      ),
-            .memory                     (memory_muxed.out           ),
-            .override                   (override_pc                ),
-            .memory_cc                  (memory_for_cc              ),
-            .enable                     (bbs_go                     ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
-            .all_bb_full                (all_bb_full                )
+            .all_bb_full                (all_bb_full                ),
+            .enable_chars               (cur_ccs_enable             ),
+            .elaborating_chars          (elaborating_chars          ),
+            .cur_ccs                    (cur_ccs_window             ),
+            .new_char                   (move_next_character        ),
+            .memory                     (memory_muxed.out           ),
+            .override                   (override_pc                ),
+            .memory_cc                  (memory_for_cc              )
         );
     end 
-    else*/
+    else
 	if(BB_N==1)
     begin
         topology_single #(

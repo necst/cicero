@@ -35,10 +35,10 @@ module engine_and_station#(
     output  wire          	bb_accepts,      
     output  wire          	bb_running,      
     output  wire          	bb_full   ,
-    input	wire [(2**CC_ID_BITS)-1:0]                    enable_chars,
-	output  wire [(2**CC_ID_BITS)-1:0]                    elaborating_chars,
+    input	wire [(2**CC_ID_BITS)-1:0]                      enable_chars,
+	output  wire [(2**CC_ID_BITS)-1:0]                      elaborating_chars,
     input 	wire [((2**CC_ID_BITS)*CHARACTER_WIDTH)-1  :0]  current_characters, 
-	input 	wire										  new_char,
+	input 	wire										    new_char,
     memory_read_iface.out memory,
     channel_iface.in      in,
     channel_iface.out     out

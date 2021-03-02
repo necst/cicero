@@ -160,7 +160,7 @@ module regex_cpu #(
         nextPc                           = currPc;
 
         elaborating_chars                = {(CC_ID_BITS){1'b0}};
-        elaborating_chars[currCcId]      = (curState != S_IDLE);
+        if (curState != S_IDLE )         elaborating_chars[currCcId]      = 1'b1;
 
         case(curState)
         S_IDLE:
