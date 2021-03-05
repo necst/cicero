@@ -245,6 +245,8 @@ def plot_engine_valid_in(engine_scopes, fetch_instant):
 				else:
 					break
 			ax.set_ylabel(f'Engine_{e_i}')
+			if e_i == 0:
+				plt.legend( loc='upper left')
 
 		#Memory utilization
 		ax = fig.add_subplot(n_engines+1,1,1, sharex=ax)
@@ -264,9 +266,9 @@ def plot_engine_valid_in(engine_scopes, fetch_instant):
 		ax.set_ylabel('Memory access')
 
 		fig.tight_layout()
-		fig.canvas.set_window_title(vcd_path)
-		plt.draw()
+		fig.canvas.set_window_title(f'engines: {vcd_path}')
 		plt.legend( loc='upper left')
+		plt.draw()
 		plt.pause(0.001)
 
 
@@ -283,13 +285,120 @@ def plot_engine_valid_in(engine_scopes, fetch_instant):
 	plt.pause(0.001)
 	input("press a key to close")
 
-def plot_digital_signal(ax, x,y, clock_ticks=True, colour='r', label=''):
+
+def plot_cpu_valid_in(vcd, fetch_instant):
+	cpu_scopes = vcd[re.compile('.*regex_cpu$')]
+	cpu_scopes = remove_non_maximal_scopes(cpu_scopes)
+	
+	engine_data = {}
+	for e_i,e in enumerate(cpu_scopes):
+		
+		#in
+		in_boundle = list(zip(vcd[e]['input_pc_valid'][start_exe:end_exe:clk_period], vcd[e]['input_pc_ready'][start_exe:end_exe:clk_period], vcd[e][re.compile('input_pc\[.*')][start_exe:end_exe:clk_period]))
+		in_validANDready_boundle 	 = list(map(lambda x: x[0]=='1' and x[1]=='1', in_boundle ))
+		in_validANDnot_ready_boundle = list(map(lambda x: x[0]=='1' and x[1]=='0', in_boundle ))
+		#out
+		out_boundle = zip(vcd[e]['output_pc_valid'][start_exe:end_exe:clk_period], vcd[e]['output_pc_ready'][start_exe:end_exe:clk_period], vcd[e][re.compile('output_pc\[.*')][start_exe:end_exe:clk_period])
+		out_validANDready_signal = list(map(lambda x: x[0]=='1' and x[1]=='1', out_boundle))
+		#plot valid&ready input signal
+		engine_data[e] = {}
+		engine_data[e]['in'        ] 	 = in_validANDready_boundle
+		engine_data[e]['in_valid'  ]	 = in_validANDnot_ready_boundle
+		engine_data[e]['out'       ] 	 = out_validANDready_signal
+
+	fetch_instant_data = list(map(lambda x: (x-start_exe)//clk_period ,fetch_instant))
+	
+	memory_data = list(map(lambda x: x[0]=='1', vcd[re.compile('.*a?(b|B)ram$')]['r_valid'][start_exe:end_exe:clk_period]))
+
+	n_elements_per_subPlot = 100
+	tot_number_of_subgraph = ((end_exe-start_exe)//clk_period)//n_elements_per_subPlot
+	
+	def plot_i_esim(i):
+		nonlocal memory_data
+		nonlocal engine_data
+		nonlocal fetch_instant_data
+		nonlocal n_elements_per_subPlot
+		offset = 1.5
+		fig = plt.figure(0)
+		fig.clf()
+
+		start_exe = i*n_elements_per_subPlot
+		end_exe   = (i+1)*n_elements_per_subPlot
+		n_engines = len(engine_data.keys())
+		f_start = bisect.bisect_left(fetch_instant_data,start_exe)
+		for e_i,e in enumerate(engine_data):
+			if e_i == 0:
+				ax = fig.add_subplot(n_engines+1,1,(e_i+2))
+			else:
+				ax = fig.add_subplot(n_engines+1,1,(e_i+2), sharex=ax, sharey=ax)
+			#display instruction in/out and latency reported for each engine
+			ax.axhline(0, color='.5')
+			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), engine_data[e]['in_valid'][start_exe:end_exe], label="in_valid_and_!ready", fill=True, colour='orange')
+			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), engine_data[e]['in'     ][start_exe:end_exe], label="in")
+			
+			ax.axhline(offset, color='.5')
+			plot_digital_signal(ax, np.arange(start_exe,end_exe,1), offset+np.array(engine_data[e]['out'    ][start_exe:end_exe]),label='out', colour='blue')
+
+			#mark each time we moved to a new char
+			for f in fetch_instant_data[f_start:]:
+				if f >= start_exe and f < end_exe:
+					#print(f)
+					ax.axvline(f, color='g')
+				else:
+					break
+			ax.set_ylabel(f'Engine_{e_i}')
+			if e_i == 0:
+				plt.legend( loc='upper left')
+
+		#Memory utilization
+		ax = fig.add_subplot(n_engines+1,1,1, sharex=ax)
+		plot_digital_signal(ax, np.arange(start_exe,end_exe,1), memory_data[start_exe:end_exe] ,label='memory_req', colour='blue')
+		#Add a textual repr
+		for start_ch, end_ch in zip(fetch_instant_data[f_start:], fetch_instant_data[f_start+1:]):
+			if start_ch >= start_exe and start_ch < end_exe:
+				#print(f)
+				ax.axvline(start_ch, color='g')
+				memory_line_in_period = memory_data[start_ch:end_ch]
+				memory_request        = sum(memory_line_in_period)
+				ax.text((start_ch+end_ch)//2, 0.5,f'{memory_request} ({int(100*memory_request/(end_ch-start_ch))}%)',ha="center", va="center")
+				
+			else:
+				break
+		ax.set_yticks([0,1])
+		ax.set_ylabel('Memory access')
+
+		fig.tight_layout()
+		fig.canvas.set_window_title(f'cpus: {vcd_path}')
+		plt.legend( loc='upper left')
+		plt.draw()
+		plt.pause(0.001)
+
+
+	fig = plt.figure(0)
+	fig.clf()
+	plot_i_esim(0)
+	press_handler = press_handler_creator(plot_i_esim,tot_number_of_subgraph)
+	#print(press_handler)
+	if(full_screen):
+		fig.canvas.manager.full_screen_toggle()
+	fig.canvas.mpl_connect('key_press_event', press_handler)
+	fig.tight_layout()
+	plt.draw()
+	plt.pause(0.001)
+	input("press a key to close")
+
+
+def plot_digital_signal(ax, x,y, clock_ticks=True, colour='r', label='', fill =False):
 	ax.axhline(0, color='.5')
 	if(clock_ticks):
 		for a_x in x:
 			ax.axvline(a_x, color='.5', linestyle='--', linewidth=0.5)
-	ax.step(x, y, colour, label=label)
-		
+	ax.step(x, y, colour, where="post", label=label)
+
+	if fill:
+		ax.fill_between(x,y,0,color=colour, alpha=0.3,  step="post")
+
+plot_cpu_valid_in(vcd, fetch_instant)
 plot_engine_valid_in(engine_scopes, fetch_instant)
 
 def plotLargeHeatmap(heatmap, x_labels, y_labels):
