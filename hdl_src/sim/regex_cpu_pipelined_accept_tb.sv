@@ -12,8 +12,9 @@ module regex_cpu_pipelined_accept_tb();
     parameter  MEMORY_ADDR_WIDTH = 11;
 
     logic                             clk                               ;
-    logic                             rst                             ; 
-    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters                 ;
+    logic                             rst                               ; 
+    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters;
+    logic[(2**CC_ID_BITS)-1:0]                        end_of_string     ;
     logic                             input_pc_valid                    ;
 	logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
@@ -41,6 +42,7 @@ module regex_cpu_pipelined_accept_tb();
         .clk           	                    ( clk                               ),
         .rst                             	( rst                             	), 
         .current_characters                 ( current_characters                ),
+        .end_of_string                      ( end_of_string                     ),
         .input_pc_valid                    	( input_pc_valid                    ),
 		.input_cc_id                     	( input_cc_id                       ),
         .input_pc                          	( input_pc                          ), 
@@ -127,6 +129,9 @@ module regex_cpu_pipelined_accept_tb();
 			begin
 					
 				current_characters <= {(2**CC_ID_BITS*CHARACTER_WIDTH){1'b0}};
+                end_of_string      <= {(2**CC_ID_BITS){1'b0}};
+                end_of_string[a_cc_id]<= 1'b1;
+
 				load_pc_and_supply_memory(pc,{ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}}},a_cc_id );
 				@(posedge clk);
 				if(accepts !== 1'b1)
@@ -148,11 +153,14 @@ module regex_cpu_pipelined_accept_tb();
         end
 
         repeat(30) @(posedge clk);
+
         for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
             for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
             begin
 				for (int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1) 
 					begin
+                    end_of_string      <= {(2**CC_ID_BITS){1'b1}};
+                    end_of_string[a_cc_id]<= 1'b0;
 					current_characters <=	{(2**CC_ID_BITS){non_terminator}};
 					load_pc_and_supply_memory(pc,{ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} }, a_cc_id);
 					@(posedge clk);
@@ -164,6 +172,35 @@ module regex_cpu_pipelined_accept_tb();
 					else
 					begin
 						$display("pc: %h cc: %c correctly did not accept ", pc,  current_characters);
+					end
+					@(posedge clk);
+					if(elaborating_chars[a_cc_id] == 1'b1)
+					begin
+						$display("%h regex_cpu still has work to do even if pc have been all fetched!", pc);
+						$stop;
+					end
+				end
+            end
+        end
+
+        repeat(30) @(posedge clk);
+        for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
+            for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
+            begin
+				for (int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1) 
+					begin
+                    end_of_string      <= {(2**CC_ID_BITS){1'b0}};
+					current_characters <=	{(2**CC_ID_BITS){non_terminator}};
+					load_pc_and_supply_memory(pc,{ACCEPT_PARTIAL, { (INSTRUCTION_DATA_WIDTH){1'b0}} }, a_cc_id);
+					@(posedge clk);
+					if(accepts == 1'b0)
+					begin
+						$display("pc: %h cc: %c didn't accepted even if was supposed to !",pc,  current_characters);
+						$stop;
+					end
+					else
+					begin
+						$display("pc: %h cc: %c correctly accepted ", pc,  current_characters);
 					end
 					@(posedge clk);
 					if(elaborating_chars[a_cc_id] == 1'b1)

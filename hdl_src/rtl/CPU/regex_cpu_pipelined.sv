@@ -14,7 +14,7 @@ module regex_cpu_pipelined #(
     input   wire                            clk,
     input   wire                            rst, 
     input   logic[CHARACTER_WIDTH*(2**CC_ID_BITS)-1:0]      current_characters,
-    //input   wire                            is_last_char,      
+    input   logic[(2**CC_ID_BITS)-1:0                ]      end_of_string,
 
     input   logic                           input_pc_valid,
     input   logic[CC_ID_BITS-1:0]           input_cc_id, 
@@ -203,7 +203,7 @@ module regex_cpu_pipelined #(
             case(EXE1_Instr[INSTRUCTION_TYPE_START:INSTRUCTION_TYPE_END])
                 ACCEPT:
                 begin
-                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] == { (CHARACTER_WIDTH){1'b0}} ) begin
+                    if( end_of_string[EXE1_Cc_id] ) begin
                         EXE1_accepts                        = 1'b1;
                         EXE1_completes_instr                = 1'b1;
                     end

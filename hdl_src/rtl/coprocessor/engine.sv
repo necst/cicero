@@ -57,9 +57,10 @@ module engine #(
     output  logic                           accepts,
     output  logic                           running,
     output  logic                           full, 
-    input  wire [(2**CC_ID_BITS)-1:0]                     enable_chars           ,
     output wire [(2**CC_ID_BITS)-1:0]                     elaborating_chars      ,
-    input  wire [(2**CC_ID_BITS)*CHARACTER_WIDTH-1  :0] current_characters     ,
+    input  wire [(2**CC_ID_BITS)-1:0]                     cur_window_end_of_s    ,
+    input  wire [(2**CC_ID_BITS)-1:0]                     cur_window_enable      ,
+    input  wire [(2**CC_ID_BITS)*CHARACTER_WIDTH-1  :0]   cur_window             ,
     input  wire                             new_char,
 
     input   logic                           memory_ready,
@@ -170,8 +171,8 @@ module engine #(
         // convert negated not_ready/not_valid signals to "standard" ready/valid interface.
         assign fifo_data_in_ready  [i] = ~ fifo_data_in_not_ready  [i];
         assign fifo_data_out_valid [i] = ~ fifo_data_out_not_valid [i]; 
-        //mask valid fifo output with enable_chars
-        assign fifo_data_out_valid_masked[i] = fifo_data_out_valid [i] && enable_chars[i];
+        //mask valid fifo output with cur_window_enable
+        assign fifo_data_out_valid_masked[i] = fifo_data_out_valid [i] && cur_window_enable[i];
         assign fifo_data_out_valid_masked_packed [i] = fifo_data_out_valid_masked[i];
     end
 
@@ -244,7 +245,8 @@ module engine #(
         ) a_regex_cpu  (
             .clk                                (clk                                ),
             .rst                                (rst                                ), 
-            .current_characters                 (current_characters                 ),
+            .current_characters                 (cur_window                         ),
+            .end_of_string                      (cur_window_end_of_s                ),
             .input_pc_ready                     (regex_cpu_input_pc_ready           ),
             .input_cc_id                        (regex_cpu_input_cc_id              ), 
             .input_pc                           (regex_cpu_input_pc                 ), 
@@ -273,7 +275,8 @@ module engine #(
         ) a_regex_cpu (
             .clk                                (clk                                ),
             .rst                                (rst                                ), 
-            .current_characters                 (current_characters                 ),
+            .current_characters                 (cur_window                         ),
+            .end_of_string                      (cur_window_end_of_s                ),
             .input_pc_ready                     (regex_cpu_input_pc_ready           ),
             .input_cc_id                        (regex_cpu_input_cc_id              ), 
             .input_pc                           (regex_cpu_input_pc                 ), 

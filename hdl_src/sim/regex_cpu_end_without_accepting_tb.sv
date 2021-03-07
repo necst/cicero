@@ -14,6 +14,7 @@ module regex_cpu_end_without_accepting_tb();
     logic                             clk                               ;
     logic                             rst                               ;
     logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters     ;
+    logic[(2**CC_ID_BITS)-1:0                ]        end_of_string          ;
     logic                             input_pc_valid                    ;
     logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
@@ -37,6 +38,7 @@ module regex_cpu_end_without_accepting_tb();
     ) a_cpu (
         .clk                             (  clk                           ),   
         .rst                             (rst                             ),
+        .end_of_string                   (end_of_string                   ),
         .current_characters              (current_characters              ),
         .input_pc_valid                  (input_pc_valid                  ),
         .input_cc_id                     (input_cc_id                     ),
@@ -156,7 +158,7 @@ module regex_cpu_end_without_accepting_tb();
         max_pc          = 'd128;
         max_character   = 'd64;
         a_random_payload= 'd32;
-        
+        end_of_string   = {(2**CC_ID_BITS){1'b0}};
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;

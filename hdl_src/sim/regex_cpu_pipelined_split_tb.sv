@@ -12,8 +12,9 @@ module regex_cpu_pipelined_split_tb();
     parameter  MEMORY_ADDR_WIDTH = 11;
 
     logic                             clk                               ;
-    logic                             rst                             ; 
-    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters                 ;
+    logic                             rst                               ; 
+    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters;
+    logic[(2**CC_ID_BITS)-1:0]                        end_of_string     ;
     logic                             input_pc_valid                    ;
 	logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
@@ -41,6 +42,7 @@ module regex_cpu_pipelined_split_tb();
         .clk           	                    ( clk                               ),
         .rst                             	( rst                             	), 
         .current_characters                 ( current_characters                ),
+        .end_of_string                      ( end_of_string                     ),
         .input_pc_valid                    	( input_pc_valid                    ),
 		.input_cc_id                     	( input_cc_id                       ),
         .input_pc                          	( input_pc                          ), 
@@ -239,7 +241,8 @@ module regex_cpu_pipelined_split_tb();
         for ( a_pc = 0 ; a_pc < max_pc ; a_pc+=1 ) begin
             for(another_pc = 0 ; another_pc < max_another_pc; another_pc+=1)begin
 				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; ++a_cc_id) begin
-					
+				
+                end_of_string      <= {(2**CC_ID_BITS){1'b0}};
                 current_characters <= {((2**CC_ID_BITS)*CHARACTER_WIDTH){1'b0}};
                 
                 load_pc_and_supply_memory(a_pc,{SPLIT,another_pc }, a_cc_id);

@@ -15,8 +15,8 @@ module channel_multi_cc #(
     wire channel_output_valid   , channel_output_not_valid;
     wire [CHANNEL_COUNT_WIDTH-1:0]   fifo_count;
 
-    logic [CHANNEL_COUNT_WIDTH-1:0]  cur_cc_id_count [(2**CC_ID_BITS)-1:0];
-    logic [CHANNEL_COUNT_WIDTH-1:0] next_cc_id_count [(2**CC_ID_BITS)-1:0];
+    logic [CHANNEL_COUNT_WIDTH-1:0]  cur_cc_id_count  [(2**CC_ID_BITS)-1:0];
+    logic [CHANNEL_COUNT_WIDTH-1:0]  next_cc_id_count [(2**CC_ID_BITS)-1:0];
 
     logic [LATENCY_COUNT_WIDTH-1:0]  channel_old_latency, channel_old_latency_next;
 
