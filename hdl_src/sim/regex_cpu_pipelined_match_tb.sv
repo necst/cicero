@@ -12,8 +12,9 @@ module regex_cpu_pipelined_match_tb();
     parameter  MEMORY_ADDR_WIDTH = 11;
 
     logic                             clk                               ;
-    logic                             rst                             ; 
-    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters                 ;
+    logic                             rst                               ; 
+    logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters;
+    logic[(2**CC_ID_BITS)-1:0]                        end_of_string     ;
     logic                             input_pc_valid                    ;
 	logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
@@ -27,7 +28,7 @@ module regex_cpu_pipelined_match_tb();
     logic[PC_WIDTH-1:0]               output_pc                         ;
     logic                             output_pc_ready                   ;
     logic                             accepts                           ;
-    logic                             running                           ;
+	logic 							  running;
 	logic[(2**CC_ID_BITS)-1:0]        elaborating_chars     ;
 
     regex_cpu_pipelined #(
@@ -41,6 +42,7 @@ module regex_cpu_pipelined_match_tb();
         .clk           	                    ( clk                               ),
         .rst                             	( rst                             	), 
         .current_characters                 ( current_characters                ),
+        .end_of_string                      ( end_of_string                     ),
         .input_pc_valid                    	( input_pc_valid                    ),
 		.input_cc_id                     	( input_cc_id                       ),
         .input_pc                          	( input_pc                          ), 
@@ -172,7 +174,7 @@ module regex_cpu_pipelined_match_tb();
         for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
             for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
 				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id++) begin
-					
+                    end_of_string      <= {(2**CC_ID_BITS){1'b0}};
 					current_characters <= {(2**CC_ID_BITS){a_character}};
 					@(posedge clk);
 					//expected match
@@ -197,6 +199,7 @@ module regex_cpu_pipelined_match_tb();
 					//test non match
 					for (logic [CHARACTER_WIDTH-1:0] character_difference=1  ; character_difference < max_character_difference && a_character+character_difference < {CHARACTER_WIDTH{1'b1}} ; character_difference+=1 ) begin
 						//expect a non match no output and wait for another instruction raised.
+                        end_of_string      <= {(2**CC_ID_BITS){1'b0}};
 						a_different_character  = a_character+character_difference;
 						current_characters <= {(2**CC_ID_BITS){a_character}};
 						$display("%h start negative match with currchar=%c, match_char=%c", a_pc, a_character, a_different_character);

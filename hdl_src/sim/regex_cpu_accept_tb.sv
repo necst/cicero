@@ -14,6 +14,7 @@ module regex_cpu_accept_tb();
     logic                             clk                               ;
     logic                             rst                               ;
     logic[(2**CC_ID_BITS)*CHARACTER_WIDTH-1:0]        current_characters     ;
+    logic[(2**CC_ID_BITS)-1:0                ]        end_of_string          ;
     logic                             input_pc_valid                    ;
     logic[CC_ID_BITS-1:0]             input_cc_id                       ;
     logic[PC_WIDTH-1:0]               input_pc                          ;
@@ -37,6 +38,7 @@ module regex_cpu_accept_tb();
     ) a_cpu (
         .clk                             (  clk                           ),   
         .rst                             (rst                             ),
+        .end_of_string                   (end_of_string                   ),
         .current_characters              (current_characters              ),
         .input_pc_valid                  (input_pc_valid                  ),
         .input_cc_id                     (input_cc_id                     ),
@@ -131,7 +133,8 @@ module regex_cpu_accept_tb();
             for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
             begin
                 
-                current_characters <= {{((2**CC_ID_BITS)-1){non_terminator}}, terminator};
+                current_characters <= {{(2**CC_ID_BITS){non_terminator}}};
+                end_of_string      <= {{((2**CC_ID_BITS)-1){1'b0}},1'b1};
                 load_pc(pc, {(CC_ID_BITS){1'b0}});
                 supply_memory({ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}} } ,pc);
                 @(posedge clk);
@@ -154,6 +157,7 @@ module regex_cpu_accept_tb();
             begin
                 
                 current_characters <= {(2**CC_ID_BITS){non_terminator}};
+                end_of_string      <= {(2**CC_ID_BITS){1'b0}};
                 load_pc(pc,{(CC_ID_BITS){1'b0}});
                 supply_memory({ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} },pc);
                 @(posedge clk);
@@ -176,6 +180,7 @@ module regex_cpu_accept_tb();
             begin
                 
                 current_characters <= {(2**CC_ID_BITS){any_char}};
+                end_of_string      <= {(2**CC_ID_BITS){1'b0}};
                 load_pc(pc,'0);
                 supply_memory({ACCEPT_PARTIAL, { (INSTRUCTION_DATA_WIDTH){1'b0}} },pc);
                 @(posedge clk);
