@@ -4,7 +4,7 @@ import instruction_package::*;
 // It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
 // the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
 module regex_cpu_pipelined #(
-    parameter  PC_WIDTH          = 8 ,
+    parameter  PC_WIDTH          = 9 ,
     parameter  CC_ID_BITS        = 2 ,            
     parameter  CHARACTER_WIDTH   = 8 ,
     parameter  MEMORY_WIDTH      = 16,
@@ -59,6 +59,12 @@ module regex_cpu_pipelined #(
     logic                             EXE1_output_pc_valid                          , EXE2_output_pc_valid                 	;
     // output arbiter  
     logic [PC_WIDTH+CC_ID_BITS-1:0]   output_pc_and_cc_id;
+
+     always_comb
+    begin //ASSERTION CONCERNING INSTRUCTION SIZE WIDTH
+        assert (INSTRUCTION_DATA_WIDTH >= PC_WIDTH)         else $error("Instruction width not compatible with PC width!");
+        assert (INSTRUCTION_DATA_WIDTH >= CHARACTER_WIDTH)  else $error("Instruction width not compatible with character width!");
+    end
 
     always_ff @(posedge clk ) 
     begin 
@@ -227,10 +233,22 @@ module regex_cpu_pipelined #(
                 end
                 MATCH:
                 begin
-                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] == EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END] ) begin
+                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] == EXE1_Instr[INSTRUCTION_DATA_END+:CHARACTER_WIDTH] ) begin
                         EXE1_output_pc_valid                 = 1'b1;
                         EXE1_output_pc                       = EXE1_Pc + 1;
 						EXE1_output_cc_id 					 = EXE1_Cc_id + 1;
+                        if(~EXE1_output_pc_ready)
+                        begin
+                            EXE1_waits                       = 1'b1;
+                        end     
+                    end
+                end
+                NOT_MATCH:
+                begin
+                    if( current_characters[EXE1_Cc_id*CHARACTER_WIDTH+:CHARACTER_WIDTH] != EXE1_Instr[INSTRUCTION_DATA_END+:CHARACTER_WIDTH] ) begin
+                        EXE1_output_pc_valid                 = 1'b1;
+                        EXE1_output_pc                       = EXE1_Pc + 1;
+						EXE1_output_cc_id 					 = EXE1_Cc_id;
                         if(~EXE1_output_pc_ready)
                         begin
                             EXE1_waits                       = 1'b1;
@@ -252,7 +270,7 @@ module regex_cpu_pipelined #(
                 JMP:
                 begin
                     EXE1_output_pc_valid                    = 1'b1;
-                    EXE1_output_pc                          = EXE1_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                    EXE1_output_pc                          = EXE1_Instr[INSTRUCTION_DATA_END+:PC_WIDTH];
                     EXE1_output_cc_id				     	= EXE1_Cc_id;
                     if( ~EXE1_output_pc_ready)
                     begin
@@ -283,7 +301,7 @@ module regex_cpu_pipelined #(
                 SPLIT:
                 begin
                     EXE2_output_pc_valid                  = 1'b1;
-                    EXE2_output_pc                        = EXE2_Instr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                    EXE2_output_pc                        = EXE2_Instr[INSTRUCTION_DATA_END+:PC_WIDTH];
                     EXE2_output_cc_id					  = EXE2_Cc_id;
                     if(~EXE2_output_pc_ready)
                     begin

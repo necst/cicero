@@ -349,7 +349,7 @@ module coprocessor_top #(
             .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
-            .rst                        (rst                        ),
+            .rst                        (subcomponent_rst           ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
             .all_bb_full                (all_bb_full                ),
@@ -380,7 +380,7 @@ module coprocessor_top #(
             .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
-            .rst                        (rst                        ),
+            .rst                        (subcomponent_rst           ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
             .all_bb_full                (all_bb_full                ),
@@ -411,7 +411,7 @@ module coprocessor_top #(
             .CC_ID_BITS                 (CC_ID_BITS                 )
         )a_topology(
             .clk                        (clk                        ),
-            .rst                        (rst                        ),
+            .rst                        (subcomponent_rst           ),
             .any_bb_accept              (any_bb_accept              ),
             .any_bb_running             (any_bb_running             ),
             .all_bb_full                (all_bb_full                ),

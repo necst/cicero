@@ -1,11 +1,12 @@
 `timescale 1ns / 100ps
 
 import AXI_package::*;
+import instruction_package::*;
 
 module AXI_top_tb_from_compiled();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    logic                               clk;
+    logic                             clk;
     logic                             rst; 
     logic [REG_WIDTH-1:0]  data_in_register;
     logic [REG_WIDTH-1:0]  address_register;
@@ -34,7 +35,7 @@ module AXI_top_tb_from_compiled();
         #CLOCK_SEMI_PERIOD clk = ~ clk;
     end
 
-    task write(  input reg[REG_WIDTH-1:0] address, 
+   task write(  input reg[REG_WIDTH-1:0] address, 
                  input reg[REG_WIDTH-1:0] value);
     begin
         @(posedge clk);
@@ -73,7 +74,7 @@ module AXI_top_tb_from_compiled();
                      output reg [REG_WIDTH-1:0] address);
     begin
         int c;
-        reg [7:0]           itype0, idata0, itype1,idata1;
+        reg [INSTRUCTION_WIDTH-1:0] instr_0, instr_1;
         reg [REG_WIDTH-1:0] data;
         reg                 flag;
         
@@ -82,18 +83,17 @@ module AXI_top_tb_from_compiled();
         
         while (! $feof(fp)) 
         begin
-            c = $fscanf(fp,"%d ; %d\n", itype0, idata0);
+            c = $fscanf(fp,"%x\n", instr_0);
             if( ! $feof(fp) )
             begin
-                c = $fscanf(fp,"%d ; %d\n", itype1, idata1);
+                c = $fscanf(fp,"%x\n", instr_1);
             end
             else
             begin
-                itype1         = {8{1'b0}};
-                idata1         = {8{1'b0}};
+                instr_1         = {INSTRUCTION_WIDTH{1'b0}};
             end
-            $display("%d,%d,%d,%d",itype1, idata1, itype0, idata0);
-            data               = {itype1, idata1, itype0, idata0};
+            $display("%d,%d",instr_0, instr_1);
+            data               = {instr_1, instr_0};
             @(posedge clk);
             address_register  <= (address>>2);
             @(posedge clk);
@@ -168,7 +168,7 @@ module AXI_top_tb_from_compiled();
     begin
         reg [REG_WIDTH :0]  address;
         int c;
-        reg [7:0]           itype0, idata0;
+        reg [INSTRUCTION_WIDTH-1:0]           instr_0;
         reg [REG_WIDTH-1:0] data;
         reg                 flag;
         flag    = 1'b1;  
@@ -176,8 +176,8 @@ module AXI_top_tb_from_compiled();
         
         while (! $feof(fp)) 
         begin
-            c = $fscanf(fp,"%d ; %d\n", itype0, idata0);
-            $display("%d,%d",itype0, idata0);
+            c = $fscanf(fp,"%x\n", instr_0);
+            $display("%x",instr_0);
             
             address_register  <= (address >> 2);
             @(posedge clk);
@@ -191,9 +191,9 @@ module AXI_top_tb_from_compiled();
             
            
             @(posedge clk);
-            if ( data_o_register[((address>>1) % 2)*16+:16]  !== { itype0, idata0})
+            if ( data_o_register[((address>>1) % 2)*16+:16]  !==  instr_0)
             begin
-                $display("%d: obtained %d, %d !==  expected %d %d",address, data_o_register[15:8], data_o_register[7:0]  , itype0, idata0);
+                $display("%d: obtained %x !==  expected %x ",address, data_o_register[15:0]  , instr_0);
                 $stop;
             end
 
@@ -305,8 +305,6 @@ module AXI_top_tb_from_compiled();
     end
     endtask
 
-   
-
     initial
     begin
         int fp_code , fp_string;
@@ -329,7 +327,7 @@ module AXI_top_tb_from_compiled();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_22_regex.out","r");
+        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_21_regex.out","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");

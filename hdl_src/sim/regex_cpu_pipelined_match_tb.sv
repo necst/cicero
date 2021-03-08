@@ -5,7 +5,7 @@ import instruction_package::*;
 module regex_cpu_pipelined_match_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
 	parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
@@ -151,14 +151,17 @@ module regex_cpu_pipelined_match_tb();
 
 
     initial begin
-        reg [CHARACTER_WIDTH-1:0]   a_character, a_different_character;
+        reg [INSTRUCTION_DATA_WIDTH-1:0]   a_character, a_different_character;
         reg [PC_WIDTH-1:0]          a_pc;
-        reg [CHARACTER_WIDTH-1:0]   max_character;
+        reg [CHARACTER_WIDTH-1:0]   max_character,min_character;
         reg [CHARACTER_WIDTH-1:0]   max_character_difference;
-        reg [PC_WIDTH-1:0]          max_pc;
+        reg [PC_WIDTH-1:0]          max_pc, min_pc;
+        min_character               = 170;
         max_character               = 254;
         max_character_difference    = 32;
-        max_pc                      = 127;
+        min_pc                      = 170;
+        max_pc                      = 314;
+
 
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -171,11 +174,11 @@ module regex_cpu_pipelined_match_tb();
         rst          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
-            for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
-				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id++) begin
+        for (a_pc = min_pc; a_pc < max_pc ; a_pc+=1 ) begin
+            for ( a_character=min_character ; a_character < max_character ; a_character+=1 ) begin
+				for (int a_cc_id=0; a_cc_id<(2**CC_ID_BITS); a_cc_id++) begin
                     end_of_string      <= {(2**CC_ID_BITS){1'b0}};
-					current_characters <= {(2**CC_ID_BITS){a_character}};
+					current_characters <= {(2**CC_ID_BITS){a_character[0+:CHARACTER_WIDTH]}};
 					@(posedge clk);
 					//expected match
 					load_pc_and_supply_memory(a_pc,{MATCH,a_character }, a_cc_id );
@@ -201,7 +204,7 @@ module regex_cpu_pipelined_match_tb();
 						//expect a non match no output and wait for another instruction raised.
                         end_of_string      <= {(2**CC_ID_BITS){1'b0}};
 						a_different_character  = a_character+character_difference;
-						current_characters <= {(2**CC_ID_BITS){a_character}};
+						current_characters <= {(2**CC_ID_BITS){a_character[0+:CHARACTER_WIDTH]}};
 						$display("%h start negative match with currchar=%c, match_char=%c", a_pc, a_character, a_different_character);
 						load_pc_and_supply_memory(a_pc,{MATCH,a_different_character }, a_cc_id);
 						while(running)

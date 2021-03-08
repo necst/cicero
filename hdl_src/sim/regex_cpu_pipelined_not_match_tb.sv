@@ -2,7 +2,7 @@
 
 import instruction_package::*;
 
-module regex_cpu_pipelined_accept_tb();
+module regex_cpu_pipelined_not_match_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
     parameter  PC_WIDTH          = 9;
@@ -105,114 +105,165 @@ module regex_cpu_pipelined_accept_tb();
     end
     endtask
 
-   
+      task wait_pc_output( input reg[MEMORY_ADDR_WIDTH-1:0] expected_pc,
+                         input reg[CC_ID_BITS-1:0]        expected_cc_id,
+                         input reg                        wait_immediately_after );
+    begin
 
-    
+        while(output_pc_valid == 1'b0 )
+            @(posedge clk);
+            if(~running)
+            begin
+                $display("regex_cpu stopped running without producing any pc!");
+                $stop();
+            end
+        output_pc_ready    <= 1'b1;
+        @(posedge clk);
+        
+
+        if( output_pc_valid !== 1'b1)
+        begin
+            $display("regex_cpu didn't need to produce pc!");
+            $stop();
+        end
+        if(output_pc !== expected_pc)
+        begin
+            $display("regex_cpu output pc %h != %h", output_pc, expected_pc);
+            $stop();
+        end
+        if(output_cc_id !== expected_cc_id)
+        begin
+            $display("regex_cpu output cc id %h != %h", output_cc_id, expected_cc_id);
+            $stop();
+        end
+        @(posedge clk);
+        output_pc_ready    <=1'b0;
+        @(posedge clk);
+        if(output_pc_valid == 1'b1 && wait_immediately_after == 1'b0 && ~running)
+        begin
+            $display("regex_cpu outputted a pc immediately after having outputted one!");
+            $stop();
+        end
+        
+        
+    end
+    endtask
+
+
     initial begin
-        logic [PC_WIDTH-1:0] 	max_pc, min_pc;
-        min_pc          = 110;
-        max_pc          = 270;
+        reg [INSTRUCTION_DATA_WIDTH-1:0]   a_character, a_different_character;
+        reg [PC_WIDTH-1:0]          a_pc;
+        reg [CHARACTER_WIDTH-1:0]   max_character, min_character;
+        reg [CHARACTER_WIDTH-1:0]   max_character_difference;
+        reg [PC_WIDTH-1:0]          max_pc, min_pc;
+        min_pc                      = 220;
+        max_pc                      = 260;
+        min_character               = 65;
+        max_character               = 170;
+        max_character_difference    = 32;
+
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
         clk             = 1'b0;
-        rst           = 1'b0;
+        rst          <= 1'b0;
         @(posedge clk);
         rst          <= 1'b1;
         @(posedge clk);
         rst          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        for (logic [PC_WIDTH-1:0] pc = min_pc ; pc < max_pc ; pc+=1) 
-		begin
-			for (int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1) 
-			begin
-					
-				current_characters <= {(2**CC_ID_BITS*CHARACTER_WIDTH){1'b0}};
-                end_of_string      <= {(2**CC_ID_BITS){1'b0}};
-                end_of_string[a_cc_id]<= 1'b1;
-
-				load_pc_and_supply_memory(pc,{ACCEPT,{ (INSTRUCTION_DATA_WIDTH){1'b0}}},a_cc_id );
-				@(posedge clk);
-				if(accepts !== 1'b1)
-				begin
-					$display("%h didn't accept even if was supposed to!", pc);
-					$stop;
-				end
-				else
-				begin
-					$display("%h accepted correctly", pc );
-				end
-				@(posedge clk);
-				if(elaborating_chars[a_cc_id] == 1'b1)
-				begin
-					$display("%h regex_cpu still has work to do even if pc have been all fetched!", pc);
-					$stop;
-				end
-            end
-        end
-
-        repeat(30) @(posedge clk);
-
-        for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
-            for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
-            begin
-				for (int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1) 
-					begin
-                    end_of_string      <= {(2**CC_ID_BITS){1'b1}};
-                    end_of_string[a_cc_id]<= 1'b0;
-					current_characters <=	{(2**CC_ID_BITS){non_terminator}};
-					load_pc_and_supply_memory(pc,{ACCEPT, { (INSTRUCTION_DATA_WIDTH){1'b0}} }, a_cc_id);
-					@(posedge clk);
-					if(accepts !== 1'b0)
-					begin
-						$display("pc: %h cc: %c accepted even if was supposed to not accept!",pc,  current_characters);
-						$stop;
-					end
-					else
-					begin
-						$display("pc: %h cc: %c correctly did not accept ", pc,  current_characters);
-					end
-					@(posedge clk);
-					if(elaborating_chars[a_cc_id] == 1'b1)
-					begin
-						$display("%h regex_cpu still has work to do even if pc have been all fetched!", pc);
-						$stop;
-					end
-				end
-            end
-        end
-
-        repeat(30) @(posedge clk);
-        for (logic [PC_WIDTH-1:0] pc = 0 ; pc < max_pc ; pc+=1) begin
-            for (logic [CHARACTER_WIDTH-1:0] non_terminator=1; non_terminator< 255; non_terminator+=1)
-            begin
-				for (int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1) 
-					begin
+        for (a_pc = min_pc; a_pc < max_pc ; a_pc+=1 ) begin
+            for ( a_character=min_character ; a_character < max_character ; a_character+=1 ) begin
+				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id++) begin
                     end_of_string      <= {(2**CC_ID_BITS){1'b0}};
-					current_characters <=	{(2**CC_ID_BITS){non_terminator}};
-					load_pc_and_supply_memory(pc,{ACCEPT_PARTIAL, { (INSTRUCTION_DATA_WIDTH){1'b0}} }, a_cc_id);
+					current_characters <= {(2**CC_ID_BITS){a_character[0+:CHARACTER_WIDTH]}};
 					@(posedge clk);
-					if(accepts == 1'b0)
-					begin
-						$display("pc: %h cc: %c didn't accepted even if was supposed to !",pc,  current_characters);
-						$stop;
+					//expected not to continue,no output and wait ready for another instruction.
+					load_pc_and_supply_memory(a_pc,{NOT_MATCH,a_character }, a_cc_id );
+					while(running)
+						begin
+							if( output_pc_valid == 1'b1)
+							begin
+								$display("basic block didn't need to produce pc!");
+								$stop();
+							end
+							@(posedge clk);
+						end
+						$display("%h %c ok", a_pc, a_different_character);
+						repeat (3)
+						begin
+							@(posedge clk);
+							if( running == 1'b1)
+							begin
+								$display("regex_cpu still running!");
+								$stop();
+							end
+							if( output_pc_valid == 1'b1)
+							begin
+								$display("basic block didn't need to produce pc!");
+								$stop();
+							end
+						end
+					//test non match
+					for (logic [CHARACTER_WIDTH-1:0] character_difference=1  ; character_difference < max_character_difference && a_character+character_difference < {CHARACTER_WIDTH{1'b1}} ; character_difference+=1 ) begin
+						//expect to continue, an output with same cc_id and then ready
+                        end_of_string      <= {(2**CC_ID_BITS){1'b0}};
+						a_different_character  = a_character+character_difference;
+						current_characters <= {(2**CC_ID_BITS){a_character[0+:CHARACTER_WIDTH]}};
+						$display("%h start not match with currchar=%c, match_char=%c", a_pc, a_character, a_different_character);
+						load_pc_and_supply_memory(a_pc,{NOT_MATCH,a_different_character }, a_cc_id);
+						wait_pc_output(a_pc+1, a_cc_id, 1'b0);
+                        //ensure it can wait other instructions
+                        repeat (3)
+                            begin
+                                @(posedge clk);
+                                if( running == 1'b1)
+                                begin
+                                    $display("regex_cpu still running!");
+                                    $stop();
+                                end
+                                if( output_pc_valid == 1'b1)
+                                begin
+                                    $display("basic block didn't need to produce pc!");
+                                    $stop();
+                                end
+                            end
+                        $display("%h not match with %c ok", a_pc, a_character);
+                        
+                        
 					end
-					else
-					begin
-						$display("pc: %h cc: %c correctly accepted ", pc,  current_characters);
-					end
-					@(posedge clk);
-					if(elaborating_chars[a_cc_id] == 1'b1)
-					begin
-						$display("%h regex_cpu still has work to do even if pc have been all fetched!", pc);
-						$stop;
-					end
-				end
+                end
             end
         end
+ 
+       
+        
+        repeat (10) @(posedge clk);
+        
+
+        @(posedge clk);
+        if( output_pc_valid == 1'b1)
+            begin
+                $display("basic block didn't need to produce pc!");
+                $stop();
+            end
+
+        repeat (10)
+        begin
+            @(posedge clk);
+            if( output_pc_valid == 1'b1)
+            begin
+                $display("basic block didn't need to produce pc!");
+                $stop();
+            end
+
+        end
+        
+
         $display("OK");
         $finish();
 
-        end
-    endmodule
+    end
+
+endmodule

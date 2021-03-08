@@ -4,7 +4,7 @@ import instruction_package::*;
 // It uses two ready-valid interface to receive and output the instruction pc which identifies respectively
 // the instruction that will be elaborated and a new instruction(continuation) that has to be elaborated.
 module regex_cpu #(
-    parameter  PC_WIDTH          = 8 ,
+    parameter  PC_WIDTH          = 9 ,
     parameter  CC_ID_BITS        = 2 ,            
     parameter  CHARACTER_WIDTH   = 8 ,
     parameter  MEMORY_WIDTH      = 16,
@@ -53,6 +53,12 @@ module regex_cpu #(
     logic                           output_pc_fromInstruction_valid;
     State                           nextState_fromInstruction;
     logic                           accepts_fromInstruction;
+
+    always_comb
+    begin //ASSERTION CONCERNING INSTRUCTION SIZE WIDTH
+        assert (INSTRUCTION_DATA_WIDTH >= PC_WIDTH)         else $error("Instruction width not compatible with PC width!");
+        assert (INSTRUCTION_DATA_WIDTH >= CHARACTER_WIDTH)  else $error("Instruction width not compatible with character width!");
+    end
 
     always_ff @(posedge clk ) 
     begin 
@@ -105,17 +111,28 @@ module regex_cpu #(
                 else if(curState == S_EXEC_2)
                 begin
                     output_pc_fromInstruction_valid                  = 1'b1;
-                    output_pc_fromInstruction                        = currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                    output_pc_fromInstruction                        = currInstr[INSTRUCTION_DATA_END+:PC_WIDTH];
                     output_cc_id_fromInstruction                     = currCcId;
                     nextState_fromInstruction                        = S_IDLE;
                 end
             end
             MATCH:
             begin
-                if( current_characters[currCcId*CHARACTER_WIDTH+:CHARACTER_WIDTH] == currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END]) begin
+                if( current_characters[currCcId*CHARACTER_WIDTH+:CHARACTER_WIDTH] == currInstr[INSTRUCTION_DATA_END+:CHARACTER_WIDTH]) 
+                begin
                     output_pc_fromInstruction_valid                 = 1'b1;
                     output_pc_fromInstruction                       = currPc + 1;
 					output_cc_id_fromInstruction 					= currCcId + 1;
+                    nextState_fromInstruction                       = S_IDLE;
+                end
+            end
+            NOT_MATCH:
+            begin
+                if( current_characters[currCcId*CHARACTER_WIDTH+:CHARACTER_WIDTH] != currInstr[INSTRUCTION_DATA_END+:CHARACTER_WIDTH])
+                begin
+                    output_pc_fromInstruction_valid                 = 1'b1;
+                    output_pc_fromInstruction                       = currPc + 1;
+                    output_cc_id_fromInstruction                    = currCcId ;
                     nextState_fromInstruction                       = S_IDLE;
                 end
             end
@@ -130,7 +147,7 @@ module regex_cpu #(
             JMP:
             begin
                 output_pc_fromInstruction_valid                  = 1'b1;
-                output_pc_fromInstruction                        = currInstr[INSTRUCTION_DATA_START:INSTRUCTION_DATA_END];
+                output_pc_fromInstruction                        = currInstr[INSTRUCTION_DATA_END+:PC_WIDTH];
                 output_cc_id_fromInstruction                     = currCcId;
                 nextState_fromInstruction                        = S_IDLE;
             end

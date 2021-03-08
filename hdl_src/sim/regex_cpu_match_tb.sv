@@ -5,7 +5,7 @@ import instruction_package::*;
 module regex_cpu_match_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
     parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
@@ -155,10 +155,11 @@ module regex_cpu_match_tb();
 		reg [CC_ID_BITS-1:0]		expected_res_cc_id;
         reg [CHARACTER_WIDTH-1:0]   max_character;
         reg [CHARACTER_WIDTH-1:0]   max_character_difference;
-        reg [PC_WIDTH-1:0]          max_pc;
-        max_character               = 254;
+        reg [PC_WIDTH-1:0]          max_pc,min_pc;
+        max_character               = 64;
         max_character_difference    = 32;
-        max_pc                      = 127;
+        max_pc                      = 264;
+        min_pc                      = 98;
         end_of_string   = {(2**CC_ID_BITS){1'b0}};
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -171,17 +172,17 @@ module regex_cpu_match_tb();
         rst          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        for (a_pc = 0; a_pc < max_pc ; a_pc+=1 ) begin
+        for (a_pc = min_pc; a_pc < max_pc ; a_pc+=1 ) begin
             for ( a_character=0 ; a_character < max_character ; a_character+=1 ) begin
                 for( int a_cc_id=0; a_cc_id < (2**CC_ID_BITS); a_cc_id +=1) begin
 
                     current_characters <= {(2**CC_ID_BITS){a_character}};
                     //expected match
                     load_pc(a_pc, a_cc_id[CC_ID_BITS-1:0]);
-                    supply_memory({MATCH,a_character } ,a_pc);
-					if  ( a_cc_id[CC_ID_BITS-1:0] == {(CC_ID_BITS){1'b1}} ) expected_res_cc_id =  { {(CC_ID_BITS-1){1'b0}}, 1'b1} ;
-					else 													expected_res_cc_id = a_cc_id+1;
+                    supply_memory({MATCH,{(INSTRUCTION_DATA_WIDTH-CHARACTER_WIDTH){1'b0}},a_character } ,a_pc);
+					expected_res_cc_id = a_cc_id+1;
                     wait_pc_output(a_pc+8'h01, expected_res_cc_id[CC_ID_BITS-1:0], 1'b0);
+                    $display("%h %c ok", a_pc, a_character);
                     //ensure it can wait other instructions
                     repeat (10)
                         begin
@@ -205,9 +206,9 @@ module regex_cpu_match_tb();
                         current_characters <= {(2**CC_ID_BITS){a_character}};
 
                         load_pc(a_pc, a_cc_id);
-                        supply_memory({MATCH,a_different_character } ,a_pc);
+                        supply_memory({MATCH,{(INSTRUCTION_DATA_WIDTH-CHARACTER_WIDTH){1'b0}},a_different_character } ,a_pc);
                         @(posedge clk);
-                        $display("%h %c ok", a_pc, a_different_character);
+                        $display("%h %c ->x", a_pc, a_different_character);
                         repeat (10)
                         begin
                             @(posedge clk);

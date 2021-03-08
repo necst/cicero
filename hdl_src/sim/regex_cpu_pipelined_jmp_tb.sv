@@ -5,7 +5,7 @@ import instruction_package::*;
 module regex_cpu_pipelined_jmp_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
 	parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
@@ -154,11 +154,12 @@ module regex_cpu_pipelined_jmp_tb();
         reg [PC_WIDTH-1:0               ] a_pc;
         reg [CHARACTER_WIDTH-1:0        ] a_character;
         reg [INSTRUCTION_DATA_WIDTH-1:0 ] a_jmp_amount;
-        reg [PC_WIDTH-1:0               ] max_pc;
-        reg [INSTRUCTION_DATA_WIDTH-1:0 ] max_jmp_amount;
-        max_pc          = 255;
-        max_jmp_amount  = 255;
-
+        reg [PC_WIDTH-1:0               ] max_pc, min_pc;
+        reg [INSTRUCTION_DATA_WIDTH-1:0 ] max_jmp_amount, min_jmp_amount;
+        min_pc          = 245;
+        max_pc          = 312;
+        min_jmp_amount  = 220;
+        max_jmp_amount  = 310;
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
         output_pc_ready = 1'b0;
@@ -170,8 +171,8 @@ module regex_cpu_pipelined_jmp_tb();
         rst          <= 1'b0;
         repeat(30) @(posedge clk);
 
-        for ( a_pc = 0; a_pc < max_pc ; a_pc +=1 ) begin
-            for ( a_jmp_amount=0 ;a_jmp_amount<max_jmp_amount ;a_jmp_amount+=1 ) begin
+        for ( a_pc = min_pc; a_pc < max_pc ; a_pc +=1 ) begin
+            for ( a_jmp_amount=min_jmp_amount ;a_jmp_amount<max_jmp_amount ;a_jmp_amount+=1 ) begin
 				for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; ++a_cc_id) begin
 					
                 a_character = 8'h00;

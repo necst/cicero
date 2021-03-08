@@ -5,7 +5,7 @@ import instruction_package::*;
 module regex_cpu_accept_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
     parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;

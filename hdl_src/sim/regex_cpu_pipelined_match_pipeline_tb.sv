@@ -1,11 +1,11 @@
 `timescale 1ns / 10ps
 
-import instruction::*;
+import instruction_package::*;
 
 module regex_cpu_pipelined_match_pipeline_tb();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
     parameter  CC_ID_BITS        = 2;   
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
@@ -152,16 +152,17 @@ module regex_cpu_pipelined_match_pipeline_tb();
 
 
     initial begin
-        reg [CHARACTER_WIDTH-1:0]   a_character, a_different_character;
+        reg [INSTRUCTION_DATA_WIDTH-1:0]   a_character, a_different_character;
         reg [PC_WIDTH-1:0]          a_pc;
         reg [CC_ID_BITS-1:0]        expected_cc_id;
-        reg [CHARACTER_WIDTH-1:0]   max_character;
+        reg [INSTRUCTION_DATA_WIDTH-1:0]   max_character;
         reg [CHARACTER_WIDTH-1:0]   max_character_difference;
-        reg [PC_WIDTH-1:0]          max_pc;
+        reg [PC_WIDTH-1:0]          max_pc, min_pc;
         
-        max_character               = 254;
+        max_character               = 127;
         max_character_difference    = 32;
-        max_pc                      = 127;
+        min_pc                      = 245;
+        max_pc                      = 290;
 
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -177,13 +178,14 @@ module regex_cpu_pipelined_match_pipeline_tb();
         
         for ( a_character=0 ; a_character < max_character ; a_character+=1 ) 
             for( int a_cc_id=0; a_cc_id < 2**CC_ID_BITS; a_cc_id+=1)
-
-                for (a_pc = 0; a_pc < max_pc ; a_pc+=4 ) 
+            begin
+                localparam BATCH_SIZE   =2;
+                for (a_pc = min_pc; a_pc < max_pc ; a_pc+=BATCH_SIZE ) 
                 begin
-                    localparam BATCH_SIZE   =2;
+                    
                     logic [BATCH_SIZE:1] ok;
                     end_of_string      <= {(2**CC_ID_BITS){1'b0}};
-                    current_characters <= {(2**CC_ID_BITS){a_character}};
+                    current_characters <= {(2**CC_ID_BITS){a_character[0+:CHARACTER_WIDTH]}};
                     for(int i=0; i<BATCH_SIZE;i++)
                     begin
                         load_pc_and_supply_memory(a_pc+i,{MATCH,a_character }, a_cc_id );
@@ -225,9 +227,11 @@ module regex_cpu_pipelined_match_pipeline_tb();
                         $display("nok regex cpu still has to output some instructions ");
                         $stop(2);
                     end
+                    $display("ok %d", a_pc);
                     output_pc_ready <= 1'b0;
 
                 end
+          end
 
         $display("OK");
         $finish();

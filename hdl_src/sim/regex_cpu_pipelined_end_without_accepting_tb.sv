@@ -5,7 +5,7 @@ import instruction_package::*;
 module regex_cpu_pipelined_end_without_accepting();
     parameter CLOCK_SEMI_PERIOD = 5  ;
 
-    parameter  PC_WIDTH          = 8;
+    parameter  PC_WIDTH          = 9;
 	parameter  CC_ID_BITS        = 2;
     parameter  CHARACTER_WIDTH   = 8;
     parameter  MEMORY_WIDTH      = 16;
@@ -110,14 +110,15 @@ module regex_cpu_pipelined_end_without_accepting();
 
      initial begin
         reg [PC_WIDTH-1:0               ] a_pc;
-        reg [PC_WIDTH-1:0               ] max_pc;
+        reg [PC_WIDTH-1:0               ] max_pc, min_pc;
         reg [CHARACTER_WIDTH-1:0        ] a_character;
         reg [CHARACTER_WIDTH-1:0        ] max_character;
         reg [INSTRUCTION_DATA_WIDTH-1:0 ] a_random_payload;
         reg [INSTRUCTION_DATA_WIDTH-1:0 ] max_random_payload;
-        max_pc          = 'd128;
+        min_pc          = 'd220;
+        max_pc          = 'd294;
         max_character   = 'd64;
-        a_random_payload= 'd32;
+        max_random_payload = 'd11;
 
         input_pc_valid  = 1'b0;
         memory_ready    = 1'b0;
@@ -131,30 +132,26 @@ module regex_cpu_pipelined_end_without_accepting();
 
         repeat(30) @(posedge clk);
 
-        for ( a_pc=0 ; a_pc < max_pc ; a_pc+=1) begin
+        for ( a_pc=min_pc ; a_pc < max_pc ; a_pc+=1) begin
             for ( a_character=0 ; a_character<max_character ; a_character+=1) begin
                 for ( a_random_payload=0 ; a_random_payload < max_random_payload; a_random_payload+=1 ) begin
-                    for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id+=1) begin
-						
-                    current_characters <= {(2**CC_ID_BITS){a_character}};
-                    end_of_string      <= {(2**CC_ID_BITS){1'b0}};
-
-                    load_pc_and_supply_memory(a_pc,{END_WITHOUT_ACCEPTING, a_random_payload }, a_cc_id);
-                    @(posedge clk);
-                    while(running)
+                    for (int a_cc_id=0; a_cc_id<2**CC_ID_BITS; a_cc_id+=1) 
                     begin
+						
+                        current_characters <= {(2**CC_ID_BITS){a_character}};
+                        end_of_string      <= {(2**CC_ID_BITS){1'b0}};
+
+                        load_pc_and_supply_memory(a_pc,{END_WITHOUT_ACCEPTING, a_random_payload }, a_cc_id);
                         @(posedge clk);
-                        if( output_pc_valid == 1'b1)
-                            begin
-                                $display("basic block didn't need to produce pc!");
-                                $stop();
-                            end
-                        if( input_pc_ready != 1'b1)
+                        while(running)
                         begin
-                            $display("basic block didn't expect a new pc to be executed!");
-                            $stop();
+                            @(posedge clk);
+                            if( output_pc_valid == 1'b1)
+                                begin
+                                    $display("basic block didn't need to produce pc!");
+                                    $stop();
+                                end
                         end
-                    end
 
 					end
                 end
