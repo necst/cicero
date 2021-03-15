@@ -97,5 +97,7 @@ module topology_single #(
     //won the arbitration 
     assign memory_cc.data       = memory.data;
     assign memory_bb[0].data    = memory.data;
-
+    
+    assign  memory_bb[0].broadcast_addr  = memory.broadcast_addr  ;
+    assign  memory_bb[0].broadcast_valid = memory.broadcast_valid ;
 endmodule

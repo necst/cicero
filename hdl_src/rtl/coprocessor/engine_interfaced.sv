@@ -53,6 +53,8 @@ module engine_interfaced #(
         .memory_addr                (memory.addr                ),
         .memory_data                (memory.data                ),
         .memory_valid               (memory.valid               ),
+        .memory_broadcast_addr      (memory.broadcast_addr      ),
+        .memory_broadcast_valid     (memory.broadcast_valid     ),
         .input_pc_valid             (in.valid                   ),
         .input_pc_and_cc_id         (in.data                    ),
         .input_pc_ready             (in.ready                   ),

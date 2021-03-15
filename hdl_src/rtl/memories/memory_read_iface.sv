@@ -6,6 +6,8 @@ interface memory_read_iface #(
     logic[MEMORY_ADDR_WIDTH-1:0]    addr;
     logic[MEMORY_WIDTH-1     :0]    data;
     logic                           valid;
+    logic[MEMORY_ADDR_WIDTH-1:0]    broadcast_addr;
+    logic                           broadcast_valid;
 
     modport in (
         output ready,
@@ -19,7 +21,9 @@ interface memory_read_iface #(
         input  ready,
         output addr,
         input  data,
-        output valid
+        output valid,
+        input  broadcast_addr,
+        input  broadcast_valid
     );
 
     function logic request(

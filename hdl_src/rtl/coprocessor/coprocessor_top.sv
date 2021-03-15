@@ -430,5 +430,7 @@ module coprocessor_top #(
     assign  memory_addr        =    memory_muxed.addr;
     assign  memory_valid       =    memory_muxed.valid;
     assign  memory_muxed.data  =    memory_data;
+    assign  memory_muxed.broadcast_addr  = memory_muxed.addr;
+    assign  memory_muxed.broadcast_valid = memory_muxed.valid && memory_muxed.ready &&  ! memory_for_cc.valid;
     
 endmodule

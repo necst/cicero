@@ -67,6 +67,8 @@ module engine #(
     output  logic[MEMORY_ADDR_WIDTH-1:0]    memory_addr,
     input   logic[MEMORY_WIDTH-1     :0]    memory_data,
     output  logic                           memory_valid,
+    input   logic[MEMORY_ADDR_WIDTH-1:0]    memory_broadcast_addr,
+    input   logic                           memory_broadcast_valid,
 
     input   logic                           input_pc_valid,
     input   logic[PC_WIDTH+CC_ID_BITS-1:0]  input_pc_and_cc_id, 
@@ -314,12 +316,12 @@ module engine #(
 
         assign memory_addr              = regex_cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ];
         assign memory_valid             = regex_cpu_memory_valid;  
-        assign regex_cpu_memory_ready   = memory_ready          ;
+        assign regex_cpu_memory_ready   = memory_ready          || (memory_broadcast_valid && regex_cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ]== memory_broadcast_addr[OFFSET_I +: MEMORY_ADDR_WIDTH ] );
         //assign regex_cpu_memory_data    = memory_data           ;   
     end
     else
     begin
-        cache_block_directly_mapped #(          
+        cache_block_directly_mapped_broadcast #(          
             .DWIDTH             (I_WIDTH                ),
             .CACHE_WIDTH_BITS   (CACHE_WIDTH_BITS       ),
             .BLOCK_WIDTH_BITS   (CACHE_BLOCK_WIDTH_BITS ),
@@ -334,7 +336,9 @@ module engine #(
             .addr_out_valid     (memory_valid           ),
             .addr_out           (memory_addr            ),
             .addr_out_ready     (memory_ready           ),
-            .data_in            (memory_data            )
+            .data_in            (memory_data            ),
+            .addr_broadcast_valid(memory_broadcast_valid),
+            .addr_broadcast      (memory_broadcast_addr )
         );
     end
 

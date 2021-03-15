@@ -205,6 +205,8 @@ module topology_mesh #(
         for (x = 0; x < BB_N_X ; x+=1 ) 
         begin
             assign memory_bb[y][x].data  = memory.data;
+            assign memory_bb[y][x].broadcast_addr  = memory.broadcast_addr  ;
+            assign memory_bb[y][x].broadcast_valid = memory.broadcast_valid ;
         end
 
     

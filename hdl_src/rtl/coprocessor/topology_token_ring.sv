@@ -115,15 +115,15 @@ module topology_token_ring #(
     wire [MEMORY_ADDR_WIDTH-1:0]       memory_addr_muxed  [BB_N:0];
     wire                               memory_valid_muxed [BB_N:0];
 
+    assign     memory_cc.ready           = memory_ready_muxed [BB_N];
+    assign     memory_addr_muxed  [BB_N] = memory_cc.addr           ;
+    assign     memory_valid_muxed [BB_N] = memory_cc.valid          ;
     for (i = 0; i < BB_N ; i+=1 ) 
     begin
         assign memory_bb[i].ready        = memory_ready_muxed    [i];
         assign memory_addr_muxed     [i] = memory_bb[i].addr        ;
         assign memory_valid_muxed    [i] = memory_bb[i].valid       ;
     end
-    assign     memory_cc.ready           = memory_ready_muxed [BB_N];
-    assign     memory_addr_muxed  [BB_N] = memory_cc.addr           ;
-    assign     memory_valid_muxed [BB_N] = memory_cc.valid          ;
 
 
     arbiter_rr_n #(
@@ -147,6 +147,8 @@ module topology_token_ring #(
     for (i = 0 ; i < BB_N ; i+=1 ) 
     begin
         assign memory_bb[i].data  = memory.data;
+        assign memory_bb[i].broadcast_addr  = memory.broadcast_addr  ;
+        assign memory_bb[i].broadcast_valid = memory.broadcast_valid ;
     end
 
     
