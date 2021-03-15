@@ -13,7 +13,7 @@ class regular_expression_measurer():
     def get_name(self):
         return self.name
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         raise NotImplementedError()
 
 class re2copro_measurer(regular_expression_measurer):
@@ -23,7 +23,7 @@ class re2copro_measurer(regular_expression_measurer):
         self.copro_not_check    = copro_not_check
         
     
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import sys
         sys.path.append('../driver')
         import re2_driver
@@ -34,7 +34,7 @@ class re2copro_measurer(regular_expression_measurer):
         #freq                = 90_000_000
         if debug:
             print('string', string, ' regex:',regex)
-        has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, allow_prefix=allow_prefix,full_match=full_match, O1=O1 , double_check=(not self.copro_not_check))
+        has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(r, line, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check))
         cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
         if debug:
             print('status:', re2_coprocessor.re2_copro_0.get_status(),
@@ -47,7 +47,7 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
 
         self.optimize  = O1
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import timeit
         
         #   O1 override
@@ -55,7 +55,7 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
         import sys
         sys.path.append('../../re2compiler')
         import re2compiler
-        code = re2compiler.compile(data=regex, O1=O1, allow_prefix=allow_prefix, full_match=full_match, o=None)
+        code = re2compiler.compile(data=regex, O1=O1, no_prefix=no_prefix, no_postfix=no_postfix, o=None)
         
         
         return len(code.splitlines())
@@ -66,11 +66,11 @@ class re2copro_compiler_measurer(regular_expression_measurer):
         self.num_times = num_times
         self.optimize  = O1
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import timeit
 
         O1 = self.optimize and O1
-        execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, allow_prefix={allow_prefix}, full_match={full_match}, o=None)"
+        execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, no_prefix={no_prefix}, no_postfix={no_postfix}, o=None)"
         prepare_code = "import sys;sys.path.append('../../re2compiler');import re2compiler"
         
         secs = timeit.repeat(execute_code, prepare_code  ,number=self.num_times)
@@ -83,9 +83,9 @@ class re_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("re")
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import test_re
-        min_time_re = test_re.time_allow_prefix_match(r, line, perf_counter=True)
+        min_time_re = test_re.time_no_prefix_match(r, line, perf_counter=True)
         if debug:
             print('minimum time', min_time_re, 'ns')
         return min_time_re
@@ -94,23 +94,30 @@ class RESULT_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("RESULT")
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
-        import re 
-        regex = re.compile(regex)
-        res = not(regex.search(string,pos=0) is None)
-    
-        return res
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
+   
+        import re
+        if no_prefix and regex[0] !='^':
+            regex_string = '^('+ regex + ')'
+
+        if no_postfix and regex[-1] !='$':
+            regex_string = '(' + regex + ')$'
+        
+        regex            = re.compile(regex)
+        golden_model_res = not(regex.search(string, pos=0) is None)
+
+        return golden_model_res
 
 
 class emulated_re2_copro_asap_measurer(regular_expression_measurer):
     def __init__(self):
         super().__init__("emulated_re2copro_asap")
     
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import sys
         sys.path.append('../../re2compiler')
         import emulate_execution
-        cc = emulate_execution.cc_asap_allow_prefix_match(r, line, perf_counter=True)
+        cc = emulate_execution.cc_asap_no_prefix_match(r, line, perf_counter=True)
         if debug:
             print('minimum cc', cc)
         return cc
@@ -121,11 +128,11 @@ class emulated_re2_copro_measurer(regular_expression_measurer):
         super().__init__("emulated_re2copro")
 
     
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         import sys
         sys.path.append('../../re2compiler')
         import emulate_execution
-        cc = emulate_execution.cc_allow_prefix_match(r, line)
+        cc = emulate_execution.cc_no_prefix_match(r, line)
         if debug:
             print('minimum cc', cc)
         return cc
@@ -137,11 +144,11 @@ class cmd_measurer(regular_expression_measurer):
         self.batch_length   = batch_length
         self.num_of_batches = num_of_batches
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
-        res = [ self._execute(regex, string, O1=O1, allow_prefix=allow_prefix, full_match=full_match, debug=debug) for i in range(self.num_of_batches)]
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
+        res = [ self._execute(regex, string, O1=O1, no_prefix=no_prefix, no_postfix=no_postfix, debug=debug) for i in range(self.num_of_batches)]
         return sum(res)/len(res)
 
-    def _execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def _execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         from subprocess import run, CalledProcessError, PIPE
         num_times   = self.batch_length
         
@@ -194,7 +201,7 @@ class re2_chrono_measurer(regular_expression_measurer):
     def get_name(self):
         return ["re2_chrono_exe","re2_chrono_compile"]
 
-    def execute(self, regex, string, O1=True, allow_prefix=True, full_match=True, debug=False):
+    def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
         from subprocess import run, CalledProcessError, PIPE
         num_times   = self.batch_length
         
@@ -339,7 +346,7 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
                 
                 try:
                     result = None
-                    result = e.execute(regex=r, string=line, full_match = False, allow_prefix=True, O1=True, debug=args.debug )   
+                    result = e.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
                 except Exception as exc:
                     print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
                     raise exc

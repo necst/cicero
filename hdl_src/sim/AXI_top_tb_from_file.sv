@@ -92,7 +92,7 @@ module AXI_top_tb_from_file();
             begin
                 instr_1         = {INSTRUCTION_WIDTH{1'b0}};
             end
-            $display("%d,%d",instr_0, instr_1);
+            $display("%d,%d", instr_1, instr_0);
             data               = {instr_1, instr_0};
             @(posedge clk);
             address_register  <= (address>>2);
