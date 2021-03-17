@@ -8,29 +8,29 @@ import re
 import time
 
 class RE2_COPROCESSOR_COMMANDS(Enum):
-	NOP                             = 0x0000_0000 
-	WRITE                           = 0x0000_0001 
-	READ                            = 0x0000_0002 
-	START                           = 0x0000_0003 
-	RESET                           = 0x0000_0004 
-	READ_ELAPSED_CC                 = 0x0000_0005
-	RESTART                         = 0x0000_0006
+	NOP                         = 0x0000_0000 
+	WRITE                       = 0x0000_0001 
+	READ                        = 0x0000_0002 
+	START                       = 0x0000_0003 
+	RESET                       = 0x0000_0004 
+	READ_ELAPSED_CC             = 0x0000_0005
+	RESTART                     = 0x0000_0006
 
 class RE2_COPROCESSOR_STATUS(Enum):
-	IDLE                         = 0x0000_0000 
-	RUNNING                      = 0x0000_0001 
-	ACCEPTED                     = 0x0000_0002 
-	REJECTED                     = 0x0000_0003 
-	ERROR                        = 0x0000_0004 
+	IDLE                        = 0x0000_0000 
+	RUNNING                     = 0x0000_0001 
+	ACCEPTED                    = 0x0000_0002 
+	REJECTED                    = 0x0000_0003 
+	ERROR                       = 0x0000_0004 
 
 class RE2_COPROCESSOR_REGISTER_OFFSET(Enum):
-	DATA_IN   = 0
-	ADDRESS   = 4
-	START_CC  = 8
-	END_CC    = 12
-	CMD       = 16
-	STATUS    = 20
-	DATA_O    = 24
+	DATA_IN   					= 0
+	ADDRESS   					= 4
+	START_CC  					= 8
+	END_CC    					= 12
+	CMD       					= 16
+	STATUS    					= 20
+	DATA_O    					= 24
 
 class re2_driver(DefaultIP):
 	debug                               = False
@@ -175,8 +175,13 @@ class re2_driver(DefaultIP):
 
 	def wait_complete(self):
 		status = self.read_status()
-		while( status == RE2_COPROCESSOR_STATUS.RUNNING):
+		count = 0
+		while( status == RE2_COPROCESSOR_STATUS.RUNNING ):
 			status = self.read_status()
+			count+=1
+			if count > 10000:
+				raise Exception('Error while waiting', status)
+
 
 		if(status == RE2_COPROCESSOR_STATUS.ERROR):
 			raise RuntimeError('probably fifo full')
@@ -196,8 +201,7 @@ class re2_driver(DefaultIP):
 		self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
 		return True
 
-	def compile_and_run(self, regex_string, string, double_check =True,no_prefix=True, no_postfix=False, O1=True ):
-		
+	def compile_and_run(self, regex_string, string, double_check =True,no_prefix=True, no_postfix=False, O1=True, frontend='pythonre' ):
 		try:
 			
 			import os.path
@@ -218,22 +222,19 @@ class re2_driver(DefaultIP):
 				import re2compiler
 				if self.verbose or self.debug :
 					print('start compilation')
-				code = re2compiler.compile(data=regex_string,o=code_output_file, O1=O1,no_prefix=no_prefix, no_postfix=no_postfix)
+				
+				code = re2compiler.compile(data=regex_string,o=code_output_file, O1=O1,no_prefix=no_prefix, no_postfix=no_postfix, frontend=frontend)
 				if self.verbose or self.debug :
 					print('end compilation')
+
 			code = code.split('\n')
 			res  = self.load_and_run( code , string)
 			if double_check:
-				import re
-				if no_prefix and regex_string[0] !='^':
-					regex_string = '^('+ regex_string + ')'
+				import sys
+				sys.path.append('../../re2compiler')
+				import golden_model
+				golden_model_res = golden_model.get_golden_model_result(regex_string, string, no_prefix=no_prefix, no_postfix=no_postfix,frontend=frontend)
 
-				if no_postfix and regex_string[-1] !='$':
-					regex_string = '(' + regex_string + ')$'
-				
-				regex            = re.compile(regex_string)
-				golden_model_res = not(regex.search(string, pos=0) is None)
-				
 				assert golden_model_res == res, f'Mismatch between golden model {golden_model_res} and regex coprocessor {res}!'
 				if self.debug:
 					print('golden model agrees')
@@ -241,8 +242,6 @@ class re2_driver(DefaultIP):
 		except Exception as exc:
 			print(exc)
 			raise exc
-		
-		
 
 	def run(self, code_filename, string):
 		code = None
@@ -253,29 +252,45 @@ class re2_driver(DefaultIP):
 			return self.load_and_run(code, string )
 
 	def load_and_run(self, code, string):
-		if ( self.get_status() in [RE2_COPROCESSOR_STATUS.REJECTED, RE2_COPROCESSOR_STATUS.ACCEPTED]):
+		if ( self.get_status() in [RE2_COPROCESSOR_STATUS.REJECTED, RE2_COPROCESSOR_STATUS.ACCEPTED, RE2_COPROCESSOR_STATUS.ERROR]):
 			self.write_cmd(RE2_COPROCESSOR_COMMANDS.RESTART)
-			if debug:
+			if self.debug:
 				print('restart sent')
 
-		code_address_end        = self.load_code(code)
-		string_address_start    = ceil(code_address_end/self.word_size_in_bytes)*self.word_size_in_bytes
-		string_address_end      = self.load_string(string,string_address_start)
+		code_address_end         = self.load_code(code)
+		self.string_address_start= ceil(code_address_end/self.word_size_in_bytes)*self.word_size_in_bytes
+		string_address_end       = self.load_string(string,self.string_address_start)
 		if self.verbose or self.debug :
 			print("Verifying code..."   , 'OK' if self.verify_code(code)                           else 'KO')
-			print("Verifying string..." , 'OK' if self.verify_string(string, string_address_start) else 'KO')
-		self.start(string_address_start, string_address_end)
+			print("Verifying string..." , 'OK' if self.verify_string(string, self.string_address_start) else 'KO')
+		
+		self.start(self.string_address_start, string_address_end)
 		has_accepted = self.wait_complete()
 		if self.verbose or self.debug :
 			print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
 		return has_accepted   
 	
+	def load_only_string_and_run(self, string):
+		if ( self.get_status() in [RE2_COPROCESSOR_STATUS.REJECTED, RE2_COPROCESSOR_STATUS.ACCEPTED]):
+			self.write_cmd(RE2_COPROCESSOR_COMMANDS.RESTART)
+			if self.debug:
+				print('restart sent')
 
+		string_address_end       = self.load_string(string,self.string_address_start)
+		if self.verbose or self.debug :
+			
+			print("Verifying string..." , 'OK' if self.verify_string(string, self.string_address_start) else 'KO')
+		self.start(self.string_address_start, string_address_end)
+		has_accepted = self.wait_complete()
+		if self.verbose or self.debug :
+			print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
+		return has_accepted   
+	
 if __name__ == "__main__":
-	debug = True
+	debug = False
 	#IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
 	#ADDRESS_RANGE   = 6*4
-	re2_coprocessor = Overlay('../../bitstreams/4P_187_4W.bit')
+	re2_coprocessor = Overlay('../../bitstreams/2x2P_187_4W_B2$miss.bit')
 	if debug :
 		print('test:',re2_coprocessor.ip_dict)
 	re2_coprocessor.re2_copro_0.verbose     = True
@@ -289,14 +304,14 @@ if __name__ == "__main__":
 	string_to_reject    = "a"*15+"b"
 	#test to accept
 
-	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept)
+	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept, no_prefix=False, no_postfix=False)
 	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
 	print('clock cycles taken:', cc_number)
 	print('status:', re2_coprocessor.re2_copro_0.get_status())
 	assert has_accepted == True, 'test failed'
 	
-	#re2_coprocessor.re2_copro_0.reset()
-	#
+	re2_coprocessor.re2_copro_0.reset()
+	
 	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
 	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
 	print('clock cycles taken: ', cc_number)

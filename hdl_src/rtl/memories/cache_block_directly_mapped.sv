@@ -25,7 +25,6 @@ module cache_block_directly_mapped #(
   output logic [ADDR_IN_WIDTH-BLOCK_WIDTH_BITS-1:0]  addr_out,
   input  logic                                       addr_out_ready,
   input  logic [DWIDTH*(2**BLOCK_WIDTH_BITS)-1:0]    data_in
-
   );
 
 localparam  CACHE_WIDTH    = 2**CACHE_WIDTH_BITS;

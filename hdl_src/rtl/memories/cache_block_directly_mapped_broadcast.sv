@@ -117,7 +117,7 @@ begin
         if(addr_in_valid && ~hit && response_ok ) 
         begin
             nextState            = S_FETCH     ;
-            addr_in_ready        = 1'b1;
+            //addr_in_ready        = 1'b1;
         end
         else if ( addr_broadcast_valid && !is_present[broadcast_cache_line_in]) 
         begin
@@ -130,7 +130,7 @@ begin
     begin
         nextState           = S_IDLE;
         addr_out_valid      = 1'b0                                     ;
-        data_out            = data_in[ block_sel_saved*DWIDTH+:DWIDTH ];
+        //data_out            = data_in[ block_sel_saved*DWIDTH+:DWIDTH ];
     end
     S_FETCH_BROADCAST:
     begin
