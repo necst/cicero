@@ -35,6 +35,7 @@ Parameter	 	 | What does
 -bitstream			|only for copro: coprocessor bitstream file    	                
 -copro_not_check    |only for copro: disable check against a golden model(python re).     						        
 -do_not_optimize	|only for copro and coprocompiler: do not optimize recopro code  
+-format				| \[pythonre\|pcre\] specifies the regex input format
 some of them have already default values you can read it directly in [measure.py](measure.py) via `measure.py --h`
 
 Measurements are put in a csv file named measure_***.\****.csv
@@ -87,7 +88,73 @@ id           	|# re combined | re
 `(5\|9\|8\|7) ` | 4            |`((C\|X)(..(..)?)?(C\|X)(...)?(L\|I\|V\|M\|F\|Y\|W\|C\|X)(........)?(H\|X)(...(..)?)?(H\|X))\|((R\|K\|X)(...?)?(D\|B\|E\|Z\|X)(...?)?(Y\|X))\|(((R\|X)(P\|X)(C\|X)(..........)?(C\|X)(V\|X)(S\|X)))\|(((L\|X)(M\|X)(A\|X)(E\|Z\|Q\|Z\|X)(G\|X)(L\|X)(Y\|X)(N\|B\|X)))`
 `(3\|4\|5\|7) ` | 4            |`((C\|X).(D\|B\|N\|B\|X)(....)?(F\|Y\|X).(C\|X).(C\|X))\|((C\|X)(.....?)?(C\|X)(C\|X)(S\|X)(..)?(G\|X).(C\|X)(G\|X)(....?)?(F\|Y\|W\|X)(C\|X))\|((C\|X)(..(..)?)?(C\|X)(...)?(L\|I\|V\|M\|F\|Y\|W\|C\|X)(........)?(H\|X)(...(..)?)?(H\|X))\|(((L\|X)(M\|X)(A\|X)(E\|Z\|Q\|Z\|X)(G\|X)(L\|X)(Y\|X)(N\|B|X)))`
 
-## Setup specific 
+## Setup specific  
+### Download automatazoo
+1) Open python
+ ```	$ python3```
+2) Execute the following the preamble of re2compiler/test_\[brill\|clamAV\|protomata\|snort\].py
+ ```
+import os
+import urllib.request
+
+path_regex = "brill.regex"
+path_input = "brill.input"
+if not os.path.exists(path_regex):
+    with urllib.request.urlopen("https://raw.githubusercontent.com/jackwadden/ANMLZoo/master/Brill/regex/brill.1chip.regex") as response:
+        html = response.read()
+        with open(path_regex,'w') as f:
+            f.write(html.decode('utf-8'))
+
+if not os.path.exists(path_input):
+    with urllib.request.urlopen("https://github.com/tjt7a/AutomataZoo/blob/master/Brill/benchmarks/inputs/brown_corpus.txt?raw=true") as response:
+        html = response.read()
+        with open(path_input,'wb') as f:
+            f.write(html)
+
+path_regex = "clamAV.regex"
+path_input = "clamAv.input"
+if not os.path.exists(path_regex):
+    with urllib.request.urlopen("https://raw.githubusercontent.com/jackwadden/ANMLZoo/master/ClamAV/regex/515_nocounter.1chip.anml") as response:
+        html = response.read()
+        with open(path_regex,'w') as f:
+            f.write(html.decode('utf-8'))
+
+if not os.path.exists(path_input):
+    with urllib.request.urlopen("https://github.com/jackwadden/ANMLZoo/blob/master/ClamAV/inputs/vasim_1MB.input?raw=true") as response:
+        html = response.read()
+        with open(path_input,'wb') as f:
+            f.write(html)
+
+
+path_regex = "protomata.regex"
+path_input = "protomata.input"
+if not os.path.exists(path_regex):
+    with urllib.request.urlopen("https://raw.githubusercontent.com/tjt7a/AutomataZoo/master/Protomata/code/protomata.regex") as response:
+        html = response.read()
+        with open(path_regex,'w') as f:
+            f.write(html.decode('utf-8'))
+
+if not os.path.exists(path_input):
+    with urllib.request.urlopen("https://raw.githubusercontent.com/tjt7a/AutomataZoo/master/Protomata/benchmarks/inputs/30k_prots.input") as response:
+        html = response.read()
+        with open(path_input,'wb') as f:
+            f.write(html)
+
+path_regex = "snort.regex"
+path_input = "snort.input"
+if not os.path.exists(path_regex):
+    with urllib.request.urlopen("https://raw.githubusercontent.com/jackwadden/ANMLZoo/master/Snort/regex/snort.1chip.regex") as response:
+        html = response.read()
+        with open(path_regex,'w') as f:
+            f.write(html.decode('utf-8'))
+
+            
+if not os.path.exists(path_input):
+    with urllib.request.urlopen("https://github.com/tjt7a/AutomataZoo/blob/master/Snort/benchmarks/inputs/wrccdc2012.pcap?raw=true") as response:
+        html = response.read()
+        with open(path_input,'wb') as f:
+            f.write(html)
+```
 ### RE2: before running measure.py you should:
 1) compile compile and install re2 (partly taken from [RE2 guides](https://github.com/google/re2/wiki/Install) )
 
@@ -132,5 +199,8 @@ id           	|# re combined | re
 			NOTE that LD_LIBRARY_PATH may need to be rewritten after restarting your machine.
 
 
+### Example run:
+
+``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
 
 
