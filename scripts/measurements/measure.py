@@ -18,7 +18,7 @@ class regular_expression_measurer():
 
 class re2copro_measurer(regular_expression_measurer):
 	def __init__(self, bitstream_filepath, copro_not_check, frontend='pythonre'):
-		super().__init__("re2copro")
+		super().__init__("re2copro[cc]")
 		self.bitstream_filepath = bitstream_filepath
 		self.copro_not_check    = copro_not_check
 		self.frontend           = frontend
@@ -65,7 +65,7 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
 
 class re2copro_compiler_measurer(regular_expression_measurer):
 	def __init__(self, num_times=100, O1=True): #100 for I5, ULTRA. 80 for PYNQ.
-		super().__init__("re2copro_compiler")
+		super().__init__("re2copro_compiler[ns]")
 		self.num_times = num_times
 		self.optimize  = O1
 
@@ -84,7 +84,7 @@ class re2copro_compiler_measurer(regular_expression_measurer):
 
 class re_measurer(regular_expression_measurer):
 	def __init__(self):
-		super().__init__("re")
+		super().__init__("re python[ns]")
 
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		import test_re
@@ -108,7 +108,7 @@ class RESULT_measurer(regular_expression_measurer):
 
 class emulated_re2_copro_asap_measurer(regular_expression_measurer):
 	def __init__(self):
-		super().__init__("emulated_re2copro_asap")
+		super().__init__("emulated_re2copro_asap[cc]")
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		import sys
@@ -122,7 +122,7 @@ class emulated_re2_copro_asap_measurer(regular_expression_measurer):
 
 class emulated_re2_copro_measurer(regular_expression_measurer):
 	def __init__(self):
-		super().__init__("emulated_re2copro")
+		super().__init__("emulated_re2copro[cc]")
 
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
@@ -210,17 +210,18 @@ class re2_measurer(cmd_measurer):
 
 class re2_chrono_measurer(regular_expression_measurer):
 	def __init__(self, batch_length=80_000 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
-		super().__init__("[ re2_chrono_exe, re2_chrono_compile]" )
+		super().__init__(["[ re2_chrono_exe [ns]","re2_chrono_compile[ns]" ])
 		self.batch_length 	= batch_length
-	def get_name(self):
-		return ["re2_chrono_exe","re2_chrono_compile"]
 
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		from subprocess import run, CalledProcessError, PIPE
 		num_times   = self.batch_length
+		tmppath = 'tmpfile'
+		with open(tmppath, 'wb') as tmp:
+			tmp.write(string)
 
 		regex = to_supported_regex(regex, no_prefix, no_postfix)
-		arguments   = f"./test_re2_chrono.o \"{regex}\" \"{string}\" {num_times}"
+		arguments   = f"./test_re2_chrono.o \"{regex}\" \"{tmppath}\" {num_times}"
 
 		if sys.version_info[0] > 4 or (sys.version_info[0] == 3 and sys.version_info[1] >= 7):
 			sub = run(arguments, capture_output=True, shell=True, check=False)
@@ -324,11 +325,12 @@ if args.grep:
 str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
-	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-#	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+	str_lines = f.readlines()[args.startstr:args.endstr]
+	#str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
+	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
 regex_lines = []
 #open regex file 
-with open(args.regfile, 'r',) as f:
+with open(args.regfile, 'r') as f:
 	regex_lines = f.readlines()[args.startreg:args.endreg]
 
 total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
