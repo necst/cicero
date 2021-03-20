@@ -1,0 +1,120 @@
+Vivado Simulator 2019.2
+Copyright 1986-1999, 2001-2019 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2019.2/bin/unwrapped/win64.o/xelab.exe -wto ca222586bba94639ba2f5c6a74969b11 --incr --debug typical --relax --mt 2 -L xil_defaultlib -L unisims_ver -L secureip --snapshot AXI_top_tb_from_compiled_func_synth xil_defaultlib.AXI_top_tb_from_compiled xil_defaultlib.glbl -log elaborate.log 
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/sim/AXI_top_tb_from_compiled.sv" Line 5. Module AXI_top_tb_from_compiled has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 15. Module AXI_top has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT3.v" Line 28. Module LUT3 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT3.v" Line 67. Module x_lut3_mux8 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT2.v" Line 28. Module LUT2 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT2.v" Line 65. Module x_lut2_mux4 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 19982. Module regex_coprocessor_top has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT5.v" Line 30. Module LUT5 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT5.v" Line 30. Module LUT5 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 25141. Module topology_token_ring has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 4094. Module arbiter_rr_n__parameterized0 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 5609. Module arbitration_logic_rr__parameterized0 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 9615. Module engine_and_station has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 8161. Module channel_2 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDSE.v" Line 27. Module FDSE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/FDRE.v" Line 27. Module FDRE_default has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v" Line 17876. Module fifo__parameterized0_14 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT1.v" Line 27. Module LUT1 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT1.v" Line 62. Module x_lut1_mux2 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT5.v" Line 30. Module LUT5 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT2.v" Line 28. Module LUT2 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT2.v" Line 65. Module x_lut2_mux4 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT3.v" Line 28. Module LUT3 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT3.v" Line 67. Module x_lut3_mux8 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT5.v" Line 30. Module LUT5 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/RAMB18E2.v" Line 32. Module RAMB18E2(CLOCK_DOMAINS="COMMON",DOA_REG=0,DOB_REG=0,READ_WIDTH_A=18,READ_WIDTH_B=18,WRITE_MODE_A="READ_FIRST",WRITE_MODE_B="WRITE_FIRST",WRITE_WIDTH_A=18,WRITE_WIDTH_B=18) has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT6.v" Line 30. Module LUT6 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT4.v" Line 30. Module LUT4 has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/LUT4.v" Line 30. Module LUT4 has a timescale but at least one module in design doesn't have timescale.
+INFO: [Common 17-14] Message 'XSIM 43-4100' appears 50 times and further instances of the messages will be disabled. Use the Tcl command set_msg_config to change the current settings.
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling package xil_defaultlib.AXI_package
+Compiling module unisims_ver.LUT6
+Compiling module unisims_ver.x_lut3_mux8
+Compiling module unisims_ver.LUT3
+Compiling module unisims_ver.x_lut2_mux4
+Compiling module unisims_ver.LUT2
+Compiling module unisims_ver.FDRE_default
+Compiling module unisims_ver.LUT5
+Compiling module xil_defaultlib.arbitration_logic_rr__parameteri...
+Compiling module xil_defaultlib.arbiter_rr_n__parameterized0
+Compiling module unisims_ver.FDSE_default
+Compiling module unisims_ver.x_lut1_mux2
+Compiling module unisims_ver.LUT1
+Compiling module unisims_ver.RAMB18E2(CLOCK_DOMAINS="COMMON",...
+Compiling module unisims_ver.LUT4
+Compiling module xil_defaultlib.fifo__parameterized0_14
+Compiling module xil_defaultlib.channel_2
+Compiling module unisims_ver.RAMB36E2(CLOCK_DOMAINS="COMMON",...
+Compiling module unisims_ver.RAM32M16
+Compiling module xil_defaultlib.cache_block_directly_mapped_6
+Compiling module xil_defaultlib.fifo_12
+Compiling module unisims_ver.MUXF7
+Compiling module xil_defaultlib.fifo_13
+Compiling module xil_defaultlib.ping_pong_buffer_7
+Compiling module xil_defaultlib.arbitration_logic_rr_11
+Compiling module xil_defaultlib.arbiter_rr_n_10
+Compiling module xil_defaultlib.arbiter_2_rr_9
+Compiling module xil_defaultlib.regex_cpu_pipelined_8
+Compiling module xil_defaultlib.engine_5
+Compiling module xil_defaultlib.engine_interfaced_3
+Compiling module unisims_ver.CARRY8
+Compiling module xil_defaultlib.switch_4
+Compiling module xil_defaultlib.engine_and_station
+Compiling module xil_defaultlib.fifo__parameterized0
+Compiling module xil_defaultlib.channel
+Compiling module xil_defaultlib.cache_block_directly_mapped
+Compiling module xil_defaultlib.fifo
+Compiling module xil_defaultlib.fifo_1
+Compiling module xil_defaultlib.ping_pong_buffer
+Compiling module xil_defaultlib.arbitration_logic_rr
+Compiling module xil_defaultlib.arbiter_rr_n
+Compiling module xil_defaultlib.arbiter_2_rr
+Compiling module xil_defaultlib.regex_cpu_pipelined
+Compiling module xil_defaultlib.engine
+Compiling module xil_defaultlib.engine_interfaced
+Compiling module xil_defaultlib.switch
+Compiling module xil_defaultlib.engine_and_station_0
+Compiling module xil_defaultlib.topology_token_ring
+Compiling module xil_defaultlib.regex_coprocessor_top
+Compiling module unisims_ver.RAMB36E2(CLOCK_DOMAINS="COMMON",...
+Compiling module xil_defaultlib.BRAM_SDP_MACRO_viv_
+Compiling module xil_defaultlib.bram
+Compiling module unisims_ver.IBUF
+Compiling module unisims_ver.BUFGCE(CE_TYPE="ASYNC",SIM_DEVIC...
+Compiling module unisims_ver.OBUF
+Compiling module xil_defaultlib.AXI_top
+Compiling module xil_defaultlib.AXI_top_tb_from_compiled
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot AXI_top_tb_from_compiled_func_synth

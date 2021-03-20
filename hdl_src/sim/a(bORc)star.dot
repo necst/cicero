@@ -1,0 +1,21 @@
+digraph {
+0 -> 1
+0 [label ="0 : 97" color="black" fillcolor="#ffa822" style="filled"]
+1 -> 8
+1 -> 2
+1 [color="black" fillcolor="#dee0e6" style="filled"]
+2 -> 6
+2 -> 3
+2 [color="black" fillcolor="#dee0e6" style="filled"]
+3 -> 4
+3 [label ="3 : 98" color="black" fillcolor="#ffa822" style="filled"]
+4 -> 5
+4 [color="black" fillcolor="#2792ce" style="filled"]
+5 -> 1
+5 [color="black" fillcolor="#2792ce" style="filled"]
+6 -> 7
+6 [label ="6 : 99" color="black" fillcolor="#ffa822" style="filled"]
+7 -> 5
+7 [color="black" fillcolor="#2792ce" style="filled"]
+8 [label="8 : \\00 => ✓" color="black"  fillcolor="#1ac0c6"	style="filled"]
+}

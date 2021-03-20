@@ -1,0 +1,49 @@
+Vivado Simulator 2019.2
+Copyright 1986-1999, 2001-2019 Xilinx, Inc. All Rights Reserved.
+Running: C:/Xilinx/Vivado/2019.2/bin/unwrapped/win64.o/xelab.exe -wto ca222586bba94639ba2f5c6a74969b11 --incr --debug typical --relax --mt 2 -L xil_defaultlib -L unisims_ver -L unimacro_ver -L secureip --snapshot AXI_top_tb_from_compiled_behav xil_defaultlib.AXI_top_tb_from_compiled xil_defaultlib.glbl -log elaborate.log 
+Using 2 slave threads.
+Starting static elaboration
+Pass Through NonSizing Optimizer
+Completed static elaboration
+Starting simulation data flow analysis
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/sim/AXI_top_tb_from_compiled.sv" Line 5. Module AXI_top_tb_from_compiled has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unimacro/BRAM_SDP_MACRO.v" Line 34. Module BRAM_SDP_MACRO(BRAM_SIZE="36Kb",DEVICE="7SERIES",READ_WIDTH=64,WRITE_MODE="READ_FIRST",WRITE_WIDTH=32) has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/RAMB36E1.v" Line 74. Module RAMB36E1(RAM_MODE="SDP",READ_WIDTH_A=72,WRITE_MODE_A="READ_FIRST",WRITE_MODE_B="READ_FIRST",WRITE_WIDTH_B=36) has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "/wrk/2019.2/continuous/2019_11_06_2708876/data/verilog/src/unisims/RAMB36E1.v" Line 1447. Module RB36_INTERNAL_VLOG(RAM_MODE="SDP",READ_WIDTH_A=72,READ_WIDTH_B=72,WRITE_MODE_A="READ_FIRST",WRITE_MODE_B="READ_FIRST",WRITE_WIDTH_A=36,WRITE_WIDTH_B=36) has a timescale but at least one module in design doesn't have timescale.
+WARNING: [XSIM 43-4100] "C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/behav/xsim/glbl.v" Line 6. Module glbl has a timescale but at least one module in design doesn't have timescale.
+Completed simulation data flow analysis
+Time Resolution for simulation is 1ps
+Compiling package xil_defaultlib.AXI_package
+Compiling package xil_defaultlib.Regex_coprocessor_package
+Compiling package xil_defaultlib.instruction
+Compiling module unisims_ver.RB36_INTERNAL_VLOG(RAM_MODE="SDP...
+Compiling module unisims_ver.RAMB36E1(RAM_MODE="SDP",READ_WID...
+Compiling module unimacro_ver.BRAM_SDP_MACRO(BRAM_SIZE="36Kb",...
+Compiling module xil_defaultlib.bram
+Compiling module xil_defaultlib.memory_read_iface(MEMORY_ADDR_WI...
+Compiling module xil_defaultlib.channel_iface(N=9,LATENCY_COUNT_...
+Compiling module xil_defaultlib.fifo(DWIDTH=8,COUNT_WIDTH=5)
+Compiling module xil_defaultlib.ping_pong_buffer(DATA_WIDTH=8,CO...
+Compiling module xil_defaultlib.arbitration_logic_fixed(N=2)
+Compiling module xil_defaultlib.arbitration_logic_rr(N=2)
+Compiling module xil_defaultlib.arbiter_rr_n(DWIDTH=9)
+Compiling module xil_defaultlib.arbiter_2_rr(DWIDTH=9)
+Compiling module xil_defaultlib.regex_cpu_pipelined
+Compiling module xil_defaultlib.cache_block_directly_mapped(DWID...
+Compiling module xil_defaultlib.engine(LATENCY_COUNT_WIDTH=7,FIF...
+Compiling module xil_defaultlib.engine_interfaced(LATENCY_COUNT_...
+Compiling module xil_defaultlib.fifo(DWIDTH=9)
+Compiling module xil_defaultlib.channel(PC_WIDTH=8,CHANNEL_COUNT...
+Compiling module xil_defaultlib.switch(in_0=channel_iface(N=9,LA...
+Compiling module xil_defaultlib.engine_and_station(LATENCY_COUNT...
+Compiling module xil_defaultlib.arbiter_fixed(DWIDTH=9)
+Compiling module xil_defaultlib.arbiter_2_fixed(DWIDTH=9)
+Compiling module xil_defaultlib.arbitration_logic_fixed(N=3)
+Compiling module xil_defaultlib.arbitration_logic_rr(N=3)
+Compiling module xil_defaultlib.arbiter_rr_n(DWIDTH=9,N=3)
+Compiling module xil_defaultlib.topology_token_ring(LATENCY_COUN...
+Compiling module xil_defaultlib.regex_coprocessor_top(LATENCY_CO...
+Compiling module xil_defaultlib.AXI_top_default
+Compiling module xil_defaultlib.AXI_top_tb_from_compiled
+Compiling module xil_defaultlib.glbl
+Built simulation snapshot AXI_top_tb_from_compiled_behav
