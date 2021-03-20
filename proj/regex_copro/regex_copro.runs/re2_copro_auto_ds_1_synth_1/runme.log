@@ -1,0 +1,20 @@
+
+*** Running vivado
+    with args -log re2_copro_auto_ds_1.vds -m64 -product Vivado -mode batch -messageDb vivado.pb -notrace -source re2_copro_auto_ds_1.tcl
+
+
+****** Vivado v2019.2 (64-bit)
+  **** SW Build 2708876 on Wed Nov  6 21:40:23 MST 2019
+  **** IP Build 2700528 on Thu Nov  7 00:09:20 MST 2019
+    ** Copyright 1986-2019 Xilinx, Inc. All Rights Reserved.
+
+source re2_copro_auto_ds_1.tcl -notrace
+INFO: [IP_Flow 19-234] Refreshing IP repositories
+INFO: [IP_Flow 19-1700] Loaded user IP repository 'c:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/ip_repo/re2_copro_1'.
+WARNING: [IP_Flow 19-2248] Failed to load user IP repository 'c:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/ip_repo/re2_copro_1.0'; Can't find the specified path.
+If this directory should no longer be in your list of user repositories, go to the IP Settings dialog and remove it.
+INFO: [IP_Flow 19-2313] Loaded Vivado IP repository 'C:/Xilinx/Vivado/2019.2/data/ip'.
+WARNING: [IP_Flow 19-4995] The host OS only allows 260 characters in a normal path. The IP cache path is more than 80 characters. If you experience issues with IP caching, please consider changing the IP cache to a location with a shorter path. Alternately consider using the OS subst command to map part of the path to a drive letter. 
+Current IP cache path is c:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.cache/ip 
+INFO: [IP_Flow 19-4838] Using cached IP synthesis design for IP re2_copro_auto_ds_1, cache-ID = e856b3645b928f45.
+INFO: [Common 17-206] Exiting Vivado at Fri Feb 12 18:42:54 2021...
