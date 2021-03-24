@@ -113,7 +113,7 @@ if not os.path.exists(path_input):
             f.write(html)
 
 path_regex = "clamAV.regex"
-path_input = "clamAv.input"
+path_input = "clamAV.input"
 if not os.path.exists(path_regex):
     with urllib.request.urlopen("https://raw.githubusercontent.com/jackwadden/ANMLZoo/master/ClamAV/regex/515_nocounter.1chip.anml") as response:
         html = response.read()
