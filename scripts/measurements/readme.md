@@ -198,10 +198,13 @@ if not os.path.exists(path_input):
 			- override LD_LIBRARY_PATH variable with /usr/local/lib/ to let the linker locate re2lib\d.so
 			NOTE that LD_LIBRARY_PATH may need to be rewritten after restarting your machine.
 
+			``` $ source prepare_re2_chrono.sh ```
 
 ### Example run:
 
 ``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
+
+
 ``` $ python3 measure.py -re2chrono -regfile="protomata.regex" -strfile="protomata.input" -format=pcre  -endstr=$(cat protomata.input | wc -l) -endreg=$(cat protomata.regex | wc -l) ```
 
 
