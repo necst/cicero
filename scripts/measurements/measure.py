@@ -272,9 +272,9 @@ class re2_chrono_measurer(regular_expression_measurer):
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
 arg_parser.add_argument('-maxstrlen'		, type=int , help='max length of string. to restrict string size'	                                                                	   , default=1024)
 arg_parser.add_argument('-startstr'		    , type=int , help='index first str. to restrict num of strings'	                                                                		   , default=0   )
-arg_parser.add_argument('-endstr'		    , type=int , help='index end string. to restrict num of strings'	                                                            		   , default=100)
+arg_parser.add_argument('-endstr'		    , type=int , help='index end string. to restrict num of strings'	                                                            		   , default=None)
 arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.to restrict num of regexp'	                                                                		   , default=0   )
-arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.to restrict num of regexp'		                                                                		   , default=100)
+arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.to restrict num of regexp'		                                                                		   , default=None)
 arg_parser.add_argument('-py'		                   , help='measure time taken by python re module'                   									, action='store_true'      , default=False)
 arg_parser.add_argument('-copro'		               , help='measure clock cycles taken by copro. you have to look at -bitstream and -do_not_optimize'    , action='store_true'      , default=False)
 arg_parser.add_argument('-coprocompiler'		       , help='measure time taken by copro compiler. you have to look at -do_not_optimize'                  , action='store_true'      , default=False)
@@ -326,9 +326,9 @@ if args.grep:
 str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
-	str_lines = f.readlines()[args.startstr:args.endstr]
+	#str_lines = f.readlines()[args.startstr:args.endstr]
 	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	#str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
 regex_lines = []
 #open regex file 
 with open(args.regfile, 'r') as f:
@@ -368,10 +368,11 @@ with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w
 				try:
 					result = None
 					result = e.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
+					
 				except Exception as exc:
 					print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
-					#if not args.skipException:
-					raise exc
+					if not args.skipException:
+						raise exc
 				   
 				progress_bar.update(1)
 				

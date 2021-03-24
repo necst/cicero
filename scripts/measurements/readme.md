@@ -205,7 +205,6 @@ if not os.path.exists(path_input):
 
 ``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
 
-
-``` $ python3 measure.py -re2chrono -regfile="protomata.regex" -strfile="protomata.input" -format=pcre  -endstr=$(cat protomata.input | wc -l) -endreg=$(cat protomata.regex | wc -l) -benchmark="protomata"```
+``` $python3 measure.py -re2chrono -strfile="protomata.input" -regfile="protomata.regex" -skipExce -format=pcre -benchmark="protomata"```
 
 
