@@ -326,8 +326,8 @@ str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
 	str_lines = f.readlines()[args.startstr:args.endstr]
-	#str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
+	#str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
 regex_lines = []
 #open regex file 
 with open(args.regfile, 'r') as f:
