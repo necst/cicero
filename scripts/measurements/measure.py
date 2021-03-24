@@ -292,6 +292,7 @@ arg_parser.add_argument('-do_not_optimize'	           , help='only for copro and
 arg_parser.add_argument('-debug'	                   , help='execute in debug mode'                                    									,action='store_true'       , default=False)
 arg_parser.add_argument('-skipException'	           , help='skip exceptions'                                    									        ,action='store_true'       , default=False)
 arg_parser.add_argument('-format'	        , type=str , help='regex input format'                                    									                               , default='pythonre')
+arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
 args = arg_parser.parse_args()
 
 optimize_str = "" if args.do_not_optimize else '_O1' 
@@ -337,7 +338,7 @@ total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
 #open log file
-with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 	#foreach string 
 	for l_number, line in enumerate(str_lines):

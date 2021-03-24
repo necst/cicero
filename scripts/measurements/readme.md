@@ -36,6 +36,7 @@ Parameter	 	 | What does
 -copro_not_check    |only for copro: disable check against a golden model(python re).     						        
 -do_not_optimize	|only for copro and coprocompiler: do not optimize recopro code  
 -format				| \[pythonre\|pcre\] specifies the regex input format
+-benchmark				| Name of the benchmark, needed for result saving purposes 
 some of them have already default values you can read it directly in [measure.py](measure.py) via `measure.py --h`
 
 Measurements are put in a csv file named measure_***.\****.csv
@@ -205,6 +206,6 @@ if not os.path.exists(path_input):
 ``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
 
 
-``` $ python3 measure.py -re2chrono -regfile="protomata.regex" -strfile="protomata.input" -format=pcre  -endstr=$(cat protomata.input | wc -l) -endreg=$(cat protomata.regex | wc -l) ```
+``` $ python3 measure.py -re2chrono -regfile="protomata.regex" -strfile="protomata.input" -format=pcre  -endstr=$(cat protomata.input | wc -l) -endreg=$(cat protomata.regex | wc -l) -benchmark="protomata"```
 
 
