@@ -8,15 +8,15 @@ set prj_dir [lindex $argv 0]
 set bb_nr [lindex $argv 1]
 set src_dir [lindex $argv 2]
 
-set prj_name_location ${prj_dir}/u96_${bb_nr}
-set ip_prj_dir ${prj_dir}/ip_dir_${bb_nr}
+set prj_name_location ${prj_dir}/u96_${topology}_${bb_nr}
+set ip_prj_dir ${prj_dir}/ip_dir_${topology}_${bb_nr}
 
 puts "$prj_dir"
 puts "$bb_nr"
 puts "$src_dir"
 puts "$prj_name_location"
 
-create_project -force u96_${bb_nr} ${prj_name_location} -part xczu3eg-sbva484-1-i
+create_project -force u96_${topology}_${bb_nr} ${prj_name_location} -part xczu3eg-sbva484-1-i
 set_property board_part avnet.com:ultra96v2:part0:1.1 [current_project]
 
 add_files -norecurse $src_dir
@@ -40,7 +40,7 @@ update_ip_catalog
 
 
 
-create_bd_design "cicero_top_${bb_nr}"
+create_bd_design "cicero_top_${topology}_${bb_nr}"
 update_compile_order -fileset sources_1
 create_bd_cell -type ip -vlnv user.org:user:cicero_core:1.0 cicero_core_0
 create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.3 zynq_ultra_ps_e_0
@@ -51,10 +51,10 @@ set_property -dict [list CONFIG.PSU__CRL_APB__PL0_REF_CTRL__DIVISOR0 {7}] [get_b
 validate_bd_design
 regenerate_bd_layout -routing
 save_bd_design
-write_bd_tcl -force cicero_top_${bb_nr}_wrapper.tcl
-make_wrapper -files [get_files ${prj_name_location}/u96_${bb_nr}.srcs/sources_1/bd/cicero_top_${bb_nr}/cicero_top_${bb_nr}.bd] -top
-add_files -norecurse ${prj_name_location}/u96_${bb_nr}.srcs/sources_1/bd/cicero_top_${bb_nr}/hdl/cicero_top_${bb_nr}_wrapper.v
-set_property top cicero_top_${bb_nr}_wrapper [current_fileset]
+write_bd_tcl -force cicero_top_${topology}_${bb_nr}_wrapper.tcl
+make_wrapper -files [get_files ${prj_name_location}/u96_${topology}_${bb_nr}.srcs/sources_1/bd/cicero_top_${topology}_${bb_nr}/cicero_top_${topology}_${bb_nr}.bd] -top
+add_files -norecurse ${prj_name_location}/u96_${topology}_${bb_nr}.srcs/sources_1/bd/cicero_top_${topology}_${bb_nr}/hdl/cicero_top_${topology}_${bb_nr}_wrapper.v
+set_property top cicero_top_${topology}_${bb_nr}_wrapper [current_fileset]
 update_compile_order -fileset sources_1
 set_property strategy Flow_RuntimeOptimized [get_runs synth_1]
 set_property STEPS.SYNTH_DESIGN.ARGS.BUFG 14 [get_runs synth_1]
@@ -64,4 +64,4 @@ launch_runs synth_1 -jobs 8
 wait_on_run synth_1
 launch_runs impl_1 -to_step write_bitstream -jobs 8
 wait_on_run impl_1
-write_hw_platform -fixed -force  -include_bit -file cicero_top_${bb_nr}_wrapper.xsa
+write_hw_platform -fixed -force  -include_bit -file cicero_top_${topology}_${bb_nr}_wrapper.xsa

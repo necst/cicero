@@ -1,4 +1,4 @@
-module topology_mesh #(
+module old_topology_mesh #(
     parameter  BB_N_X                   = 2 ,
     parameter  BB_N_Y                   = 2 ,
     parameter  PC_WIDTH                 = 8 ,
