@@ -32,15 +32,15 @@ class re2copro_measurer(regular_expression_measurer):
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		
-		self.re2_coprocessor.re2_copro_0.reset()
+		self.re2_coprocessor.cicero_core_0.reset()
 		#freq                = 90_000_000
 		if debug:
 			print('string', string, ' regex:',regex)
 
-		has_accepted = self.re2_coprocessor.re2_copro_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
-		cc_number 	 = self.re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+		has_accepted = self.re2_coprocessor.cicero_core_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
+		cc_number 	 = self.re2_coprocessor.cicero_core_0.read_elapsed_clock_cycles()
 		if debug:
-			print('status:', self.re2_coprocessor.re2_copro_0.get_status(),
+			print('status:', self.re2_coprocessor.cicero_core_0.get_status(),
 			'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
 		return cc_number
 
@@ -135,7 +135,7 @@ class emulated_re2_copro_measurer(regular_expression_measurer):
 		return cc
 
 class cmd_measurer(regular_expression_measurer):
-	def __init__(self, name, program, batch_length=1000, num_of_batches=10):
+	def __init__(self, name, program, batch_length=50, num_of_batches=10):
 		super().__init__(name)
 		self.program        = program
 		self.batch_length   = batch_length
@@ -205,11 +205,11 @@ class grep_measurer(cmd_measurer):
 		super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_measurer(cmd_measurer):
-	def __init__(self, batch_length=500_000 , num_of_batches=20):
+	def __init__(self, batch_length=50 , num_of_batches=20):
 		super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_chrono_measurer(regular_expression_measurer):
-	def __init__(self, batch_length=80_000 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
+	def __init__(self, batch_length=50 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
 		super().__init__(["[ re2_chrono_exe [ns]","re2_chrono_compile[ns]" ])
 		self.batch_length 	= batch_length
 
