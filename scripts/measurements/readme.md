@@ -200,11 +200,13 @@ if not os.path.exists(path_input):
 			NOTE that LD_LIBRARY_PATH may need to be rewritten after restarting your machine.
 
 			``` $ source prepare_re2_chrono.sh ```
+### Generate different combination of ored regexp:
+Use the `make_them_ored.py` script using the -rank parameter to indicate how many regex to combine, and if necessary -uppern to limit the number of regular expressions to be put in or. Use -regfile to specify input file and format as for measure.py .
+``` $python .\make_them_ored.py -regfile='protomata.regex' -rank=4 -format='pcre' -uppern=3 ```
 
 ### Example run:
 
 ``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
 
 ``` $python3 measure.py -re2chrono -strfile="protomata.input" -regfile="protomata.regex" -skipExce -format=pcre -benchmark="protomata"```
-
 

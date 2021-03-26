@@ -268,6 +268,10 @@ class re2_chrono_measurer(regular_expression_measurer):
 
 		return [exec, compilation]
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
 arg_parser.add_argument('-maxstrlen'		, type=int , help='max length of string. to restrict string size'	                                                                	   , default=1024)
@@ -328,7 +332,7 @@ str_lines   = []
 with open(args.strfile, 'rb') as f:
 	#str_lines = f.readlines()[args.startstr:args.endstr]
 	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+	str_lines = list(map(lambda x: chunks(x,args.maxstrlen),str_lines))
 regex_lines = []
 #open regex file 
 with open(args.regfile, 'r') as f:
