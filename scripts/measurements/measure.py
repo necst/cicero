@@ -135,7 +135,7 @@ class emulated_re2_copro_measurer(regular_expression_measurer):
 		return cc
 
 class cmd_measurer(regular_expression_measurer):
-	def __init__(self, name, program, batch_length=50, num_of_batches=10):
+	def __init__(self, name, program, batch_length=30, num_of_batches=10):
 		super().__init__(name)
 		self.program        = program
 		self.batch_length   = batch_length
@@ -201,15 +201,15 @@ def to_supported_regex(regex, no_prefix, no_postfix):
 	return regex	
 
 class grep_measurer(cmd_measurer):
-	def __init__(self, batch_length=50      , num_of_batches=10):
+	def __init__(self, batch_length=30      , num_of_batches=10):
 		super().__init__("grep", "./test_grep.sh", batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_measurer(cmd_measurer):
-	def __init__(self, batch_length=50 , num_of_batches=20):
+	def __init__(self, batch_length=30 , num_of_batches=20):
 		super().__init__("re2", "./test_re2.o" , batch_length=batch_length, num_of_batches=num_of_batches )
 
 class re2_chrono_measurer(regular_expression_measurer):
-	def __init__(self, batch_length=50 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
+	def __init__(self, batch_length=30 ): #80_000 i5, 30_000 ULTRA, 1_000 PYNQ
 		super().__init__(["[ re2_chrono_exe [ns]","re2_chrono_compile[ns]" ])
 		self.batch_length 	= batch_length
 
@@ -297,6 +297,9 @@ arg_parser.add_argument('-debug'	                   , help='execute in debug mod
 arg_parser.add_argument('-skipException'	           , help='skip exceptions'                                    									        ,action='store_true'       , default=False)
 arg_parser.add_argument('-format'	        , type=str , help='regex input format'                                    									                               , default='pythonre')
 arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
+arg_parser.add_argument('-window_value'        , type=str , help='value of the window, 2^x '
+                                                           , default='queue_1')
+
 args = arg_parser.parse_args()
 
 optimize_str = "" if args.do_not_optimize else '_O1' 
@@ -330,10 +333,10 @@ if args.grep:
 str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
-	#str_lines = f.readlines()[args.startstr:args.endstr]
-	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	str_lines = list(map(lambda x: x[0,args.maxstrlen],str_lines))
-	#str_lines = list(map(lambda x: chunks(x,args.maxstrlen),str_lines))
+        #str_lines = f.readlines()[args.startstr:args.endstr]
+        str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
+        str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+        #str_lines = list(map(lambda x: chunks(x,args.maxstrlen),str_lines))
 
 print(str_lines)
 print(type(str_lines))
@@ -346,7 +349,7 @@ total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
 #open log file
-with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.benchmark}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 	#foreach string 
 	for l_number, line in enumerate(str_lines):
