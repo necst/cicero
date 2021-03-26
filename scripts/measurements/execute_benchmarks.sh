@@ -6,6 +6,6 @@ benchmarks=(snort brill clamAV)
 for i in ${benchmarks[@]}
 do
 	echo "[INFO] Executing benchmark $i"
-	python3 measure.py -re2chrono -strfile="$i.input" -regfile="$i.regex" -skipExce -format=pcre -benchmark="$i"
+	python3 measure.py -re2chrono -strfile="$i.input" -regfile="$i.regex" -skipException -format=pcre -benchmark="$i"
 	#python3 measure.py -re2chrono -regfile="$i.regex" -strfile="$i.input" -format=pcre -endstr=$(cat $i.input | wc -l) -endreg=$(cat $i.regex | wc -l) -benchmark="$i"
 done
