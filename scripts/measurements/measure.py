@@ -73,7 +73,7 @@ class re2copro_compiler_measurer(regular_expression_measurer):
 		import timeit
 
 		O1 = self.optimize and O1
-		execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, no_prefix={no_prefix}, no_postfix={no_postfix}, o=None, frontend={args.format})"
+		execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, no_prefix={no_prefix}, no_postfix={no_postfix}, o=None, frontend='{args.format}')"
 		prepare_code = "import sys;sys.path.append('../../re2compiler');import re2compiler"
 		
 		secs = timeit.repeat(execute_code, prepare_code  ,number=self.num_times)
@@ -268,13 +268,17 @@ class re2_chrono_measurer(regular_expression_measurer):
 
 		return [exec, compilation]
 
+def chunks(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 arg_parser = argparse.ArgumentParser(description='test regular expression matching')
 arg_parser.add_argument('-maxstrlen'		, type=int , help='max length of string. to restrict string size'	                                                                	   , default=1024)
 arg_parser.add_argument('-startstr'		    , type=int , help='index first str. to restrict num of strings'	                                                                		   , default=0   )
-arg_parser.add_argument('-endstr'		    , type=int , help='index end string. to restrict num of strings'	                                                            		   , default=100)
+arg_parser.add_argument('-endstr'		    , type=int , help='index end string. to restrict num of strings'	                                                            		   , default=None)
 arg_parser.add_argument('-startreg'		    , type=int , help='index first reg.to restrict num of regexp'	                                                                		   , default=0   )
-arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.to restrict num of regexp'		                                                                		   , default=100)
+arg_parser.add_argument('-endreg'		    , type=int , help='index end reg.to restrict num of regexp'		                                                                		   , default=None)
 arg_parser.add_argument('-py'		                   , help='measure time taken by python re module'                   									, action='store_true'      , default=False)
 arg_parser.add_argument('-copro'		               , help='measure clock cycles taken by copro. you have to look at -bitstream and -do_not_optimize'    , action='store_true'      , default=False)
 arg_parser.add_argument('-coprocompiler'		       , help='measure time taken by copro compiler. you have to look at -do_not_optimize'                  , action='store_true'      , default=False)
@@ -282,7 +286,7 @@ arg_parser.add_argument('-compareCodeSize'		       , help='compare code size gen
 arg_parser.add_argument('-simre2coproasap'		       , help='measure clock cycles taken by emulated re2copro.'        	 								, action='store_true'	   , default=False)
 arg_parser.add_argument('-simre2copro'	               , help='measure clock cycles taken by emulated re2copro.'         									, action='store_true'	   , default=False)
 arg_parser.add_argument('-re2'	                       , help='measure time taken by re2 using time.'                               						, action='store_true'      , default=False)
-arg_parser.add_argument('-re2chrono'                   , help='measure time taken by re2 using chrono (distinguished between match and "compilation").'     , action='store_true'      , default=False)
+arg_parser.add_argument('-re2chrono'        , type=int , help='number of times to measure re2 using chrono (distinguished between match and "compilation"). 0 will deactivate it.'     , default=0)
 arg_parser.add_argument('-grep'	                       , help='measure time taken by grep using time.'                              					    , action='store_true'      , default=False)
 arg_parser.add_argument('-strfile'		    , type=str , help='file containing strings'  	                                        					    						   , default='protomata.input')
 arg_parser.add_argument('-regfile'		    , type=str , help='file containing regular expressions'    	                            					    						   , default='protomata.regex'  )
@@ -292,6 +296,7 @@ arg_parser.add_argument('-do_not_optimize'	           , help='only for copro and
 arg_parser.add_argument('-debug'	                   , help='execute in debug mode'                                    									,action='store_true'       , default=False)
 arg_parser.add_argument('-skipException'	           , help='skip exceptions'                                    									        ,action='store_true'       , default=False)
 arg_parser.add_argument('-format'	        , type=str , help='regex input format'                                    									                               , default='pythonre')
+arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
 args = arg_parser.parse_args()
 
 optimize_str = "" if args.do_not_optimize else '_O1' 
@@ -319,15 +324,15 @@ if args.simre2copro:
 if args.re2:
 	measurer_list.append(re2_measurer())
 if args.re2chrono:
-	measurer_list.append(re2_chrono_measurer())
+	measurer_list.append(re2_chrono_measurer(args.re2chrono))
 if args.grep:
 	measurer_list.append(grep_measurer())
 str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
-	str_lines = f.readlines()[args.startstr:args.endstr]
-	#str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	str_lines = list(map(lambda x: x[0:args.maxstrlen],str_lines))
+	#str_lines = f.readlines()[args.startstr:args.endstr]
+	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
+	str_lines = list(map(lambda x: chunks(x,args.maxstrlen),str_lines))
 regex_lines = []
 #open regex file 
 with open(args.regfile, 'r') as f:
@@ -337,7 +342,7 @@ total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
 #open log file
-with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 	#foreach string 
 	for l_number, line in enumerate(str_lines):
@@ -367,10 +372,11 @@ with open(f'measure_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as
 				try:
 					result = None
 					result = e.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
+					
 				except Exception as exc:
 					print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
-					#if not args.skipException:
-					raise exc
+					if not args.skipException:
+						raise exc
 				   
 				progress_bar.update(1)
 				

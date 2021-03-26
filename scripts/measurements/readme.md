@@ -36,6 +36,7 @@ Parameter	 	 | What does
 -copro_not_check    |only for copro: disable check against a golden model(python re).     						        
 -do_not_optimize	|only for copro and coprocompiler: do not optimize recopro code  
 -format				| \[pythonre\|pcre\] specifies the regex input format
+-benchmark				| Name of the benchmark, needed for result saving purposes 
 some of them have already default values you can read it directly in [measure.py](measure.py) via `measure.py --h`
 
 Measurements are put in a csv file named measure_***.\****.csv
@@ -112,7 +113,7 @@ if not os.path.exists(path_input):
             f.write(html)
 
 path_regex = "clamAV.regex"
-path_input = "clamAv.input"
+path_input = "clamAV.input"
 if not os.path.exists(path_regex):
     with urllib.request.urlopen("https://raw.githubusercontent.com/jackwadden/ANMLZoo/master/ClamAV/regex/515_nocounter.1chip.anml") as response:
         html = response.read()
@@ -198,9 +199,14 @@ if not os.path.exists(path_input):
 			- override LD_LIBRARY_PATH variable with /usr/local/lib/ to let the linker locate re2lib\d.so
 			NOTE that LD_LIBRARY_PATH may need to be rewritten after restarting your machine.
 
+			``` $ source prepare_re2_chrono.sh ```
+### Generate different combination of ored regexp:
+Use the `make_them_ored.py` script using the -rank parameter to indicate how many regex to combine, and if necessary -uppern to limit the number of regular expressions to be put in or. Use -regfile to specify input file and format as for measure.py .
+``` $python .\make_them_ored.py -regfile='protomata.regex' -rank=4 -format='pcre' -uppern=3 ```
 
 ### Example run:
 
 ``` $ python3 measure.py -re2chrono -regfile="regular_expr.txt" -strfile="protomata.input" ```
 
+``` $python3 measure.py -re2chrono -strfile="protomata.input" -regfile="protomata.regex" -skipExce -format=pcre -benchmark="protomata"```
 
