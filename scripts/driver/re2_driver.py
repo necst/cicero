@@ -270,7 +270,7 @@ class re2_driver(DefaultIP):
 			print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
 		return has_accepted   
 	
-	def load_only_string_and_run(self, string):
+	def load_only_string_and_run(self,regex_string, string,  double_check =True,no_prefix=True, no_postfix=False, frontend='pythonre'):
 		if ( self.get_status() in [RE2_COPROCESSOR_STATUS.REJECTED, RE2_COPROCESSOR_STATUS.ACCEPTED]):
 			self.write_cmd(RE2_COPROCESSOR_COMMANDS.RESTART)
 			if self.debug:
@@ -278,19 +278,29 @@ class re2_driver(DefaultIP):
 
 		string_address_end       = self.load_string(string,self.string_address_start)
 		if self.verbose or self.debug :
-			
 			print("Verifying string..." , 'OK' if self.verify_string(string, self.string_address_start) else 'KO')
 		self.start(self.string_address_start, string_address_end)
 		has_accepted = self.wait_complete()
 		if self.verbose or self.debug :
 			print("re2 coprocesssor has", "accepted" if has_accepted == 1 else "rejected")
+		
+		if double_check:
+			import sys
+			sys.path.append('../../re2compiler')
+			import golden_model
+			golden_model_res = golden_model.get_golden_model_result(regex_string, string, no_prefix=no_prefix, no_postfix=no_postfix,frontend=frontend)
+
+			assert golden_model_res == has_accepted, f'Mismatch between golden model {golden_model_res} and regex coprocessor {has_accepted}!'
+			if self.debug:
+				print('golden model agrees')
+
 		return has_accepted   
 	
 if __name__ == "__main__":
 	debug = False
 	#IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
 	#ADDRESS_RANGE   = 6*4
-	re2_coprocessor = Overlay('../../bitstreams/2x2P_187_4W_B2$miss.bit')
+	re2_coprocessor = Overlay('../../bitstreams/4P_187_4W_B2miss.bit')
 	if debug :
 		print('test:',re2_coprocessor.ip_dict)
 	re2_coprocessor.re2_copro_0.verbose     = True
@@ -301,7 +311,7 @@ if __name__ == "__main__":
 	regex_string        = '(((R|K|X)(R|K|X))?.(S|T|X))'
 	
 	string_to_accept    = "MAFSAEDVLKEYDRRRRMEALLLSLYYPNDRKLLDYKEWSPPRVQVECPKAPVEWNNPPSEKGLIVGHFSGIKYKGEKAQASEVDVNKMCCWVSKFKDAMRRYQGIQTCKIPGKVLSDLDAKIKAYNLTVEGVEGFVRYSRVTKQHVAAFLKELRHSKQYENVNLIHYILTDKRVDIQHLEKDLVKDFKALVESAHRMRQGHMINVKYILYQLLKKHGHGPDGPDILTVKTGSKGVLYDDSFRKIYTDLGWKFTPL"
-	string_to_reject    = "a"*15+"b"
+	string_to_reject    = "a"*32+"bcd"
 	#test to accept
 
 	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept, no_prefix=False, no_postfix=False)
@@ -312,8 +322,32 @@ if __name__ == "__main__":
 	
 	re2_coprocessor.re2_copro_0.reset()
 	
+	
 	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject)
 	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
 	print('clock cycles taken: ', cc_number)
 	print('status:', re2_coprocessor.re2_copro_0.get_status())
 	assert has_accepted == False, 'test failed'
+
+	has_accepted = re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_reject, no_prefix=False, no_postfix=False)
+	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+	print('clock cycles taken:', cc_number)
+	print('status:', re2_coprocessor.re2_copro_0.get_status())
+	assert has_accepted == False, 'test failed'
+
+	#Test load code and verify that is again there when reset is sent
+	import sys
+	sys.path.append('../../re2compiler')
+	import re2compiler
+	code = re2compiler.compile(data=regex_string, no_prefix=False, no_postfix=False, O1=True)
+	code = code.split('\n')
+	code_address_end         = re2_coprocessor.re2_copro_0.load_code(code)
+	re2_coprocessor.re2_copro_0.reset()
+	print("Verifying code..."   , 'OK' if re2_coprocessor.re2_copro_0.verify_code(code)  else 'KO')
+
+	has_accepted = re2_coprocessor.re2_copro_0.load_only_string_and_run(regex_string, string_to_reject, no_prefix=False, no_postfix=False)
+	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+	print('clock cycles taken: ', cc_number)
+	print('status:', re2_coprocessor.re2_copro_0.get_status())
+	assert has_accepted == False, 'test failed'
+		

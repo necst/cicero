@@ -45,19 +45,43 @@ class re2copro_measurer(regular_expression_measurer):
 		self.re2_coprocessor = Overlay(self.bitstream_filepath)
 		
 	
-	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
+	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False, reusecode=False):
 		
 		self.re2_coprocessor.re2_copro_0.reset()
 		#freq                = 90_000_000
 		if debug:
 			print('string', string, ' regex:',regex)
-
-		has_accepted = self.re2_coprocessor.re2_copro_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
+		if reusecode:
+			has_accepted = self.re2_coprocessor.re2_copro_0.load_only_string_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix , double_check=(not self.copro_not_check), frontend=self.frontend)
+		else:
+			has_accepted = self.re2_coprocessor.re2_copro_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
 		cc_number 	 = self.re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
 		if debug:
 			print('status:', self.re2_coprocessor.re2_copro_0.get_status(),
 			'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
 		return cc_number
+	
+	def execute_multiple_strings(self, regex, strings:list, O1=True, no_prefix=True, no_postfix=True, debug=False, skipException=True):
+		results = []
+
+		firstFlag=True
+		for string in strings:
+			try:
+				self.re2_coprocessor.re2_copro_0.reset()
+				result 	 = self.execute(regex, string, O1=O1, no_postfix=no_postfix, no_prefix=no_prefix, debug=debug, reusecode=not(firstFlag))
+				if debug:
+					print('status:', self.re2_coprocessor.re2_copro_0.get_status(),
+					'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')  
+			except Exception as exc:
+				print('error while executing regex', r,'\nstring [', len(string), 'chars]', string, exc)
+				if not skipException:
+					raise exc
+				result = None
+			results.append(result)
+			firstFlag = False
+		return results
+
+	
 
 class re2copro_compiler_size_measurer(regular_expression_measurer):
 	def __init__(self, O1=True):
