@@ -3,7 +3,8 @@ import csv
 import os 
 import argparse
 import sys
-from   tqdm import tqdm
+from itertools import chain, product
+from   tqdm    import tqdm
 
 class regular_expression_measurer():
 	def __init__(self, name):
@@ -15,6 +16,20 @@ class regular_expression_measurer():
 
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		raise NotImplementedError()
+	
+	def execute_multiple_strings(self, regex, strings:list, O1=True, no_prefix=True, no_postfix=True, debug=False, skipException=True):
+		results = []
+		for string in strings:
+			try:
+				result = None
+				result = self.execute(regex=r, string=string, no_postfix = False, no_prefix=False, O1=True, debug=debug )   
+			except Exception as exc:
+				print('error while executing regex', r,'\nstring [', len(string), 'chars]', string, exc)
+				if not skipException:
+					raise exc
+			results.append(result)
+		
+		return results
 
 class re2copro_measurer(regular_expression_measurer):
 	def __init__(self, bitstream_filepath, copro_not_check, frontend='pythonre'):
@@ -62,6 +77,19 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
 		
 		
 		return len(code.splitlines())
+	
+	def execute_multiple_strings(self, regex, strings:list, O1=True, no_prefix=True, no_postfix=True, debug=False, skipException=True):
+		#the codesize depends only on the regex.
+		
+		try:
+			result = None
+			result = self.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=debug )   
+			
+		except Exception as exc:
+			print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
+			if not skipException:
+				raise exc
+		return [result for _ in strings]
 
 class re2copro_compiler_measurer(regular_expression_measurer):
 	def __init__(self, num_times=100, O1=True): #100 for I5, ULTRA. 80 for PYNQ.
@@ -80,6 +108,19 @@ class re2copro_compiler_measurer(regular_expression_measurer):
 		if debug:
 			print(secs)
 		return (sum(secs)/len(secs))/self.num_times*1_000_000_000
+
+	def execute_multiple_strings(self, regex, strings:list, O1=True, no_prefix=True, no_postfix=True, debug=False, skipException=True):
+		#the codesize depends only on the regex.
+		
+		try:
+			result = None
+			result = self.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=debug )   
+			
+		except Exception as exc:
+			print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
+			if not skipException:
+				raise exc
+		return [result for _ in strings]
 	
 
 class re_measurer(regular_expression_measurer):
@@ -267,6 +308,49 @@ class re2_chrono_measurer(regular_expression_measurer):
 			print(compilation)
 
 		return [exec, compilation]
+	
+	def execute_multiple_strings(self, regex, strings:list, O1=True, no_prefix=True, no_postfix=True, debug=False, skipException=True):
+		from subprocess import run, CalledProcessError, PIPE
+		num_times   = self.batch_length
+		tmppath = 'tmpfile'
+		with open(tmppath, 'wb') as tmp:
+			for string in strings:
+				tmp.write(string+b'\n')
+
+		regex = to_supported_regex(regex, no_prefix, no_postfix)
+		arguments   = f"./test_re2_chrono.o \"{regex}\" \"{tmppath}\" {num_times}"
+
+		if sys.version_info[0] > 4 or (sys.version_info[0] == 3 and sys.version_info[1] >= 7):
+			sub = run(arguments, capture_output=True, shell=True, check=False)
+		else:
+			sub = run(arguments,                      shell=True, check=False, stdout=PIPE, stderr=PIPE)
+
+		import re
+
+		stdout = sub.stdout.decode()
+		
+		res     = re.findall('Execution \d+ iterations?: avg time taken (\d+\.\d+)', stdout)
+
+		if debug: 
+			#print('stdout->',type(sub.stdout), sub.stdout)
+			print(len(res), res)
+
+		
+		execs   = map(lambda x: float(x), res)
+		if debug:
+			print(execs)
+
+		res     = re.findall('Compilation \d+ iterations?: avg time taken (\d+\.\d+)', stdout)
+
+		if debug: 
+			print('stdout->',type(sub.stdout), sub.stdout)
+			print(len(res), res)
+
+		compilations = map(lambda x: float(x), res)
+		if debug:
+			print('compilations',compilations)
+
+		return [execs, compilations]
 
 def chunks(lst, n):
     """Yield successive n-sized chunks from lst."""
@@ -330,61 +414,73 @@ if args.grep:
 str_lines   = []
 #read string file
 with open(args.strfile, 'rb') as f:
-	#str_lines = f.readlines()[args.startstr:args.endstr]
 	str_lines = f.read().split(b'\n')[args.startstr:args.endstr]
-	str_lines = list(map(lambda x: chunks(x,args.maxstrlen),str_lines))
+	#eliminate end of line and split them in chunks.
+	str_lines = list(chain.from_iterable(map(lambda x: chunks(x[:-1],args.maxstrlen),str_lines)))
 regex_lines = []
 #open regex file 
 with open(args.regfile, 'r') as f:
 	regex_lines = f.readlines()[args.startreg:args.endreg]
+	#eliminate end of line 
+	regex_lines = list(map(lambda x: x[:-1], regex_lines))
 
 total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
-#open log file
+
+results = {}
+
+#foreach regex, executor
+for r,e in product(regex_lines, measurer_list) :
+		
+	try:
+		results_per_regex = e.execute_multiple_strings(regex=r, strings=str_lines, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
+	except Exception as exc:
+		print('error while executing regex', r,'\n',  exc)
+		if not args.skipException:
+			raise exc
+		if instance(e.get_name(), list):
+			results_per_regex =  [[None for _ in str_lines] for _ in e.get_name()]
+		else:
+			results_per_regex =  [None for _ in str_lines]
+	
+	progress_bar.update(len(str_lines))
+	if isinstance(e.get_name(), list):
+		for e_name, results_per_e in zip(e.get_name(),results_per_regex):
+			for l,result in zip(str_lines,results_per_e):
+				results[(r,l,e_name)]= result
+	else:
+		e_name = e.get_name()
+		for l,result in zip(str_lines,results_per_regex):
+				results[(r,l,e_name)]= result
+
+result_index = {}
+for r,l,e in results:
+	if not( l in result_index):
+		result_index[l]={}
+
+	if not( r in result_index[l]):
+		result_index[l][r]=[]
+
+	result_index[l][r].append(e)
+
+#open log file and log results.
 with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-	#foreach string 
-	for l_number, line in enumerate(str_lines):
-		#print('len', len(line),'->', bytes(line,'utf-8'))
-		#eliminate end of line
-		line = line[:-1]
-		#write in csv current string and caption
-		fout.writerow(['string', line, '', ''])
-		names = []
+
+	for l in result_index:
+		fout.writerow(['string: ', l, '', ''])
+		names=[]
 		for e in measurer_list:
 			if isinstance(e.get_name(), list):
 				names += [*e.get_name()]
 			else:
 				names.append(e.get_name())
 		fout.writerow(['regex', *names])
-		
-		#foreach regex
-		for r_number, r in enumerate(regex_lines):
-			#result todo: report regex match result.
-			#eliminate end of line from regex
-			r            = r[:-1]
-			results      = [ ]
-			
-			for e_number, e in enumerate(measurer_list):
-				
-				
-				try:
-					result = None
-					result = e.execute(regex=r, string=line, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
-					
-				except Exception as exc:
-					print('error while executing regex', r,'\nstring [', len(line), 'chars]', line, exc)
-					if not args.skipException:
-						raise exc
-				   
-				progress_bar.update(1)
-				
-				if isinstance(result, list):
-					results +=[*result]
-				else:
-					results.append(result)
-			fout.writerow([r,  *results ])
+
+		for r in result_index[l]:
+			result_line = [results[(r,l,e)] for e in names]
+			fout.writerow([r,  *result_line ])
 					
 
 
