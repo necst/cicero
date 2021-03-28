@@ -201,8 +201,8 @@ if not os.path.exists(path_input):
 
 			``` $ source prepare_re2_chrono.sh ```
 ### Generate different combination of ored regexp:
-Use the `make_them_ored.py` script using the -rank parameter to indicate how many regex to combine, and if necessary -uppern to limit the number of regular expressions to be put in or. Use -regfile to specify input file and format as for measure.py .
-``` $python .\make_them_ored.py -regfile='protomata.regex' -rank=4 -format='pcre' -uppern=3 ```
+Use the `make_them_ored.py` script using the -rank parameter to indicate how many regex to combine, and if necessary -n to limit the number of regular expressions to be put in or. You can combine the longest n-regexes or the n-shortest together. By default the shortest would be considered. Instead, use -decreasing to order the regexes to pick the longest. Use -regfile to specify input file and format as for measure.py .
+``` $ python .\make_them_ored.py -regfile='protomata.regex' -rank=4 -n=20 -format='pcre' -decreasing ```
 
 ### Example run:
 
