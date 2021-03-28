@@ -435,6 +435,11 @@ for r,e in product(regex_lines, measurer_list) :
 		
 	try:
 		results_per_regex = e.execute_multiple_strings(regex=r, strings=str_lines, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
+	except KeyboardInterrupt:
+		print ("[CTRL+C detected]")
+		#skip to save file.
+		break
+		
 	except Exception as exc:
 		print('error while executing regex', r,'\n',  exc)
 		if not args.skipException:
@@ -479,7 +484,7 @@ with open(f'measure_{args.benchmark}_{bitstream_filename}{optimize_str}.csv', 'w
 		fout.writerow(['regex', *names])
 
 		for r in result_index[l]:
-			result_line = [results[(r,l,e)] for e in names]
+			result_line = [results[(r,l,e)] if (r,l,e) in results else None for e in names]
 			fout.writerow([r,  *result_line ])
 					
 
