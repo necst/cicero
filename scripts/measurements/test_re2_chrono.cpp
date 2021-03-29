@@ -38,31 +38,11 @@ string escape(string your_string){
     }
     return s;
 }
-int main(int argc, char** argv){
-    if (argc < 3 ){
-        cout << "arguments: regex string [num of repeats]" << std::endl;
-        return 2;
-    }
-   
-    
-    int     num_of_repeats = (argc >= 4 ? atoi(argv[3]): 1000000);
-    int     matchResult;
+
+void execute(string regex, string str, int num_of_repeats){
+	int     matchResult;
     int     expectedResult; 
-    string   regex  (argv[1]);
-    ifstream myFile (argv[2], ios::in | ios::binary);
-    //1)string line;
-    //while(std::getline(myFile, line))
-    //{
-    //    std::cout << "line:" << escape(line) << std::endl;
-    //    // TODO: assign item_name based on line (or if the entire line is 
-    //    // the item name, replace line with item_name in the code above)
-    //}
-    //0)string  str(argv[2]);
-    //2)std::string str( (std::istreambuf_iterator<char>(myFile) ),
-    //                 (std::istreambuf_iterator<char>()    ) );
-    string  str;
-    std::getline(myFile, str);
-    std::list<chrono::duration <double, nano>> lexe;
+	std::list<chrono::duration <double, nano>> lexe;
 	std::list<chrono::duration <double, nano>> lcomp;
 
     for(int i=0; i<num_of_repeats; i++){
@@ -111,5 +91,24 @@ int main(int argc, char** argv){
 
     cout <<"Compilation "<< lcomp.size() <<" iterations: avg time taken " << std::setprecision(2) << std::fixed << avg  << " std deviation "<< std_dev << endl;
 
-    exit(!matchResult);
 }
+
+int main(int argc, char** argv){
+    if (argc < 3 ){
+        cout << "arguments: regex input_file [num of repeats]" << std::endl;
+        return 2;
+    }
+   
+    
+    int     num_of_repeats = (argc >= 4 ? atoi(argv[3]): 1000000);
+   
+    string   regex  (argv[1]);
+    ifstream myFile (argv[2], ios::in | ios::binary);
+    string  str;
+    
+    while(std::getline(myFile, str))
+		execute(regex,str, num_of_repeats);
+    
+	return 1;
+}
+

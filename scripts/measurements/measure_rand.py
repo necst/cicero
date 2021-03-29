@@ -454,10 +454,48 @@ with open(args.regfile, 'r') as f:
 	regex_lines = list(map(lambda x: x[:-1], regex_lines))
 
 
+samples_size = 200
+'''
+samples = np.random.normal(size=samples_size)
+norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+int_samples_regex = (norm_samples * (len(regex_lines) - 1)).astype(np.int32)
+
+samples = np.random.normal(size=samples_size)
+norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+int_samples_str = (norm_samples * (len(str_lines) - 1)).astype(np.int32)
+
+np.save(args.benchmark + "_rand%d.input.index" % samples_size, int_samples_str)
+np.save(args.benchmark + "_rand%d.regex.index" % samples_size, int_samples_regex)
+'''
+
+int_samples_str = np.load(args.benchmark + "_rand%d.input.index.npy" % samples_size)
+int_samples_regex = np.load(args.benchmark + "_rand%d.regex.index.npy" % samples_size)
+
+str_lines = [str_lines[i] for i in int_samples_str]
+regex_lines = [regex_lines[i] for i in int_samples_regex]
+
+'''
+print(type(str_lines[0]))
+
+with open(args.benchmark + "_rand%d.input" % samples_size, "wb") as f:
+    for i in int_samples_str:
+        #f.write(str_lines[i].decode("utf-16")+"\n")
+        f.write(str_lines[i] + b'\n')
+
+with open(args.benchmark + "_rand%d.regex" % samples_size, "w") as f:
+    for i in int_samples_regex:
+        f.write(regex_lines[i]+"\n")
+
+exit()
+'''
+
 total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
 results = {}
+
+print("la fica")
+print(len(str_lines), len(regex_lines))
 
 
 
