@@ -71,6 +71,7 @@ class re2copro_measurer(regular_expression_measurer):
 			try:
 				self.re2_coprocessor.cicero_core_0.reset()
 				result 	 = self.execute(regex, string, O1=O1, no_postfix=no_postfix, no_prefix=no_prefix, debug=debug, reusecode=not(firstFlag))
+				firstFlag = False
 				if debug:
 					print('status:', self.re2_coprocessor.cicero_core_0.get_status(),
 					'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')  
@@ -80,7 +81,6 @@ class re2copro_measurer(regular_expression_measurer):
 					raise exc
 				result = None
 			results.append(result)
-			firstFlag = False
 		return results
 
 	
