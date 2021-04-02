@@ -409,6 +409,7 @@ arg_parser.add_argument('-format'	        , type=str , help='regex input format'
 arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
 arg_parser.add_argument('-window_value'        , type=str , help='value of the window, 2^x '
                                                            , default='queue_1')
+arg_parser.add_argument('-rnds','--random_sample', help="missilfuzuca",action='store_true')
 
 args = arg_parser.parse_args()
 
@@ -455,18 +456,31 @@ with open(args.regfile, 'r') as f:
 
 
 samples_size = 200
-'''
-samples = np.random.normal(size=samples_size)
-norm_samples = (samples - min(samples))/(max(samples) - min(samples))
-int_samples_regex = (norm_samples * (len(regex_lines) - 1)).astype(np.int32)
 
-samples = np.random.normal(size=samples_size)
-norm_samples = (samples - min(samples))/(max(samples) - min(samples))
-int_samples_str = (norm_samples * (len(str_lines) - 1)).astype(np.int32)
+if args.random_sample == True:
+	samples = np.random.normal(size=samples_size)
+	norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+	int_samples_regex = (norm_samples * (len(regex_lines) - 1)).astype(np.int32)
 
-np.save(args.benchmark + "_rand%d.input.index" % samples_size, int_samples_str)
-np.save(args.benchmark + "_rand%d.regex.index" % samples_size, int_samples_regex)
-'''
+	samples = np.random.normal(size=samples_size)
+	norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+	int_samples_str = (norm_samples * (len(str_lines) - 1)).astype(np.int32)
+
+	np.save(args.benchmark + "_rand%d.input.index" % samples_size, int_samples_str)
+	np.save(args.benchmark + "_rand%d.regex.index" % samples_size, int_samples_regex)
+
+	print(type(str_lines[0]))
+
+	with open(args.benchmark + "_rand%d.input" % samples_size, "wb") as f:
+	    for i in int_samples_str:
+	        #f.write(str_lines[i].decode("utf-16")+"\n")
+	        f.write(str_lines[i] + b'\n')
+
+	with open(args.benchmark + "_rand%d.regex" % samples_size, "w") as f:
+	    for i in int_samples_regex:
+	        f.write(regex_lines[i]+"\n")
+
+	exit()
 
 int_samples_str = np.load(args.benchmark + "_rand%d.input.index.npy" % samples_size)
 int_samples_regex = np.load(args.benchmark + "_rand%d.regex.index.npy" % samples_size)
@@ -474,20 +488,7 @@ int_samples_regex = np.load(args.benchmark + "_rand%d.regex.index.npy" % samples
 str_lines = [str_lines[i] for i in int_samples_str]
 regex_lines = [regex_lines[i] for i in int_samples_regex]
 
-'''
-print(type(str_lines[0]))
 
-with open(args.benchmark + "_rand%d.input" % samples_size, "wb") as f:
-    for i in int_samples_str:
-        #f.write(str_lines[i].decode("utf-16")+"\n")
-        f.write(str_lines[i] + b'\n')
-
-with open(args.benchmark + "_rand%d.regex" % samples_size, "w") as f:
-    for i in int_samples_regex:
-        f.write(regex_lines[i]+"\n")
-
-exit()
-'''
 
 total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
