@@ -67,7 +67,6 @@ class re2copro_measurer(regular_expression_measurer):
 		firstFlag=True
 		for string in strings:
 			try:
-				self.re2_coprocessor.re2_copro_0.reset()
 				result 	 = self.execute(regex, string, O1=O1, no_postfix=no_postfix, no_prefix=no_prefix, debug=debug, reusecode=not(firstFlag))
 				firstFlag = False
 				if debug:
@@ -458,7 +457,7 @@ results = {}
 for r,e in product(regex_lines, measurer_list) :
 		
 	try:
-		results_per_regex = e.execute_multiple_strings(regex=r, strings=str_lines, no_postfix = False, no_prefix=False, O1=True, debug=args.debug )   
+		results_per_regex = e.execute_multiple_strings(regex=r, strings=str_lines, no_postfix = False, no_prefix=False, O1=True, debug=args.debug, skipException=args.skipException )   
 	except KeyboardInterrupt:
 		print ("[CTRL+C detected]")
 		#skip to save file.
