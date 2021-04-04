@@ -6,7 +6,7 @@ import sys
 from itertools import chain, product
 from   tqdm    import tqdm
 import numpy as np
-
+import traceback
 
 class regular_expression_measurer():
 	def __init__(self, name):
@@ -76,6 +76,7 @@ class re2copro_measurer(regular_expression_measurer):
 					'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')  
 			except Exception as exc:
 				print('error while executing regex', r,'\nstring [', len(string), 'chars]', string, exc)
+				#traceback.print_exc()
 				if not skipException:
 					raise exc
 				result = None
@@ -112,6 +113,7 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
 			
 		except Exception as exc:
 			print('error while executing regex', r, exc)
+			#traceback.print_exc()
 			if not skipException:
 				raise exc
 		return [result for _ in strings]
@@ -406,8 +408,8 @@ arg_parser.add_argument('-debug'	                   , help='execute in debug mod
 arg_parser.add_argument('-skipException'	           , help='skip exceptions'                                    									        ,action='store_true'       , default=False)
 arg_parser.add_argument('-format'	        , type=str , help='regex input format'                                    									                               , default='pythonre')
 arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
-arg_parser.add_argument('-window_value'        , type=str , help='value of the window, 2^x '
-                                                           , default='queue_1')
+arg_parser.add_argument('-window_value'     , type=str , help='value of the window, 2^x '																							   , default='queue_1')
+arg_parser.add_argument('-rnds','--random_sample', help="missilfuzuca",action='store_true')
 
 args = arg_parser.parse_args()
 
@@ -453,11 +455,44 @@ with open(args.regfile, 'r') as f:
 	regex_lines = list(map(lambda x: x[:-1], regex_lines))
 
 
+samples_size = 200
+
+if args.random_sample == True:
+	samples = np.random.normal(size=samples_size)
+	norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+	int_samples_regex = (norm_samples * (len(regex_lines) - 1)).astype(np.int32)
+
+	samples = np.random.normal(size=samples_size)
+	norm_samples = (samples - min(samples))/(max(samples) - min(samples))
+	int_samples_str = (norm_samples * (len(str_lines) - 1)).astype(np.int32)
+
+	np.save(args.benchmark + "_rand%d.input.index" % samples_size, int_samples_str)
+	np.save(args.benchmark + "_rand%d.regex.index" % samples_size, int_samples_regex)
+
+	print(type(str_lines[0]))
+
+	with open(args.benchmark + "_rand%d.input" % samples_size, "wb") as f:
+	    for i in int_samples_str:
+	        #f.write(str_lines[i].decode("utf-16")+"\n")
+	        f.write(str_lines[i] + b'\n')
+
+	with open(args.benchmark + "_rand%d.regex" % samples_size, "w") as f:
+	    for i in int_samples_regex:
+	        f.write(regex_lines[i]+"\n")
+
+	exit()
+
+int_samples_str = np.load(args.benchmark + "_rand%d.input.index.npy" % samples_size)
+int_samples_regex = np.load(args.benchmark + "_rand%d.regex.index.npy" % samples_size)
+str_lines = [str_lines[i] for i in int_samples_str]
+regex_lines = [regex_lines[i] for i in int_samples_regex]
+
+
+
 total_number_of_executions = len(str_lines)*len(regex_lines)*len(measurer_list)
 progress_bar               = tqdm(total=total_number_of_executions)
 
 results = {}
-
 
 
 #foreach regex, executor
@@ -472,9 +507,10 @@ for r,e in product(regex_lines, measurer_list) :
 		
 	except Exception as exc:
 		print('error while executing regex', r,'\n',  exc)
+		#traceback.print_exc()
 		if not args.skipException:
 			raise exc
-		if instance(e.get_name(), list):
+		if isinstance(e.get_name(), list):
 			results_per_regex =  [[None for _ in str_lines] for _ in e.get_name()]
 		else:
 			results_per_regex =  [None for _ in str_lines]
@@ -500,7 +536,7 @@ for r,l,e in results:
 	result_index[l][r].append(e)
 
 #open log file and log results.
-with open(f'measure_{args.benchmark}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.format}{args.benchmark}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 
 	for l in result_index:

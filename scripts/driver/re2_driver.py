@@ -98,7 +98,7 @@ class re2_driver(DefaultIP):
 		#tobytes add terminator
 		if isinstance(string, str):
 			string = bytes(string, 'utf-8', 'ignore')
-		return string + b'\0' 
+		return string 
 
 	def load_code(self, code):
 		list_bytes_big_endian = self.__code_to_bytes(code)
@@ -130,7 +130,7 @@ class re2_driver(DefaultIP):
 				flag = False
 				self.write_cmd(RE2_COPROCESSOR_COMMANDS.WRITE)
 
-			address+=write_width
+			address+=len(to_write)
 		
 		self.write_cmd(RE2_COPROCESSOR_COMMANDS.NOP)
 		return address
@@ -179,7 +179,7 @@ class re2_driver(DefaultIP):
 		while( status == RE2_COPROCESSOR_STATUS.RUNNING ):
 			status = self.read_status()
 			count+=1
-			if count > 10000:
+			if count > 100000:
 				raise Exception('Error while waiting', status)
 
 
@@ -297,11 +297,11 @@ class re2_driver(DefaultIP):
 		return has_accepted   
 	
 if __name__ == "__main__":
-	debug = False
 	#IP_BASE_ADDRESS = 0x43C00000 or equivalently 1136656384
 	#ADDRESS_RANGE   = 6*4
 	re2_coprocessor = Overlay('../../bitstreams/4P_187_4W_B2miss.bit')
-	if debug :
+	re2_coprocessor.re2_copro_0.debug = True
+	if re2_coprocessor.re2_copro_0.debug :
 		print('test:',re2_coprocessor.ip_dict)
 	re2_coprocessor.re2_copro_0.verbose     = True
 	cc_number =  re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
@@ -351,3 +351,14 @@ if __name__ == "__main__":
 	print('status:', re2_coprocessor.re2_copro_0.get_status())
 	assert has_accepted == False, 'test failed'
 		
+	##
+	regex_string        = '(((R|K|X)(R|K|X))?.(S|T|X))$'
+	
+	string_to_accept    = "aaaaaaaaaaaaaaaaT"
+	#test to accept
+	re2_coprocessor.re2_copro_0.reset()
+	has_accepted 	= re2_coprocessor.re2_copro_0.compile_and_run(regex_string, string_to_accept, no_prefix=False, no_postfix=True)
+	cc_number 		= re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+	print('clock cycles taken:', cc_number)
+	print('status:', re2_coprocessor.re2_copro_0.get_status())
+	assert has_accepted == True, 'test failed'
