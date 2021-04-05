@@ -40,7 +40,7 @@ class re2_driver(DefaultIP):
 	def __init__(self, description):
 		super().__init__(description=description)
 
-	bindto = ['xilinx.com:user:re2_copro:1']
+	bindto = ['user.org:user:cicero_core:1.0']
 
 	def write_data_in(self, i):
 		self.write(RE2_COPROCESSOR_REGISTER_OFFSET.DATA_IN.value, i)
