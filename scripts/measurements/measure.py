@@ -500,7 +500,7 @@ for r,l,e in results:
 	result_index[l][r].append(e)
 
 #open log file and log results.
-with open(f'measure_{args.benchmark}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.benchmark}_{args.startreg}-{args.endreg}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 
 	for l in result_index:
