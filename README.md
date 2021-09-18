@@ -16,3 +16,22 @@ Cicero has its own [compiler](https://github.com/DanieleParravicini/re2compiler/
 
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-nd/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License</a>.
+
+
+If you find this repository useful, please use the following citation:
+
+```
+@article{parravicini2021cicero,
+    title = {{CICERO}: A Domain-Specific Architecture for Efficient Regular Expression Matching},
+    author = {Daniele Parravicini and Davide Conficconi and Emanuele Del Sozzo and Christian Pilato and Marco D. Santambrogio}, 
+    journal = {{ACM} Transactions on Embedded Computing Systems},
+    year = 2021,
+    month = {oct},
+    publisher = {Association for Computing Machinery ({ACM})},
+    volume = {20},
+    number = {5s},
+    pages = {1--24},
+    doi = {10.1145/3476982},
+    url = {https://doi.org/10.1145%2F3476982},
+ } 
+```
