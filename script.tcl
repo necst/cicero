@@ -7,6 +7,7 @@ if { $argc < 3} {
 set prj_dir [lindex $argv 0]
 set bb_nr [lindex $argv 1]
 set src_dir [lindex $argv 2]
+set topology [lindex $argv 3]
 
 set prj_name_location ${prj_dir}/u96_${topology}_${bb_nr}
 set ip_prj_dir ${prj_dir}/ip_dir_${topology}_${bb_nr}
