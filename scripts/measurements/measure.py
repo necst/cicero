@@ -96,7 +96,7 @@ class re2copro_compiler_size_measurer(regular_expression_measurer):
 		#   O1 override
 		O1 = self.optimize 
 		import sys
-		sys.path.append('../../re2compiler')
+		sys.path.append('../../cicero_compiler')
 		import re2compiler
 		code = re2compiler.compile(data=regex, O1=O1, no_prefix=no_prefix, no_postfix=no_postfix, o=None, frontend=args.format)
 		
@@ -127,7 +127,7 @@ class re2copro_compiler_measurer(regular_expression_measurer):
 
 		O1 = self.optimize and O1
 		execute_code = f"code = re2compiler.compile(data='{regex}', O1={O1}, no_prefix={no_prefix}, no_postfix={no_postfix}, o=None, frontend='{args.format}')"
-		prepare_code = "import sys;sys.path.append('../../re2compiler');import re2compiler"
+		prepare_code = "import sys;sys.path.append('../../cicero_compiler');import re2compiler"
 		
 		secs = timeit.repeat(execute_code, prepare_code  ,number=self.num_times)
 		if debug:
@@ -165,7 +165,7 @@ class RESULT_measurer(regular_expression_measurer):
 
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		import sys
-		sys.path.append('../../re2compiler')
+		sys.path.append('../../cicero_compiler')
 		import golden_model
 		golden_model_res = golden_model.get_golden_model_result(regex, string, no_prefix=no_prefix, no_postfix=no_postfix,frontend=args.format)
 		
@@ -178,7 +178,7 @@ class emulated_re2_copro_asap_measurer(regular_expression_measurer):
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		import sys
-		sys.path.append('../../re2compiler')
+		sys.path.append('../../cicero_compiler')
 		import emulate_execution
 		cc = emulate_execution.cc_asap_no_prefix_match(r, line, perf_counter=True)
 		if debug:
@@ -193,7 +193,7 @@ class emulated_re2_copro_measurer(regular_expression_measurer):
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False):
 		import sys
-		sys.path.append('../../re2compiler')
+		sys.path.append('../../cicero_compiler')
 		import emulate_execution
 		cc = emulate_execution.cc_no_prefix_match(r, line)
 		if debug:
@@ -252,7 +252,7 @@ class cmd_measurer(regular_expression_measurer):
 
 def to_supported_regex(regex, no_prefix, no_postfix):
 	import sys
-	sys.path.append('../../re2compiler')
+	sys.path.append('../../cicero_compiler')
 	from helper import normalize_regex_input, pcre_to_python
 
 	if args.format == 'pcre':

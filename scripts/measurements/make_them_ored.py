@@ -25,7 +25,7 @@ with open(args.regfile, 'r') as fin:
 		regex_lines = sorted(regex_lines,key = len, reverse=args.decreasing )[0:args.n]
 
 	import sys
-	sys.path.append('../../re2compiler')
+	sys.path.append('../../cicero_compiler')
 	from helper import normalize_regex_input, pcre_to_python
 	pcre = (args.format == 'pcre')
 	if pcre:

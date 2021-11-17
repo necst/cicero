@@ -218,7 +218,7 @@ class re2_driver(DefaultIP):
 					code = f.read()
 			else:
 				import sys
-				sys.path.append('../../re2compiler')
+				sys.path.append('../../cicero_compiler')
 				import re2compiler
 				if self.verbose or self.debug :
 					print('start compilation')
@@ -231,7 +231,7 @@ class re2_driver(DefaultIP):
 			res  = self.load_and_run( code , string)
 			if double_check:
 				import sys
-				sys.path.append('../../re2compiler')
+				sys.path.append('../../cicero_compiler')
 				import golden_model
 				golden_model_res = golden_model.get_golden_model_result(regex_string, string, no_prefix=no_prefix, no_postfix=no_postfix,frontend=frontend)
 
@@ -286,7 +286,7 @@ class re2_driver(DefaultIP):
 		
 		if double_check:
 			import sys
-			sys.path.append('../../re2compiler')
+			sys.path.append('../../cicero_compiler')
 			import golden_model
 			golden_model_res = golden_model.get_golden_model_result(regex_string, string, no_prefix=no_prefix, no_postfix=no_postfix,frontend=frontend)
 
@@ -337,7 +337,7 @@ if __name__ == "__main__":
 
 	#Test load code and verify that is again there when reset is sent
 	import sys
-	sys.path.append('../../re2compiler')
+	sys.path.append('../../cicero_compiler')
 	import re2compiler
 	code = re2compiler.compile(data=regex_string, no_prefix=False, no_postfix=False, O1=True)
 	code = code.split('\n')
