@@ -12,7 +12,7 @@ Here it follows an high level overview of Cicero Engines and how they can be com
 ![cicero_engine_multi_char](https://user-images.githubusercontent.com/6527645/131694875-59f68606-6084-4b65-82a0-9701d72bcc01.png)
 ![cicero_multi_new_interconnection 1](https://user-images.githubusercontent.com/6527645/131694871-a9f412b9-7bad-4db2-8179-cbaa6ee1e2fd.png)
 
-Cicero has its own [compiler](https://github.com/DanieleParravicini/re2compiler/) that converts REs in our custom ISA.
+Cicero has its own [compiler](https://github.com/necst/cicero_compiler/) that converts REs in our custom ISA.
 
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-nd/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-nc-nd/4.0/">Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License</a>.
