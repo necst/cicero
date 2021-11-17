@@ -49,17 +49,17 @@ class re2copro_measurer(regular_expression_measurer):
 	
 	def execute(self, regex, string, O1=True, no_prefix=True, no_postfix=True, debug=False, reusecode=False):
 		
-		self.re2_coprocessor.re2_copro_0.reset()
+		self.re2_coprocessor.cicero_core_0.reset()
 		#freq                = 90_000_000
 		if debug:
 			print('string', string, ' regex:',regex)
 		if reusecode:
-			has_accepted = self.re2_coprocessor.re2_copro_0.load_only_string_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix , double_check=(not self.copro_not_check), frontend=self.frontend)
+			has_accepted = self.re2_coprocessor.cicero_core_0.load_only_string_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix , double_check=(not self.copro_not_check), frontend=self.frontend)
 		else:
-			has_accepted = self.re2_coprocessor.re2_copro_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
-		cc_number 	 = self.re2_coprocessor.re2_copro_0.read_elapsed_clock_cycles()
+			has_accepted = self.re2_coprocessor.cicero_core_0.compile_and_run(regex, string, no_prefix=no_prefix,no_postfix=no_postfix, O1=O1 , double_check=(not self.copro_not_check), frontend=self.frontend)
+		cc_number 	 = self.re2_coprocessor.cicero_core_0.read_elapsed_clock_cycles()
 		if debug:
-			print('status:', self.re2_coprocessor.re2_copro_0.get_status(),
+			print('status:', self.re2_coprocessor.cicero_core_0.get_status(),
 			'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')
 		return cc_number
 	
@@ -72,7 +72,7 @@ class re2copro_measurer(regular_expression_measurer):
 				result 	 = self.execute(regex, string, O1=O1, no_postfix=no_postfix, no_prefix=no_prefix, debug=debug, reusecode=not(firstFlag))
 				firstFlag = False
 				if debug:
-					print('status:', self.re2_coprocessor.re2_copro_0.get_status(),
+					print('status:', self.re2_coprocessor.cicero_core_0.get_status(),
 					'time re2coprocessor', cc_number, 'clock', 'cycles' if cc_number > 1 else 'cycle')  
 			except Exception as exc:
 				print('error while executing regex', r,'\nstring [', len(string), 'chars]', string, exc)
@@ -500,7 +500,7 @@ for r,l,e in results:
 	result_index[l][r].append(e)
 
 #open log file and log results.
-with open(f'measure_{args.benchmark}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+with open(f'measure_{args.benchmark}_{args.startreg}-{args.endreg}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 
 	for l in result_index:
