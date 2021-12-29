@@ -1,5 +1,5 @@
 //`include "AXI_package.sv"
-import AXI_package::*;
+//import AXI_package::*;
 
 //component intended to decouple the regex_coprocessor and the AXI interface.
 //It contains the memory of the regex_coprocessor so that is possible to show outside the content of the memory
@@ -28,6 +28,22 @@ module AXI_top #(
     output logic [REG_WIDTH-1:0] status_register,
     output logic [REG_WIDTH-1:0] data_o_register
 );
+
+localparam REG_WIDTH                = 32;
+parameter  CMD_NOP                  = 'h0000_0000 ;
+parameter  CMD_WRITE                = 'h0000_0001 ;
+parameter  CMD_READ                 = 'h0000_0002 ;
+parameter  CMD_START                = 'h0000_0003 ;
+parameter  CMD_RESET                = 'h0000_0004 ;
+parameter  CMD_READ_ELAPSED_CLOCK   = 'h0000_0005 ;
+parameter  CMD_RESTART              = 'h0000_0006 ;
+
+
+parameter  STATUS_IDLE              = 'h0000_0000 ;
+parameter  STATUS_RUNNING           = 'h0000_0001 ;
+parameter  STATUS_ACCEPTED          = 'h0000_0002 ;
+parameter  STATUS_REJECTED          = 'h0000_0003 ;
+parameter  STATUS_ERROR             = 'h0000_0004 ;
 logic rst_master;
 ///// AXI
 logic [REG_WIDTH-1:0]   status_register_next;
