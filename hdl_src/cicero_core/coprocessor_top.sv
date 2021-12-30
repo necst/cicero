@@ -45,22 +45,22 @@
 // import coprocessor_package::*;
 
 module coprocessor_top #(
-    parameter  PC_WIDTH              = 8 ,
-    parameter  LATENCY_COUNT_WIDTH   = 8 ,
-    parameter  FIFO_COUNT_WIDTH      = 6 ,
+    parameter  PC_WIDTH              = 9 ,
+    parameter  LATENCY_COUNT_WIDTH   = 7 ,
+    parameter  FIFO_COUNT_WIDTH      = 5 ,
     parameter  CHANNEL_COUNT_WIDTH   = 5 ,
     parameter  CHARACTER_WIDTH       = 8 ,
-    parameter  MEMORY_WIDTH          = 16,
-    parameter  MEMORY_ADDR_WIDTH     = 11,
-    parameter  BB_N                  = 1 ,
+    parameter  MEMORY_WIDTH          = 88,
+    parameter  MEMORY_ADDR_WIDTH     = 9,
+    parameter  BB_N                  = 5 ,
     parameter  BB_N_X                = 0,
     parameter  BB_N_Y                = 0,
-    parameter  CACHE_WIDTH_BITS      = 5 ,
+    parameter  CACHE_WIDTH_BITS      = 4 ,
     parameter  CACHE_BLOCK_WIDTH_BITS= 2 ,
     parameter  BASIC_BLOCK_PIPELINED = 1 ,
     parameter  REG_WIDTH             = 32,
     parameter  CONSIDER_PIPELINE_FIFO= 0,
-    parameter  CC_ID_BITS            = 2
+    parameter  CC_ID_BITS            = 3
 )
 (
     input   logic                           clk,

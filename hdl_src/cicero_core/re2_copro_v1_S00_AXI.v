@@ -453,8 +453,7 @@
     .BB_N_X                 (BB_N_X                                 ),
     .BB_N_Y                 (BB_N_Y                                 ),
     .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                  ),
-    .CC_ID_BITS             (CC_ID_BITS                             ),
-    .BRAM_RWADDR_WIDTH		(PC_WIDTH          			            )
+    .CC_ID_BITS             (CC_ID_BITS                             )
 )UIP (
     .               clk			(S_AXI_ACLK),
     .             	rst			(reset), //reset has to be implemented using cmd_register?

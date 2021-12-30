@@ -13,13 +13,8 @@
 		parameter integer C_S00_AXI_DATA_WIDTH	= 32,
 		parameter integer C_S00_AXI_ADDR_WIDTH	= 5,
 		parameter integer BB_N = 4,
-		parameter integer BB_N_X=0,
-		parameter integer BB_N_Y=0,
-		parameter integer FIFO_COUNT_WIDTH=5,
-		parameter integer BASIC_BLOCK_PIPELINED=1,
-		parameter integer PC_WIDTH=9,
-		parameter integer CHARACTER_WIDTH=8,
-		parameter integer CC_ID_BITS= 2
+		parameter integer PC_WIDTH=10,
+		parameter integer CC_ID_BITS= 3
 	)
 	(
 		// Users to add ports here
@@ -54,14 +49,11 @@
 // Instantiation of Axi Bus Interface S00_AXI
 	re2_copro_v1_S00_AXI
 #(
-    .PC_WIDTH               (PC_WIDTH                               ),
-    .CHARACTER_WIDTH        (CHARACTER_WIDTH                        ),
-    .FIFO_COUNT_WIDTH       (FIFO_COUNT_WIDTH                       ),
-    .BB_N                   (BB_N                                   ),
-    .BB_N_X                 (BB_N_X                                 ),
-    .BB_N_Y                 (BB_N_Y                                 ),
-    .BASIC_BLOCK_PIPELINED  (BASIC_BLOCK_PIPELINED                  ),
-    .CC_ID_BITS             (CC_ID_BITS                             ),
+        .BB_N                   (BB_N                                   ),
+        .BB_N_X                 (0                                      ),
+        .BB_N_Y                 (0                                      ),
+        .CC_ID_BITS             (CC_ID_BITS                             ),
+        .PC_WIDTH               (PC_WIDTH                               ),
 		.C_S_AXI_DATA_WIDTH(C_S00_AXI_DATA_WIDTH),
 		.C_S_AXI_ADDR_WIDTH(C_S00_AXI_ADDR_WIDTH)
 	) re2_copro_v1_S00_AXI_inst (
