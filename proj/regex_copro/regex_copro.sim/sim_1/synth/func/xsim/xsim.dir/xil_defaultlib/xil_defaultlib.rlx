@@ -1,8 +1,0 @@
-0.6
-2019.2
-Nov  6 2019
-21:57:16
-C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/rtl/AXI/AXI_package.sv,1613140440,systemVerilog,C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/sim/AXI_top_tb_from_compiled.sv,C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/sim/AXI_top_tb_from_compiled.sv,,$unit_AXI_package_sv;AXI_package,,,,,,,,
-,,,,,,AXI_top_tb_from_compiled,,,,,,,,
-C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/hdl_src/sim/AXI_top_tb_from_file.sv,1613139267,systemVerilog,,,,AXI_top_tb_from_file,,,,,,,,
-C:/Users/danie/Documents/GitHub/regex_coprocessor_safe/proj/regex_copro/regex_copro.sim/sim_1/synth/func/xsim/AXI_top_tb_from_compiled_func_synth.v,1613148395,verilog,,,,AXI_top;BRAM_SDP_MACRO_viv_;arbiter_2_rr;arbiter_2_rr_9;arbiter_rr_n;arbiter_rr_n_10;arbiter_rr_n__parameterized0;arbitration_logic_rr;arbitration_logic_rr_11;arbitration_logic_rr__parameterized0;bram;cache_block_directly_mapped;cache_block_directly_mapped_6;channel;channel_2;engine;engine_5;engine_and_station;engine_and_station_0;engine_interfaced;engine_interfaced_3;fifo;fifo_1;fifo_12;fifo_13;fifo__parameterized0;fifo__parameterized0_14;glbl;ping_pong_buffer;ping_pong_buffer_7;regex_coprocessor_top;regex_cpu_pipelined;regex_cpu_pipelined_8;switch;switch_4;topology_token_ring,,,,,,,,
