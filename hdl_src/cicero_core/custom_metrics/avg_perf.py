@@ -15,7 +15,7 @@ def avg_perf_metric(**kwargs) -> float:
     maxperf = __max_perf(freq, nc, w)
     minperf = __min_perf(freq,nc)
     perf = np.array([maxperf,minperf])
-    return np.average(perf)
+    return -np.average(perf)
 
 def __max_perf(freq,ncore,window):
     # Care the underscores '__' are mandatory for helper functions

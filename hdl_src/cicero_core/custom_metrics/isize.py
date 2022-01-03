@@ -6,7 +6,7 @@ def instr_mem_size(**kwargs) -> float:
     perf = 0.0
     isize = float(kwargs["PC_WIDTH"])
     perf = __helper_funct(isize)
-    return perf
+    return -perf
 
 def __helper_funct(isize):
     # Care the underscores '__' are mandatory for helper functions
