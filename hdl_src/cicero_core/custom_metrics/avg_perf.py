@@ -21,7 +21,7 @@ def __max_perf(freq,ncore,window):
     # Care the underscores '__' are mandatory for helper functions
     # This function won't show as a metric is here only for helping purposes
     time = __time_opt(freq,window)
-    return float((1/time)*8*ncore*np.log(ncore))
+    return float((1/time)*8*np.log(ncore))
 
 def __time_opt(freq,window):
     return float(1/(freq/1000)/(2**window-1))
@@ -30,7 +30,7 @@ def __time_opt(freq,window):
 def __min_perf(freq,nc):
     time = 0.0
     time = __time_worst(freq)
-    return (1/time)*8*nc*np.log(nc)
+    return (1/time)*8*np.log(nc)
 
 def __time_worst(freq):
     #assuming mhz as input
