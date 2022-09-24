@@ -263,10 +263,15 @@ module coprocessor_top #(
         end
         CICERO_EXE:
         begin
-            logic first_window_char_executing   = |(cur_window_is_first & elaborating_chars);
-            logic first_window_char_is_end_of_s = |(cur_window_end_of_s & first_window_char_executing);
-            logic no_other_work_to_do           = !(|(elaborating_chars));
-            logic time_to_fetch_ccs_buffer      = cur_window_pointer_end[CHAR_ADDR_OFFSET-1:0] == 0;
+		      logic first_window_char_executing;
+            logic first_window_char_is_end_of_s;
+            logic no_other_work_to_do;
+            logic time_to_fetch_ccs_buffer;
+				
+            first_window_char_executing   = |(cur_window_is_first & elaborating_chars);
+            first_window_char_is_end_of_s = |(cur_window_end_of_s & first_window_char_executing);
+            no_other_work_to_do           = !(|(elaborating_chars));
+            time_to_fetch_ccs_buffer      = cur_window_pointer_end[CHAR_ADDR_OFFSET-1:0] == 0;
             //basic bock computation enable
             casez({ any_bb_accept, all_bb_full, !first_window_char_executing,  first_window_char_is_end_of_s || no_other_work_to_do , time_to_fetch_ccs_buffer})
             5'b1????:
@@ -331,6 +336,7 @@ module coprocessor_top #(
         endcase
     end
 
+	 generate
     if( BB_N_X > 0 && BB_N_Y > 0)
     begin
         topology_mesh #(
@@ -425,6 +431,7 @@ module coprocessor_top #(
             .memory_cc                  (memory_for_cc              )
         );
     end
+	 endgenerate
 
     assign  memory_muxed.ready =    memory_ready;
     assign  memory_addr        =    memory_muxed.addr;

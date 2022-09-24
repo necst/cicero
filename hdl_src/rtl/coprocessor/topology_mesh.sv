@@ -52,9 +52,11 @@ module topology_mesh #(
     /// sub modules 
     genvar x,y;
     
+	 generate
     for (y = 0; y < BB_N_Y; y+=1) 
+	 begin : gen_eng_stat_outer
         for (x = 0; x < BB_N_X; x+=1) 
-        begin
+        begin : gen_eng_stat
             
             engine_and_station_xy #(
                 .PC_WIDTH                   (PC_WIDTH                   ),
@@ -87,6 +89,8 @@ module topology_mesh #(
             );
 
         end
+	  end
+	  endgenerate
 
     //              +---+   +---+
     //     +---+    |   |   |   |
@@ -135,14 +139,16 @@ module topology_mesh #(
     // +---+  |
     //   |    |
     //   +----+
-
+	 
+	 generate
     for (x = 0; x < BB_N_X ; x+=1 )
-    begin
+    begin : gen_ch_y
         assign channel_y[BB_N_Y][x].ready           = channel_y[0     ][x].ready;
         assign channel_y[0     ][x].data            = channel_y[BB_N_Y][x].data ;
         assign channel_y[0     ][x].valid           = channel_y[BB_N_Y][x].valid;        
         assign channel_y[BB_N_Y][x].latency         = channel_y[0     ][x].latency;
     end 
+	 endgenerate
 
     //      +------+    +------+     +------+     +------+
     // +--->+      +--->+      +---->+      +---->+      +----+
@@ -151,13 +157,15 @@ module topology_mesh #(
     // |                                                      |
     // +------------------------------------------------------+
 
-    for (y = 1; y < BB_N_Y ; y+=1 )
-    begin
+    generate
+	 for (y = 1; y < BB_N_Y ; y+=1 )
+    begin : gen_ch_x
         assign channel_x[y][BB_N_X].ready           = channel_x[y][0     ].ready;
         assign channel_x[y][0     ].data            = channel_x[y][BB_N_X].data ;
         assign channel_x[y][0     ].valid           = channel_x[y][BB_N_X].valid;        
         assign channel_x[y][BB_N_X].latency         = channel_x[y][0     ].latency;
-    end 
+    end
+	 endgenerate 
 
     //accept signal is simply or reduction of bb_accepts
     assign any_bb_accept  =  |bb_accepts;
@@ -170,14 +178,18 @@ module topology_mesh #(
     wire                               memory_ready_muxed [BB_N_Y*BB_N_X:0];
     wire [MEMORY_ADDR_WIDTH-1:0]       memory_addr_muxed  [BB_N_Y*BB_N_X:0];
     wire                               memory_valid_muxed [BB_N_Y*BB_N_X:0];
-
-    for (y = 0; y < BB_N_Y ; y+=1 ) 
+    
+	 generate
+    for (y = 0; y < BB_N_Y ; y+=1 )
+	 begin : gen_mem_outer
         for (x = 0; x < BB_N_X ; x+=1 ) 
-        begin
+        begin : gen_mem
             assign memory_bb[y][x].ready              = memory_ready_muxed    [y*BB_N_X+x];
             assign memory_addr_muxed     [y*BB_N_X+x] = memory_bb[y][x].addr              ;
             assign memory_valid_muxed    [y*BB_N_X+x] = memory_bb[y][x].valid             ;
         end
+    end
+	 endgenerate
     assign     memory_cc.ready                    = memory_ready_muxed [BB_N_Y*BB_N_X]    ;
     assign     memory_addr_muxed  [BB_N_Y*BB_N_X] = memory_cc.addr                        ;
     assign     memory_valid_muxed [BB_N_Y*BB_N_X] = memory_cc.valid                       ;
@@ -201,13 +213,17 @@ module topology_mesh #(
     //which receives also a ready knows that it has
     //won the arbitration 
     assign memory_cc.data  = memory.data;
-    for (y = 0; y < BB_N_Y ; y+=1 ) 
+	 generate
+    for (y = 0; y < BB_N_Y ; y+=1 )
+	 begin : gen_mem_bb_outer
         for (x = 0; x < BB_N_X ; x+=1 ) 
-        begin
+        begin : gen_mem_bb
             assign memory_bb[y][x].data  = memory.data;
             assign memory_bb[y][x].broadcast_addr  = memory.broadcast_addr  ;
             assign memory_bb[y][x].broadcast_valid = memory.broadcast_valid ;
         end
+	 end
+    endgenerate
 
     
 

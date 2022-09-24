@@ -134,10 +134,12 @@ module engine #(
     assign input_pc                        = input_pc_and_cc_id [CC_ID_BITS+:PC_WIDTH] ;
 
     genvar i;
-    //input is broadcasted to all fifos 
-    for (i=0; i < C_WINDOW_SIZE_IN_CHARS; ++i) begin
+    //input is broadcasted to all fifos
+	 generate
+    for (i=0; i < C_WINDOW_SIZE_IN_CHARS; ++i) begin : get_fifo_data
        assign fifo_data_in[i] = input_pc_and_cc_id;
     end
+	 endgenerate
 
     //but only the correct fifo will have valid signal raised
     always_comb begin
@@ -152,8 +154,9 @@ module engine #(
     end
 
     //FIFOs
+	 generate
     for ( i=0; i < C_WINDOW_SIZE_IN_CHARS; ++i) 
-    begin
+    begin : gen_fifo
         //todo: cc_id can be avoided 
         fifo #(
             .DWIDTH(PC_WIDTH+CC_ID_BITS),
@@ -177,6 +180,7 @@ module engine #(
         assign fifo_data_out_valid_masked[i] = fifo_data_out_valid [i] && cur_window_enable[i];
         assign fifo_data_out_valid_masked_packed [i] = fifo_data_out_valid_masked[i];
     end
+	 endgenerate
 
     //MUX FIFOs
     arbiter_fixed_shiftable #(
@@ -234,7 +238,8 @@ module engine #(
     /////////////////////////////////////////////////////////////////////////////
     // Computing part of the basic block
     /////////////////////////////////////////////////////////////////////////////
-    if(PIPELINED)
+    generate
+	 if(PIPELINED)
     begin : g
         
         regex_cpu_pipelined #(
@@ -296,10 +301,12 @@ module engine #(
             .elaborating_chars                  (regex_cpu_elaborating_chars        )
         );
     end
+	 endgenerate
 
 
     //MEMORY CONNECTION
     //depending on CACHE_WIDTH_BITS
+	 generate
     if (CACHE_WIDTH_BITS <= 0)
     begin
 
@@ -341,6 +348,7 @@ module engine #(
             .addr_broadcast      (memory_broadcast_addr )
         );
     end
+	 endgenerate
 
 
     //output_pc is redirected toward output after having concatenated with output_cc_id

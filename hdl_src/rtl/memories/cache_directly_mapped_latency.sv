@@ -27,7 +27,7 @@ module cache_directly_mapped_latency #(
   );
 localparam            TAG_WIDTH  = ADDR_WIDTH-CACHE_WIDTH_BITS;
 
-(* ram_style="block" *)logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
+(* ramstyle="block" *)logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
 logic [TAG_WIDTH-1:0] tag         [2**CACHE_WIDTH_BITS-1:0];
 logic                 is_present  [2**CACHE_WIDTH_BITS-1:0];
 logic [DWIDTH-1:0]    data_from_memory                     ;

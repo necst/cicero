@@ -34,7 +34,7 @@ logic [COUNT_WIDTH-1:0] head     , head_next ,  head_incremented;
 logic [COUNT_WIDTH-1:0] tail     , tail_next ,  tail_incremented;
 logic [COUNT_WIDTH-1:0] where_to_read;   
 
-(* ram_style = "block" *) logic [DWIDTH-1:0]      content [(2**COUNT_WIDTH)-1:0];
+(* ramstyle = "M9K" *) logic [DWIDTH-1:0]      content [(2**COUNT_WIDTH)-1:0];
 logic write_enable, read_enable;
 logic [DWIDTH-1:0] from_memory, from_din, middle, middle_next;
 

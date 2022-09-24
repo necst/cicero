@@ -26,7 +26,7 @@ genvar i;
 genvar j;
 generate 
 for (i=0; i<N; i++)
-begin
+begin : gen_sigs
     assign req		 [i] = in_valid[i];
     assign in_ready  [i] = in_ready_packed[i] & out_ready;
 end
@@ -47,9 +47,9 @@ arbitration_logic_fixed_shiftable #(
 
 generate 
 for (j=0; j< DWIDTH; j++)
-begin
+begin : gen_data_outer
     for (i=0; i< N     ; i++)
-    begin
+    begin : gen_data
         assign data_masked[j][i]    = in_data[i][j] & in_ready_packed[i];
     end
     assign out_data   [j]           = |(data_masked [j]);

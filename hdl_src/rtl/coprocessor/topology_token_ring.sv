@@ -47,12 +47,12 @@ module topology_token_ring #(
 		end
 	end
 	
-    /// sub modules 
-	
-    genvar i;
-    
+    /// sub modules
+	 genvar i;
+	 
+	 generate
     for (i = 0; i < BB_N; i+=1) 
-    begin
+    begin : gen_engine_and_station
         
         
         engine_and_station #(
@@ -85,6 +85,7 @@ module topology_token_ring #(
 
         
     end
+	 endgenerate
 
 
     arbiter_2_fixed #(
@@ -118,12 +119,14 @@ module topology_token_ring #(
     assign     memory_cc.ready           = memory_ready_muxed [BB_N];
     assign     memory_addr_muxed  [BB_N] = memory_cc.addr           ;
     assign     memory_valid_muxed [BB_N] = memory_cc.valid          ;
+	 generate
     for (i = 0; i < BB_N ; i+=1 ) 
-    begin
+    begin : gen_mem_signals
         assign memory_bb[i].ready        = memory_ready_muxed    [i];
         assign memory_addr_muxed     [i] = memory_bb[i].addr        ;
         assign memory_valid_muxed    [i] = memory_bb[i].valid       ;
     end
+	 endgenerate
 
 
     arbiter_rr_n #(
@@ -144,12 +147,14 @@ module topology_token_ring #(
     //which receives also a ready knows that it has
     //won the arbitration 
     assign memory_cc.data  = memory.data;
+	 generate
     for (i = 0 ; i < BB_N ; i+=1 ) 
-    begin
+    begin : gen_mem_bb
         assign memory_bb[i].data  = memory.data;
         assign memory_bb[i].broadcast_addr  = memory.broadcast_addr  ;
         assign memory_bb[i].broadcast_valid = memory.broadcast_valid ;
     end
+	 endgenerate
 
     
 
