@@ -33,7 +33,7 @@ logic     [ BRAM_WIDTH       -1:0 ] bram_w;
 logic                               bram_w_valid;
 
 ///// Coprocessor
-localparam BB_N                      = 6;
+localparam BB_N                      = 7;
 localparam BB_N_X                    = 0;
 localparam BB_N_Y                    = 0;
 localparam FIFO_COUNT_WIDTH          = 5;
@@ -55,7 +55,7 @@ logic                                   start_valid,start_ready, done, accept, e
 
 
 /////performance counters
-logic     [REG_WIDTH-1:0]               elapsed_cc, elapsed_cc_next;        
+logic     [REG_WIDTH_64-1:0]               elapsed_cc, elapsed_cc_next;        
 
 
 assign rst_master = rst || (cmd_register==CMD_RESET);
@@ -67,7 +67,7 @@ begin
     if(rst_master == 1'b1)
     begin
         status_register <= STATUS_IDLE;
-        elapsed_cc      <= {(REG_WIDTH){1'b0}};
+        elapsed_cc      <= {(REG_WIDTH_64){1'b0}};
     end
     else
     begin
@@ -84,7 +84,7 @@ begin
 
     elapsed_cc_next                    = elapsed_cc;
 
-    data_o_register                    = {(REG_WIDTH        ){1'b0} };
+    data_o_register                    = {(REG_WIDTH_64){1'b0} };
 
     bram_r_addr                        = { (BRAM_ADDR_WIDTH)  {1'b0} };
     bram_r_valid                       = 1'b0;
@@ -121,7 +121,7 @@ begin
                 bram_r_addr         = memory_addr_from_coprocessor;
                 bram_r_valid        = memory_addr_from_coprocessor_valid;
                 memory_addr_from_coprocessor_ready = 1'b1;
-                elapsed_cc_next     = {(REG_WIDTH){1'b0}};
+                elapsed_cc_next     = {(REG_WIDTH_64){1'b0}};
 
                 if( start_ready )
                 begin
