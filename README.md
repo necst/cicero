@@ -9,8 +9,8 @@ If you are interested in the topic take a look at [Russ Cox article](https://swt
 Here it follows an high level overview of Cicero Engines and how they can be combined together.
 
 
-![cicero_engine_multi_char](https://user-images.githubusercontent.com/6527645/131694875-59f68606-6084-4b65-82a0-9701d72bcc01.png)
-![cicero_multi_new_interconnection 1](https://user-images.githubusercontent.com/6527645/131694871-a9f412b9-7bad-4db2-8179-cbaa6ee1e2fd.png)
+![cicero_engine_multi_char](./figures/cicero_multi_new.png)
+![cicero_multi_new_interconnection 1](./figures/cicero_engine_multi_char.png)
 
 Cicero has its own [compiler](https://github.com/necst/cicero_compiler/) that converts REs in our custom ISA.
 
