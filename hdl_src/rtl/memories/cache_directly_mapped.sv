@@ -27,9 +27,9 @@ module cache_directly_mapped #(
   );
 localparam            TAG_WIDTH  = ADDR_WIDTH-CACHE_WIDTH_BITS;
 
-(* dont_touch = "true" *) logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
-(* dont_touch = "true" *) logic [TAG_WIDTH-1:0] tag         [2**CACHE_WIDTH_BITS-1:0];
-(* dont_touch = "true" *) logic                 is_present  [2**CACHE_WIDTH_BITS-1:0];
+(* keep = "true" *) logic    [DWIDTH-1:0] content     [2**CACHE_WIDTH_BITS-1:0];
+(* keep = "true" *) logic [TAG_WIDTH-1:0] tag         [2**CACHE_WIDTH_BITS-1:0];
+(* keep = "true" *) logic                 is_present  [2**CACHE_WIDTH_BITS-1:0];
 logic                 is_present_i_next                    ;
 logic [DWIDTH-1:0]    content_i_next                       ;
 logic [DWIDTH-1:0]    data_out_saved, data_out_saved_next  ;

@@ -2,6 +2,7 @@
 //and software.
 package AXI_package;
 localparam REG_WIDTH                = 32;
+localparam REG_WIDTH_64             = 64;
 parameter  CMD_NOP                  = 'h0000_0000 ;
 parameter  CMD_WRITE                = 'h0000_0001 ;
 parameter  CMD_READ                 = 'h0000_0002 ;

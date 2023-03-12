@@ -35,7 +35,7 @@ localparam  OUT_ADDR_WIDTH = ADDR_IN_WIDTH - BLOCK_WIDTH_BITS;
 localparam  TAG_WIDTH      = ADDR_IN_WIDTH - BLOCK_WIDTH_BITS - CACHE_WIDTH_BITS ;
 localparam  RAM_WIDTH      = DWIDTH*BLOCK_WIDTH;
 
-(* ram_style="block" *)logic      [RAM_WIDTH-1:0] content  [CACHE_WIDTH-1:0];
+(* ramstyle="M9K" *)logic      [RAM_WIDTH-1:0] content  [CACHE_WIDTH-1:0];
 
 logic [TAG_WIDTH-1:0] tag         [CACHE_WIDTH-1:0];
 logic                 is_present  [CACHE_WIDTH-1:0];
@@ -106,7 +106,8 @@ begin
     case (curState)
     S_IDLE:
     begin
-        logic response_ok = (addr_out_ready || ( addr_broadcast_valid && addr_out == addr_broadcast ));
+	     logic response_ok;
+        response_ok = (addr_out_ready || ( addr_broadcast_valid && addr_out == addr_broadcast ));
         block_sel_saved_next     = block_sel_in    ;
         cache_line_saved_next    = cache_line_in   ;
         tag_saved_next           = tag_in          ;

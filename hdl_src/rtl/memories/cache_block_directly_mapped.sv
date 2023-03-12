@@ -33,7 +33,7 @@ localparam  OUT_ADDR_WIDTH = ADDR_IN_WIDTH - BLOCK_WIDTH_BITS;
 localparam  TAG_WIDTH      = ADDR_IN_WIDTH - BLOCK_WIDTH_BITS - CACHE_WIDTH_BITS ;
 localparam  RAM_WIDTH      = DWIDTH*BLOCK_WIDTH;
 
-(* ram_style="block" *)logic      [RAM_WIDTH-1:0] content  [CACHE_WIDTH-1:0];
+(* ramstyle="block" *)logic      [RAM_WIDTH-1:0] content  [CACHE_WIDTH-1:0];
 
 logic [TAG_WIDTH-1:0] tag         [CACHE_WIDTH-1:0];
 logic                 is_present  [CACHE_WIDTH-1:0];
