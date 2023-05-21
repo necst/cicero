@@ -109,45 +109,64 @@ module vectorial_engine #(
   localparam I_WIDTH = 16;
   localparam OFFSET_I = $clog2(MEMORY_WIDTH / I_WIDTH);
   localparam CPU_MEMORY_ADDR_WIDTH = MEMORY_ADDR_WIDTH + OFFSET_I;
-  wire cpu_memory_ready;
-  wire [CPU_MEMORY_ADDR_WIDTH-1:0] cpu_memory_addr;
-  logic [CPU_MEMORY_ADDR_WIDTH-1:0] cpu_memory_addr_saved;
-  logic [I_WIDTH-1 : 0] cpu_memory_data;
-  wire cpu_memory_valid;
+
+  // Wires to connect the caches to the CPUs
+  wire cpu_memory_valid[FIFO_COUNT-1:0];
+  wire [CPU_MEMORY_ADDR_WIDTH-1:0] cpu_memory_addr[FIFO_COUNT-1:0];
+  wire cpu_memory_ready[FIFO_COUNT-1:0];
+  logic [I_WIDTH-1 : 0] cpu_memory_data[FIFO_COUNT-1:0];
+
+  // Wires to connect the caches to the memory (through the arbiter)
+  logic cache_out_addr_valid[FIFO_COUNT-1:0];
+  logic [MEMORY_ADDR_WIDTH-1:0] cache_out_addr[FIFO_COUNT-1:0];
+  logic cache_in_ready[FIFO_COUNT-1:0];
 
   if (CACHE_WIDTH_BITS <= 0) begin
-
-    //adapt memory bus to Instruction width based on previous cycle request
-    always_comb begin
-      cpu_memory_data = memory_data[cpu_memory_addr_saved[0+:OFFSET_I]*I_WIDTH+:I_WIDTH];
-    end
-
-    always_ff @(posedge clk) begin
-      cpu_memory_addr_saved <= cpu_memory_addr;
-    end
-
-    assign memory_addr = cpu_memory_addr[OFFSET_I+:MEMORY_ADDR_WIDTH];
-    assign memory_valid = cpu_memory_valid;
-    assign cpu_memory_ready   = memory_ready          || (memory_broadcast_valid && cpu_memory_addr [OFFSET_I +: MEMORY_ADDR_WIDTH ]== memory_broadcast_addr[OFFSET_I +: MEMORY_ADDR_WIDTH ] );
+    $fatal(
+        "CACHE_WIDTH_BITS must be greater than 0 with this implementation"
+    );
   end else begin
-    cache_block_directly_mapped_broadcast #(
-        .DWIDTH          (I_WIDTH),
-        .CACHE_WIDTH_BITS(CACHE_WIDTH_BITS),
-        .BLOCK_WIDTH_BITS(CACHE_BLOCK_WIDTH_BITS),
-        .ADDR_IN_WIDTH   (CPU_MEMORY_ADDR_WIDTH)
-    ) a_cache (
-        .clk                 (clk),
-        .rst                 (rst),
-        .addr_in_valid       (cpu_memory_valid),
-        .addr_in             (cpu_memory_addr),
-        .addr_in_ready       (cpu_memory_ready),
-        .data_out            (cpu_memory_data),
-        .addr_out_valid      (memory_valid),
-        .addr_out            (memory_addr),
-        .addr_out_ready      (memory_ready),
-        .data_in             (memory_data),
-        .addr_broadcast_valid(memory_broadcast_valid),
-        .addr_broadcast      (memory_broadcast_addr)
+
+    // For each CPU, we have a cache block. We the caches "miss", they need to be arbitrated
+    // Before accessing the outer memory.
+
+    for (genvar i = 0; i < FIFO_COUNT; i++) begin
+      cache_block_directly_mapped_broadcast #(
+          .DWIDTH          (I_WIDTH),
+          .CACHE_WIDTH_BITS(CACHE_WIDTH_BITS),
+          .BLOCK_WIDTH_BITS(CACHE_BLOCK_WIDTH_BITS),
+          .ADDR_IN_WIDTH   (CPU_MEMORY_ADDR_WIDTH)
+      ) cpu_cache (
+          .clk          (clk),
+          .rst          (rst),
+          // Wiring the CPU to the cache
+          .addr_in_valid(cpu_memory_valid[i]),
+          .addr_in      (cpu_memory_addr[i]),
+          .addr_in_ready(cpu_memory_ready[i]),
+          .data_out     (cpu_memory_data[i]),
+
+          // Wiring the cache to the outer memory (through the arbiter)
+          .addr_out_valid      (cache_out_addr_valid[i]),
+          .addr_out            (cache_out_addr[i]),
+          .addr_out_ready      (cache_in_ready[i]),
+          .data_in             (memory_data),
+          .addr_broadcast_valid(memory_broadcast_valid),
+          .addr_broadcast      (memory_broadcast_addr)
+      );
+    end
+
+    arbiter_rr_n #(
+        .DWIDTH(MEMORY_ADDR_WIDTH),
+        .N(FIFO_COUNT)
+    ) arbiter_tree_to_cope_with_memory_contention (
+        .clk      (clk),
+        .rst      (rst),
+        .in_ready (cache_in_ready),
+        .in_data  (cache_out_addr),
+        .in_valid (cache_out_addr_valid),
+        .out_ready(memory_ready),
+        .out_data (memory_addr),
+        .out_valid(memory_valid)
     );
   end
 
@@ -282,10 +301,10 @@ module vectorial_engine #(
         .input_pc      (cpu_in_pc[i]),                 // ok
         .input_pc_valid(cpu_in_pc_valid[i]),           // ok
 
-        .memory_ready(cpu_memory_ready),  // ok
-        .memory_addr (cpu_memory_addr),   // ok
-        .memory_data (cpu_memory_data),   // ok
-        .memory_valid(cpu_memory_valid),  // ok
+        .memory_ready(cpu_memory_ready[i]),  // ok
+        .memory_addr (cpu_memory_addr[i]),   // ok
+        .memory_data (cpu_memory_data[i]),   // ok
+        .memory_valid(cpu_memory_valid[i]),  // ok
 
         .output_pc_ready(cpu_in_can_send_output[i]),  // ok
         .output_pc      (cpu_out_pc[i]),              // ok
