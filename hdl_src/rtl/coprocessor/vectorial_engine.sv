@@ -59,10 +59,10 @@ module vectorial_engine #(
   // The input of each fifo
   logic [FIFO_COUNT-1:0] fifos_in_write_enable;
   logic [FIFO_COUNT-1:0] fifos_in_read_enable;
-  logic [FIFO_COUNT-1:0] fifos_in_data;
+  logic [FIFO_COUNT-1:0] fifos_in_data[FIFO_DATA_SIZE-1:0];
 
   // The output of each fifo
-  logic [FIFO_COUNT-1:0] fifos_out_data;
+  logic [FIFO_COUNT-1:0] fifos_out_data[FIFO_DATA_SIZE-1:0];
   logic [FIFO_COUNT-1:0] fifos_out_is_full;
   logic [FIFO_COUNT-1:0] fifos_out_is_empty;
   logic [FIFO_COUNT-1:0] fifos_out_valid = ~fifos_out_is_empty;
@@ -237,15 +237,15 @@ module vectorial_engine #(
     ) arbiter_to_fifo (
         .clk       (clk),
         .rst       (rst),
-        .in_0_ready(arbiter_out_ready_to_recv_in0),  // ok
-        .in_0_data (arbiter_in0_data),               // ok
-        .in_0_valid(arbiter_in0_valid),              // ok
-        .in_1_ready(arbiter_out_ready_to_recv_in1),  // ok
-        .in_1_data (arbiter_in1_data),               // ok
-        .in_1_valid(arbiter_in1_valid),              // ok
-        .out_ready (arbiter_in_can_send_output),     // ok
-        .out_data  (arbiter_out_data),               // ok
-        .out_valid (arbiter_out_valid)               // ok
+        .in_0_ready(arbiter_out_ready_to_recv_in0[i]),  // ok
+        .in_0_data (arbiter_in0_data[i]),               // ok
+        .in_0_valid(arbiter_in0_valid[i]),              // ok
+        .in_1_ready(arbiter_out_ready_to_recv_in1[i]),  // ok
+        .in_1_data (arbiter_in1_data[i]),               // ok
+        .in_1_valid(arbiter_in1_valid[i]),              // ok
+        .out_ready (arbiter_in_can_send_output[i]),     // ok
+        .out_data  (arbiter_out_data[i]),               // ok
+        .out_valid (arbiter_out_valid[i])               // ok
     );
 
     fifo #(
