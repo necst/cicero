@@ -65,8 +65,10 @@ module vectorial_engine #(
   logic [FIFO_COUNT-1:0] fifos_out_data[FIFO_DATA_SIZE-1:0];
   logic [FIFO_COUNT-1:0] fifos_out_is_full;
   logic [FIFO_COUNT-1:0] fifos_out_is_empty;
-  logic [FIFO_COUNT-1:0] fifos_out_valid = ~fifos_out_is_empty;
-  logic [FIFO_COUNT-1:0] fifos_out_ready_to_recv = ~fifos_out_is_full;
+  logic [FIFO_COUNT-1:0] fifos_out_valid;
+  assign fifos_out_valid = ~fifos_out_is_empty;
+  logic [FIFO_COUNT-1:0] fifos_out_ready_to_recv;
+  assign fifos_out_ready_to_recv = ~fifos_out_is_full;
 
   // TODO: I don't know what this is? Maybe it is used for latency?
   logic [FIFO_COUNT-1:0] fifos_out_data_count[FIFO_COUNT_WIDTH-1:0];
@@ -79,12 +81,12 @@ module vectorial_engine #(
 
   // The output of each regex_cpu
 
-  logic [FIFO_COUNT-1:0] cpu_out_elaborating_chars[CC_ID_BITS-1:0];
-  logic [FIFO_COUNT-1:0] cpu_out_ready_to_recv_pc; // The CPU is ready to receive a new instruction
+  logic [CC_ID_BITS-1:0] cpu_out_elaborating_chars[FIFO_COUNT-1:0];
+  logic  cpu_out_ready_to_recv_pc[FIFO_COUNT-1:0]; // The CPU is ready to receive a new instruction
 
-  logic [FIFO_COUNT-1:0] cpu_out_pc_valid;  // The output of the CPU is valid
-  logic [FIFO_COUNT-1:0] cpu_out_cc_id[CC_ID_BITS-1:0];
-  logic [FIFO_COUNT-1:0] cpu_out_pc[PC_WIDTH-1:0];
+  logic cpu_out_pc_valid[FIFO_COUNT-1:0];  // The output of the CPU is valid
+  logic [CC_ID_BITS-1:0] cpu_out_cc_id[FIFO_COUNT-1:0];
+  logic [PC_WIDTH-1:0] cpu_out_pc[FIFO_COUNT-1:0];
 
   logic [FIFO_COUNT-1:0] cpu_out_is_accepting;
   logic [FIFO_COUNT-1:0] cpu_out_is_running;
