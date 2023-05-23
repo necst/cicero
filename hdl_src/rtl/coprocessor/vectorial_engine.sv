@@ -59,10 +59,10 @@ module vectorial_engine #(
   // The input of each fifo
   logic [FIFO_COUNT-1:0] fifos_in_write_enable;
   logic [FIFO_COUNT-1:0] fifos_in_read_enable;
-  logic [FIFO_COUNT-1:0] fifos_in_data[FIFO_DATA_SIZE-1:0];
+  logic [FIFO_DATA_SIZE-1:0] fifos_in_data[FIFO_COUNT-1:0];
 
   // The output of each fifo
-  logic [FIFO_COUNT-1:0] fifos_out_data[FIFO_DATA_SIZE-1:0];
+  logic [FIFO_DATA_SIZE-1:0] fifos_out_data[FIFO_COUNT-1:0];
   logic [FIFO_COUNT-1:0] fifos_out_is_full;
   logic [FIFO_COUNT-1:0] fifos_out_is_empty;
   logic [FIFO_COUNT-1:0] fifos_out_valid;
@@ -71,11 +71,11 @@ module vectorial_engine #(
   assign fifos_out_ready_to_recv = ~fifos_out_is_full;
 
   // TODO: I don't know what this is? Maybe it is used for latency?
-  logic [FIFO_COUNT-1:0] fifos_out_data_count[FIFO_COUNT_WIDTH-1:0];
+  logic [FIFO_COUNT_WIDTH-1:0] fifos_out_data_count[FIFO_COUNT-1:0];
 
   // The input of each regex_cpu
-  logic [FIFO_COUNT-1:0] cpu_in_pc;
-  logic [FIFO_COUNT-1:0] cpu_in_cc_id;
+  logic [PC_WIDTH-1:0] cpu_in_pc[FIFO_COUNT-1:0];
+  logic [CC_ID_BITS-1:0] cpu_in_cc_id[FIFO_COUNT-1:0];
   logic [FIFO_COUNT-1:0] cpu_in_pc_valid;  // The input to the CPU is valid
   logic [FIFO_COUNT-1:0] cpu_in_can_send_output;  // Can the CPU send its output?
 
@@ -93,14 +93,14 @@ module vectorial_engine #(
 
   // The input of each arbiter
   logic [FIFO_COUNT-1:0] arbiter_in0_valid;
-  logic [FIFO_COUNT-1:0] arbiter_in0_data[FIFO_DATA_SIZE-1:0];
+  logic [FIFO_DATA_SIZE-1:0] arbiter_in0_data[FIFO_COUNT-1:0];
   logic [FIFO_COUNT-1:0] arbiter_in1_valid;
-  logic [FIFO_COUNT-1:0] arbiter_in1_data[FIFO_DATA_SIZE-1:0];
+  logic [FIFO_DATA_SIZE-1:0] arbiter_in1_data[FIFO_COUNT-1:0];
   logic [FIFO_COUNT-1:0] arbiter_in_can_send_output;  // Can the arbiter send its output?
 
   // The output of each arbiter
   logic [FIFO_COUNT-1:0] arbiter_out_valid;
-  logic [FIFO_COUNT-1:0] arbiter_out_data[FIFO_DATA_SIZE-1:0];
+  logic [FIFO_DATA_SIZE-1:0] arbiter_out_data[FIFO_COUNT-1:0];
   logic [FIFO_COUNT-1:0] arbiter_out_ready_to_recv_in0;  // Can the arbiter receive from in0?
   logic [FIFO_COUNT-1:0] arbiter_out_ready_to_recv_in1;  // Can the arbiter receive from in1?
 
@@ -113,10 +113,10 @@ module vectorial_engine #(
   localparam CPU_MEMORY_ADDR_WIDTH = MEMORY_ADDR_WIDTH + OFFSET_I;
 
   // Wires to connect the caches to the CPUs
-  wire cpu_memory_valid[FIFO_COUNT-1:0];
-  wire [CPU_MEMORY_ADDR_WIDTH-1:0] cpu_memory_addr[FIFO_COUNT-1:0];
-  wire cpu_memory_ready[FIFO_COUNT-1:0];
-  logic [I_WIDTH-1 : 0] cpu_memory_data[FIFO_COUNT-1:0];
+  wire [FIFO_COUNT-1:0] cpu_out_memory_valid;
+  wire [CPU_MEMORY_ADDR_WIDTH-1:0] cpu_out_memory_addr[FIFO_COUNT-1:0];
+  wire [FIFO_COUNT-1:0] cpu_in_memory_ready;
+  logic [I_WIDTH-1:0] cpu_in_memory_data[FIFO_COUNT-1:0];
 
   // Wires to connect the caches to the memory (through the arbiter)
   logic cache_out_addr_valid[FIFO_COUNT-1:0];
@@ -142,10 +142,10 @@ module vectorial_engine #(
           .clk          (clk),
           .rst          (rst),
           // Wiring the CPU to the cache
-          .addr_in_valid(cpu_memory_valid[i]),
-          .addr_in      (cpu_memory_addr[i]),
-          .addr_in_ready(cpu_memory_ready[i]),
-          .data_out     (cpu_memory_data[i]),
+          .addr_in_valid(cpu_out_memory_valid[i]),
+          .addr_in      (cpu_out_memory_addr[i]),
+          .addr_in_ready(cpu_in_memory_ready[i]),
+          .data_out     (cpu_in_memory_data[i]),
 
           // Wiring the cache to the outer memory (through the arbiter)
           .addr_out_valid      (cache_out_addr_valid[i]),
@@ -203,18 +203,18 @@ module vectorial_engine #(
   // Combinatory logic for arbiters input
   always_comb begin
     // First arbiter: input comes from outside and from the first CPU
-    arbiter_in0_valid[0] = input_pc_valid;
-    arbiter_in0_data[0] = input_pc_and_cc_id;
-    arbiter_in1_valid[0] = cpu_out_pc_valid[0];
-    arbiter_in1_data[0] = {cpu_out_cc_id[0], cpu_out_pc[0]};
+    arbiter_in0_valid[0] = cpu_out_pc_valid[0];
+    arbiter_in0_data[0] = {cpu_out_cc_id[0], cpu_out_pc[0]};
+    arbiter_in1_valid[0] = input_pc_valid;
+    arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
 
     for (int i = 1; i < FIFO_COUNT; i++) begin
       // The input of the i-th arbiter is the output of the i-th and (i-1)-th CPUs
-      arbiter_in0_valid[i] = cpu_out_pc_valid[i-1];
-      arbiter_in0_data[i] = {cpu_out_cc_id[i-1], cpu_out_pc[i-1]};
-      arbiter_in1_valid[i] = cpu_out_pc_valid[i];
-      arbiter_in1_data[i] = {cpu_out_cc_id[i], cpu_out_pc[i]};
+      arbiter_in0_valid[i] = cpu_out_pc_valid[i];
+      arbiter_in0_data[i] = {cpu_out_cc_id[i], cpu_out_pc[i]};
+      arbiter_in1_valid[i] = cpu_out_pc_valid[i-1];
+      arbiter_in1_data[i] = {cpu_out_cc_id[i-1], cpu_out_pc[i-1]};
       arbiter_in_can_send_output[i] = fifos_out_ready_to_recv[i];
     end
   end
@@ -303,10 +303,10 @@ module vectorial_engine #(
         .input_pc      (cpu_in_pc[i]),                 // ok
         .input_pc_valid(cpu_in_pc_valid[i]),           // ok
 
-        .memory_ready(cpu_memory_ready[i]),  // ok
-        .memory_addr (cpu_memory_addr[i]),   // ok
-        .memory_data (cpu_memory_data[i]),   // ok
-        .memory_valid(cpu_memory_valid[i]),  // ok
+        .memory_ready(cpu_in_memory_ready[i]),  // ok
+        .memory_addr (cpu_out_memory_addr[i]),  // ok
+        .memory_data (cpu_in_memory_data[i]),   // ok
+        .memory_valid(cpu_out_memory_valid[i]), // ok
 
         .output_pc_ready(cpu_in_can_send_output[i]),  // ok
         .output_pc      (cpu_out_pc[i]),              // ok
