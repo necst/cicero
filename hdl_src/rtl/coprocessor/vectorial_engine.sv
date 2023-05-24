@@ -192,29 +192,34 @@ module vectorial_engine #(
   // Combinatory logic between CPUs outputs and arbiters inputs
   always_comb begin
     // Last CPU output is connected to module-out and its arbiter input
-    cpu_in_can_send_output[FIFO_COUNT-1] = arbiter_out_ready_to_recv_in0[FIFO_COUNT-1] && output_pc_ready;
+    cpu_in_can_send_output[FIFO_COUNT-1] = arbiter_out_ready_to_recv_in0[FIFO_COUNT-1] || output_pc_ready;
 
     for (int i = 0; i < FIFO_COUNT - 1; i++) begin
+      // The output of the CPI is connected to in0 of its own arbiter (if instruction is for same CC_ID)
+      // and to the input of the next one on in1 (if instruction is for next CC_ID)
+      // TODO: update??
       // The output of CPU i is connected to the input of its arbiter on in0 and to the input of the next one on in1
-      cpu_in_can_send_output[i] = arbiter_out_ready_to_recv_in0[i] && arbiter_out_ready_to_recv_in1[i+1];
+      cpu_in_can_send_output[i] = arbiter_out_ready_to_recv_in0[i] || arbiter_out_ready_to_recv_in1[i+1];
     end
   end
 
   // Combinatory logic for arbiters input
   always_comb begin
+    // TODO: The character ID from the input can be != 0, how can I fix this????
     // First arbiter: input comes from outside and from the first CPU
-    arbiter_in0_valid[0] = cpu_out_pc_valid[0];
-    arbiter_in0_data[0] = {cpu_out_cc_id[0], cpu_out_pc[0]};
-    arbiter_in1_valid[0] = input_pc_valid;
+    arbiter_in0_valid[0] = cpu_out_pc_valid[0] && cpu_out_cc_id[0] == 0;
+    arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};  // TODO: is this the right order???
+    assert (input_pc_and_cc_id[PC_WIDTH+CC_ID_BITS-1+:CC_ID_BITS] == 0);
+    arbiter_in1_valid[0] = input_pc_valid && input_pc_and_cc_id[PC_WIDTH+CC_ID_BITS-1 +: CC_ID_BITS] == 0;
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
 
     for (int i = 1; i < FIFO_COUNT; i++) begin
       // The input of the i-th arbiter is the output of the i-th and (i-1)-th CPUs
-      arbiter_in0_valid[i] = cpu_out_pc_valid[i];
-      arbiter_in0_data[i] = {cpu_out_cc_id[i], cpu_out_pc[i]};
-      arbiter_in1_valid[i] = cpu_out_pc_valid[i-1];
-      arbiter_in1_data[i] = {cpu_out_cc_id[i-1], cpu_out_pc[i-1]};
+      arbiter_in0_valid[i] = cpu_out_pc_valid[i] && cpu_out_cc_id[i] == i;
+      arbiter_in0_data[i] = {cpu_out_pc[i], cpu_out_cc_id[i]};
+      arbiter_in1_valid[i] = cpu_out_pc_valid[i-1] && cpu_out_cc_id[i-1] == i;
+      arbiter_in1_data[i] = {cpu_out_pc[i-1], cpu_out_cc_id[i-1]};
       arbiter_in_can_send_output[i] = fifos_out_ready_to_recv[i];
     end
   end
@@ -235,7 +240,7 @@ module vectorial_engine #(
     output_pc_and_cc_id = {cpu_out_cc_id[FIFO_COUNT-1], cpu_out_pc[FIFO_COUNT-1]};
     assign accepts = |cpu_out_is_accepting;
     // TODO: not sure, but I guess full indicates if all fifos are full
-    assign full = |fifos_out_is_full;
+    assign full = &fifos_out_is_full;
     assign running = |((fifos_out_valid && cur_window_enable) || cpu_out_is_running);
 
     // We are ready to receive if the first arbiter can receive in1
