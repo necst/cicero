@@ -104,6 +104,32 @@ module vectorial_engine #(
   logic [FIFO_COUNT-1:0] arbiter_out_ready_to_recv_in0;  // Can the arbiter receive from in0?
   logic [FIFO_COUNT-1:0] arbiter_out_ready_to_recv_in1;  // Can the arbiter receive from in1?
 
+
+  //latency signals
+  logic [LATENCY_COUNT_WIDTH-1:0] input_pc_latency_next;
+
+  always_ff @(posedge clk) begin
+    if (rst) input_pc_latency <= {{(LATENCY_COUNT_WIDTH - 1) {1'b0}}, 1'b1};
+    else input_pc_latency <= input_pc_latency_next;
+  end
+
+  always_comb begin
+    case ({
+      input_pc_valid && input_pc_ready,
+      cpu_out_pc_valid[FIFO_COUNT-1] && cpu_in_can_send_output[FIFO_COUNT-1]
+    })
+      2'b11, 2'b00: begin
+        input_pc_latency_next = input_pc_latency;
+      end
+      2'b10: begin
+        input_pc_latency_next = input_pc_latency + 1;
+      end
+      2'b01: begin
+        input_pc_latency_next = input_pc_latency - 1;
+      end
+    endcase
+  end
+
   /*
     Memory logic
     */
@@ -209,8 +235,8 @@ module vectorial_engine #(
     // First arbiter: input comes from outside and from the first CPU
     arbiter_in0_valid[0] = cpu_out_pc_valid[0] && cpu_out_cc_id[0] == 0;
     arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};  // TODO: is this the right order???
-    assert (input_pc_and_cc_id[PC_WIDTH+CC_ID_BITS-1+:CC_ID_BITS] == 0);
-    arbiter_in1_valid[0] = input_pc_valid && input_pc_and_cc_id[PC_WIDTH+CC_ID_BITS-1 +: CC_ID_BITS] == 0;
+    assert (input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1+:CC_ID_BITS] == 0);
+    arbiter_in1_valid[0] = input_pc_valid && input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1 +: CC_ID_BITS] == 0;
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
 
@@ -236,8 +262,8 @@ module vectorial_engine #(
   // Combinatory logic for outside output
   always_comb begin
     // Output of last CPU is sent to the outside
-    output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1];
-    output_pc_and_cc_id = {cpu_out_cc_id[FIFO_COUNT-1], cpu_out_pc[FIFO_COUNT-1]};
+    output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && cpu_out_cc_id[FIFO_COUNT-1] == 0;
+    output_pc_and_cc_id = {cpu_out_pc[FIFO_COUNT-1], cpu_out_cc_id[FIFO_COUNT-1]};
     assign accepts = |cpu_out_is_accepting;
     // TODO: not sure, but I guess full indicates if all fifos are full
     assign full = &fifos_out_is_full;
