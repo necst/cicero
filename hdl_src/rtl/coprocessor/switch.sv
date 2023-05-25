@@ -51,21 +51,14 @@ module switch  (
             in_1.latency = out_1.latency;
             in_0.latency = out_1.latency;
         end
-        
-        best_output = min_latency;
 
-        // NOTE: With the vectorial engine the input ready signals are not raised
-        // if we do not give it a valid output. Hence we have a stall. For this reason,
-        // I am ignoring the "ready" signals for the decision of the best_output.
-        // This is probably not the best solution, but it works for now.
-
-        // casex ({min_latency, out_0.ready, out_1.ready})
-        //     3'b001 : best_output = 1'b1;
-        //     3'b01x : best_output = 1'b0;
-        //     3'b1x1 : best_output = 1'b1;
-        //     3'b110 : best_output = 1'b0; 
-        //     default: best_output = 1'b0;
-        // endcase
+        casex ({min_latency, out_0.ready, out_1.ready})
+            3'b001 : best_output = 1'b1;
+            3'b01x : best_output = 1'b0;
+            3'b1x1 : best_output = 1'b1;
+            3'b110 : best_output = 1'b0; 
+            default: best_output = 1'b0;
+        endcase
     end
 
     always_comb 

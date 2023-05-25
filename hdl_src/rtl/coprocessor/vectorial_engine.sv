@@ -22,11 +22,7 @@ module vectorial_engine #(
     input  wire  [                  (2**CC_ID_BITS)-1:0] cur_window_enable,    // ok
     input  wire  [(2**CC_ID_BITS)*CHARACTER_WIDTH-1 : 0] cur_window,           // ok
 
-    /* TODO: Handle all the logic for this!
-     * Not all engine should be running at the same time, one of them should be disabled.
-     * Now, in theory this information is already coded in cur_window_enable, but I am not sure yet.
-     */
-
+    // This signal is not needed in vectorial_engine
     input wire new_char,
 
     input  logic                         memory_ready,
@@ -39,10 +35,6 @@ module vectorial_engine #(
     input logic input_pc_valid,  // ok
     input logic [PC_WIDTH+CC_ID_BITS-1:0] input_pc_and_cc_id,  // ok
     output logic input_pc_ready,  // ok  // The engine is ready to receive a new instruction
-
-    /* TODO: Handle the calculation of the latency
-     * Right now I have not checked how it worked in the original code
-     */
 
     output logic [LATENCY_COUNT_WIDTH-1:0] input_pc_latency,
 
@@ -69,9 +61,7 @@ module vectorial_engine #(
   assign fifos_out_valid = ~fifos_out_is_empty;
   logic [FIFO_COUNT-1:0] fifos_out_ready_to_recv;
   assign fifos_out_ready_to_recv = ~fifos_out_is_full;
-
-  // TODO: I don't know what this is? Maybe it is used for latency?
-  logic [FIFO_COUNT_WIDTH-1:0] fifos_out_data_count[FIFO_COUNT-1:0];
+  logic [FIFO_COUNT_WIDTH-1:0] fifos_out_data_count[FIFO_COUNT-1:0]; // How many items are in the FIFO
 
   // The input of each regex_cpu
   logic [PC_WIDTH-1:0] cpu_in_pc[FIFO_COUNT-1:0];
@@ -221,9 +211,6 @@ module vectorial_engine #(
     cpu_in_can_send_output[FIFO_COUNT-1] = arbiter_out_ready_to_recv_in0[FIFO_COUNT-1] || output_pc_ready;
 
     for (int i = 0; i < FIFO_COUNT - 1; i++) begin
-      // The output of the CPI is connected to in0 of its own arbiter (if instruction is for same CC_ID)
-      // and to the input of the next one on in1 (if instruction is for next CC_ID)
-      // TODO: update??
       // The output of CPU i is connected to the input of its arbiter on in0 and to the input of the next one on in1
       cpu_in_can_send_output[i] = arbiter_out_ready_to_recv_in0[i] || arbiter_out_ready_to_recv_in1[i+1];
     end
@@ -231,11 +218,10 @@ module vectorial_engine #(
 
   // Combinatory logic for arbiters input
   always_comb begin
-    // TODO: The character ID from the input can be != 0, how can I fix this????
     // First arbiter: input comes from outside and from the first CPU
     arbiter_in0_valid[0] = cpu_out_pc_valid[0] && cpu_out_cc_id[0] == 0;
-    arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};  // TODO: is this the right order???
-    assert (input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1+:CC_ID_BITS] == 0);
+    arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};
+    assert (input_pc_valid && input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1 +: CC_ID_BITS] == 0|| !input_pc_valid);
     arbiter_in1_valid[0] = input_pc_valid && input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1 +: CC_ID_BITS] == 0;
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
@@ -265,12 +251,11 @@ module vectorial_engine #(
     output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && cpu_out_cc_id[FIFO_COUNT-1] == 0;
     output_pc_and_cc_id = {cpu_out_pc[FIFO_COUNT-1], cpu_out_cc_id[FIFO_COUNT-1]};
     assign accepts = |cpu_out_is_accepting;
-    // TODO: not sure, but I guess full indicates if all fifos are full
     assign full = &fifos_out_is_full;
     assign running = |((fifos_out_valid && cur_window_enable) || cpu_out_is_running);
 
-    // We are ready to receive if the first arbiter can receive in1
-    input_pc_ready = arbiter_out_ready_to_recv_in1[0];
+    // We are ready to receive if the first FIFO can receive
+    input_pc_ready = fifos_out_ready_to_recv[0];
   end
 
   assign elaborating_chars = fifos_out_valid | cpu_out_is_running;
@@ -283,22 +268,48 @@ module vectorial_engine #(
     // Every regex_cpu is connected to its own FIFO and the next CPU's FIFO
 
 
-    // Arbiter for the input of the FIFOs
-    arbiter_2_rr #(
-        .DWIDTH(PC_WIDTH + CC_ID_BITS)
-    ) arbiter_to_fifo (
-        .clk       (clk),
-        .rst       (rst),
-        .in_0_ready(arbiter_out_ready_to_recv_in0[i]),  // ok
-        .in_0_data (arbiter_in0_data[i]),               // ok
-        .in_0_valid(arbiter_in0_valid[i]),              // ok
-        .in_1_ready(arbiter_out_ready_to_recv_in1[i]),  // ok
-        .in_1_data (arbiter_in1_data[i]),               // ok
-        .in_1_valid(arbiter_in1_valid[i]),              // ok
-        .out_ready (arbiter_in_can_send_output[i]),     // ok
-        .out_data  (arbiter_out_data[i]),               // ok
-        .out_valid (arbiter_out_valid[i])               // ok
-    );
+    // Arbiter for the input of the FIFOs:
+    // * The first arbiter has fixed priority (input 0 has priority over input 1) so that
+    // * input from the outside has priority over the output of the first CPU.
+    // * This is because we wired input_pc_ready to fifos_out_ready_to_recv[0] and we need the arbiter
+    // * to always grant its signal since we cannot stall it (if we instead connected it to the arbiter,
+    // * the arbiter would not raise a ready signal until it received a valid output,
+    // * which would not be sent by a switch without a ready signal - hence we have a deadlock)
+
+    // * The other arbiters are just round-robin arbiters between the output of the previous CPU and its own one.
+    if (i == 0) begin : first_arbiter_block
+      arbiter_2_fixed #(
+          .DWIDTH(PC_WIDTH + CC_ID_BITS)
+      ) arbiter_to_fifo (
+          // Note that abiter_*in1 (which comes from the outside) is wired to in_0_* of the arbiter
+          // so that it has higher priority
+          .in_0_ready(arbiter_out_ready_to_recv_in1[i]),  // ok
+          .in_0_data (arbiter_in1_data[i]),               // ok
+          .in_0_valid(arbiter_in1_valid[i]),              // ok
+          .in_1_ready(arbiter_out_ready_to_recv_in0[i]),  // ok
+          .in_1_data (arbiter_in0_data[i]),               // ok
+          .in_1_valid(arbiter_in0_valid[i]),              // ok
+          .out_ready (arbiter_in_can_send_output[i]),     // ok
+          .out_data  (arbiter_out_data[i]),               // ok
+          .out_valid (arbiter_out_valid[i])               // ok
+      );
+    end else begin : normal_arbiter_block
+      arbiter_2_rr #(
+          .DWIDTH(PC_WIDTH + CC_ID_BITS)
+      ) arbiter_to_fifo (
+          .clk       (clk),
+          .rst       (rst),
+          .in_0_ready(arbiter_out_ready_to_recv_in0[i]),  // ok
+          .in_0_data (arbiter_in0_data[i]),               // ok
+          .in_0_valid(arbiter_in0_valid[i]),              // ok
+          .in_1_ready(arbiter_out_ready_to_recv_in1[i]),  // ok
+          .in_1_data (arbiter_in1_data[i]),               // ok
+          .in_1_valid(arbiter_in1_valid[i]),              // ok
+          .out_ready (arbiter_in_can_send_output[i]),     // ok
+          .out_data  (arbiter_out_data[i]),               // ok
+          .out_valid (arbiter_out_valid[i])               // ok
+      );
+    end
 
     fifo #(
         .DWIDTH(PC_WIDTH + CC_ID_BITS),
