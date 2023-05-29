@@ -221,8 +221,12 @@ module vectorial_engine #(
     // First arbiter: input comes from outside and from the first CPU
     arbiter_in0_valid[0] = cpu_out_pc_valid[0] && cpu_out_cc_id[0] == 0;
     arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};
-    assert (input_pc_valid && input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1 +: CC_ID_BITS] == 0|| !input_pc_valid);
-    arbiter_in1_valid[0] = input_pc_valid && input_pc_and_cc_id[PC_WIDTH-CC_ID_BITS+1 +: CC_ID_BITS] == 0;
+
+    // Assert input to the module hass cc id zero
+    if (input_pc_valid && (input_pc_and_cc_id[0+: CC_ID_BITS] != 0)) begin
+      $fatal("input_pc_valid while input_cc_id has non-zero CC ID!");
+    end
+    arbiter_in1_valid[0] = input_pc_valid && (input_pc_and_cc_id[0+: CC_ID_BITS] == 0);
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
 
@@ -233,6 +237,11 @@ module vectorial_engine #(
       arbiter_in1_valid[i] = cpu_out_pc_valid[i-1] && cpu_out_cc_id[i-1] == i;
       arbiter_in1_data[i] = {cpu_out_pc[i-1], cpu_out_cc_id[i-1]};
       arbiter_in_can_send_output[i] = fifos_out_ready_to_recv[i];
+    end
+
+    // Assert output to the module has cc id zero
+    if (output_pc_valid && (output_pc_and_cc_id[0+: CC_ID_BITS] != 0)) begin
+      $fatal("output_pc_valid while output_pc_and_cc_id has non-zero CC ID!");
     end
   end
 

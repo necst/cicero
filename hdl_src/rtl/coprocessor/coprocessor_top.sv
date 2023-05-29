@@ -183,11 +183,7 @@ module coprocessor_top #(
             memory_for_cc.valid = 1'b1;
             ready               = memory_for_cc.ready;
          
-            if(start_cc_pointer[0+:CC_ID_BITS] != {(CC_ID_BITS){1'b0}})
-            begin //assumption * : start_cc pointer bits dedicated to CC_ID are all 0. It simplifies startup! (does not require 2 fetch)
-                next_state              = CICERO_ERROR;
-            end
-            else if(valid && memory_for_cc.ready ) 
+            if(valid && memory_for_cc.ready ) 
             begin //if memory answer affirmatively and start signal is raised start
                 next_state              = CICERO_FETCH_1ST;
                 next_window_pointer_end= start_cc_pointer;
@@ -211,8 +207,10 @@ module coprocessor_top #(
             next_window_pointer_end = cur_window_pointer_end + WINDOW_SIZE_IN_CHARS;
             override_pc_pc              = start_pc; 
             override_pc.valid           = 1'b1;
-            if(!override_pc.ready)      next_state      = CICERO_ERROR;
-            else                        next_state      = CICERO_EXE;
+            if(!override_pc.ready)
+                next_state      = CICERO_ERROR;
+            else
+                next_state      = CICERO_EXE;
             
             if ( start_cc_pointer[REG_WIDTH-1:CC_ID_BITS] == end_cc_pointer[REG_WIDTH-1:CC_ID_BITS])
             begin
