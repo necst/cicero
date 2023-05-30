@@ -105,8 +105,7 @@ module vectorial_engine #(
 
   always_comb begin
     case ({
-      input_pc_valid && input_pc_ready,
-      cpu_out_pc_valid[FIFO_COUNT-1] && cpu_in_can_send_output[FIFO_COUNT-1]
+      input_pc_valid && input_pc_ready, output_pc_valid && output_pc_ready
     })
       2'b11, 2'b00: begin
         input_pc_latency_next = input_pc_latency;
@@ -196,8 +195,15 @@ module vectorial_engine #(
   always_comb begin
 
     for (int i = 0; i < FIFO_COUNT; i++) begin
-      cpu_in_pc[i]            = fifos_out_data[i][CC_ID_BITS+:PC_WIDTH];
-      cpu_in_cc_id[i]         = fifos_out_data[i][0+:CC_ID_BITS];
+      cpu_in_pc[i]    = fifos_out_data[i][CC_ID_BITS+:PC_WIDTH];
+      cpu_in_cc_id[i] = fifos_out_data[i][0+:CC_ID_BITS];
+
+      if (cpu_in_pc_valid[i] && (cpu_in_cc_id[i] != i)) begin
+        $fatal(
+            $sformatf(
+                "CPU %d received an instruction with CC ID = %d, but it was expecting CC ID = %d",
+                i, cpu_in_cc_id[i], i));
+      end
 
       cpu_in_pc_valid[i]      = fifos_out_valid[i] && cur_window_enable[i];
 
@@ -208,39 +214,45 @@ module vectorial_engine #(
   // Combinatory logic between CPUs outputs and arbiters inputs
   always_comb begin
     // Last CPU output is connected to module-out and its arbiter input
-    cpu_in_can_send_output[FIFO_COUNT-1] = arbiter_out_ready_to_recv_in0[FIFO_COUNT-1] || output_pc_ready;
+    cpu_in_can_send_output[FIFO_COUNT-1] = 
+      (arbiter_out_ready_to_recv_in0[FIFO_COUNT-1] && cpu_out_cc_id[FIFO_COUNT-1] == FIFO_COUNT-1)
+    ||
+      (output_pc_ready && cpu_out_cc_id[FIFO_COUNT-1] == 0);
 
     for (int i = 0; i < FIFO_COUNT - 1; i++) begin
       // The output of CPU i is connected to the input of its arbiter on in0 and to the input of the next one on in1
-      cpu_in_can_send_output[i] = arbiter_out_ready_to_recv_in0[i] || arbiter_out_ready_to_recv_in1[i+1];
+      cpu_in_can_send_output[i] =
+        (arbiter_out_ready_to_recv_in0[i] && cpu_out_cc_id[i] == i)
+      ||
+        (arbiter_out_ready_to_recv_in1[i+1] && cpu_out_cc_id[i] == i+1);
     end
   end
 
   // Combinatory logic for arbiters input
   always_comb begin
     // First arbiter: input comes from outside and from the first CPU
-    arbiter_in0_valid[0] = cpu_out_pc_valid[0] && cpu_out_cc_id[0] == 0;
+    arbiter_in0_valid[0] = cpu_out_pc_valid[0] && (cpu_out_cc_id[0] == 0);
     arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};
 
     // Assert input to the module hass cc id zero
-    if (input_pc_valid && (input_pc_and_cc_id[0+: CC_ID_BITS] != 0)) begin
+    if (input_pc_valid && (input_pc_and_cc_id[0+:CC_ID_BITS] != 0)) begin
       $fatal("input_pc_valid while input_cc_id has non-zero CC ID!");
     end
-    arbiter_in1_valid[0] = input_pc_valid && (input_pc_and_cc_id[0+: CC_ID_BITS] == 0);
+    arbiter_in1_valid[0] = input_pc_valid && (input_pc_and_cc_id[0+:CC_ID_BITS] == 0);
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
 
     for (int i = 1; i < FIFO_COUNT; i++) begin
       // The input of the i-th arbiter is the output of the i-th and (i-1)-th CPUs
-      arbiter_in0_valid[i] = cpu_out_pc_valid[i] && cpu_out_cc_id[i] == i;
+      arbiter_in0_valid[i] = cpu_out_pc_valid[i] && (cpu_out_cc_id[i] == i);
       arbiter_in0_data[i] = {cpu_out_pc[i], cpu_out_cc_id[i]};
-      arbiter_in1_valid[i] = cpu_out_pc_valid[i-1] && cpu_out_cc_id[i-1] == i;
+      arbiter_in1_valid[i] = cpu_out_pc_valid[i-1] && (cpu_out_cc_id[i-1] == i);
       arbiter_in1_data[i] = {cpu_out_pc[i-1], cpu_out_cc_id[i-1]};
       arbiter_in_can_send_output[i] = fifos_out_ready_to_recv[i];
     end
 
     // Assert output to the module has cc id zero
-    if (output_pc_valid && (output_pc_and_cc_id[0+: CC_ID_BITS] != 0)) begin
+    if (output_pc_valid && (output_pc_and_cc_id[0+:CC_ID_BITS] != 0)) begin
       $fatal("output_pc_valid while output_pc_and_cc_id has non-zero CC ID!");
     end
   end
@@ -251,13 +263,20 @@ module vectorial_engine #(
       // The input of the i-th FIFO is the output of the i-th arbiter
       fifos_in_data[i] = arbiter_out_data[i];
       fifos_in_write_enable[i] = arbiter_out_valid[i];
+
+      if (fifos_in_write_enable[i] && fifos_out_is_full[i] && !fifos_in_read_enable[i]) begin
+        $fatal(
+            $sformatf(
+                "FIFO %d is full while writing and not reading! cur_window_enable = %b",
+                i, cur_window_enable));
+      end
     end
   end
 
   // Combinatory logic for outside output
   always_comb begin
     // Output of last CPU is sent to the outside
-    output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && cpu_out_cc_id[FIFO_COUNT-1] == 0;
+    output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && (cpu_out_cc_id[FIFO_COUNT-1] == 0);
     output_pc_and_cc_id = {cpu_out_pc[FIFO_COUNT-1], cpu_out_cc_id[FIFO_COUNT-1]};
     assign accepts = |cpu_out_is_accepting;
     assign full = &fifos_out_is_full;

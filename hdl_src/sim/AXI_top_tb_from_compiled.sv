@@ -5,7 +5,8 @@ import instruction_package::*;
 
 module AXI_top_tb_from_compiled();
     parameter CLOCK_SEMI_PERIOD = 5  ;
-    parameter CC_ID_BITS =        2  ;
+    parameter CC_ID_BITS =        3  ;
+    parameter BB_N = 1;
 
     logic                             clk;
     logic                             rst; 
@@ -19,7 +20,8 @@ module AXI_top_tb_from_compiled();
     logic [REG_WIDTH-1:0]   data_o_register;
 
     AXI_top #(
-        .CC_ID_BITS              ( CC_ID_BITS                )
+      .BB_N(BB_N),
+      .CC_ID_BITS(CC_ID_BITS)
     ) dut (
     .clk                        ( clk                       ),
     .rst                        ( rst                       ),

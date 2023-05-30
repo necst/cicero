@@ -6,6 +6,7 @@ import instruction_package::*;
 module AXI_top_tb_multiple_tests_from_csv ();
   parameter CLOCK_SEMI_PERIOD = 5;
   parameter CC_ID_BITS = 2;
+  parameter BB_N = 1;
 
   logic                 clk;
   logic                 rst;
@@ -18,6 +19,7 @@ module AXI_top_tb_multiple_tests_from_csv ();
   logic [REG_WIDTH-1:0] data_o_register;
 
   AXI_top #(
+      .BB_N(BB_N),
       .CC_ID_BITS(CC_ID_BITS)
   ) dut (
       .clk                      (clk),
@@ -252,9 +254,7 @@ module AXI_top_tb_multiple_tests_from_csv ();
       wait_result(res);
       get_cc_elapsed(cc_taken);
       $display("cc taken: %d", cc_taken);
-      if ((res == 1 && expected_output_str == "true") || (res == 0 && expected_output_str == "false")) begin
-        $display("\tOK");
-      end else begin
+      if ((res == 1 && expected_output_str == "false") || (res == 0 && expected_output_str == "true")) begin
         $display("\tKO expected '%s', obtained '%d' for input = '%s' and regex = '%s'",
                  expected_output_str, res, input_str, regex_file_str);
         // $stop;
