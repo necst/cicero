@@ -183,6 +183,11 @@ module coprocessor_top #(
             memory_for_cc.valid = 1'b1;
             ready               = memory_for_cc.ready;
          
+            if(start_cc_pointer[0+:CC_ID_BITS] != {(CC_ID_BITS){1'b0}})
+            begin //assumption * : start_cc pointer bits dedicated to CC_ID are all 0. It simplifies startup! (does not require 2 fetch)
+                next_state              = CICERO_ERROR;
+                $stop;
+            end
             if(valid && memory_for_cc.ready ) 
             begin //if memory answer affirmatively and start signal is raised start
                 next_state              = CICERO_FETCH_1ST;

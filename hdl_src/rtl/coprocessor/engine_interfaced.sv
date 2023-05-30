@@ -26,7 +26,7 @@ module engine_interfaced #(
     channel_iface.out                                   out                    
 );
 
-    engine #(
+    vectorial_engine #(
         .PC_WIDTH                   (PC_WIDTH                   ),
         .LATENCY_COUNT_WIDTH        (LATENCY_COUNT_WIDTH        ),
         .FIFO_COUNT_WIDTH           (FIFO_COUNT_WIDTH           ),

@@ -5,7 +5,10 @@ import AXI_package::*;
 //It contains the memory of the regex_coprocessor so that is possible to show outside the content of the memory
 //It implements some commands that are intended to drive the regex_coprocessor and other component from software. 
 
-module AXI_top(
+module AXI_top #(
+    parameter CC_ID_BITS                = 3
+)
+(
     input  logic                 clk,
     input  logic                 rst,
     input  logic [REG_WIDTH-1:0] data_in_register,
@@ -37,10 +40,10 @@ logic     [ BRAM_WRITE_WIDTH      -1:0 ] bram_w;
 logic                                    bram_w_valid;
 
 ///// Coprocessor
-localparam BB_N                      = 4;
+localparam BB_N                      = 1;
 localparam BB_N_X                    = 0;
 localparam BB_N_Y                    = 0;
-localparam FIFO_COUNT_WIDTH          = 5;
+localparam FIFO_COUNT_WIDTH          = 12;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = 7;
 localparam CACHE_WIDTH_BITS          = 4;
@@ -48,7 +51,6 @@ localparam CACHE_BLOCK_WIDTH_BITS    = 2;
 localparam BASIC_BLOCK_PIPELINED     = 1;
 localparam PC_WIDTH                  = 9;
 localparam CHARACTER_WIDTH           = 8;
-localparam CC_ID_BITS                = 2;
 
 
 logic                                   memory_addr_from_coprocessor_ready;

@@ -5,6 +5,7 @@ import instruction_package::*;
 
 module AXI_top_tb_multiple_tests_from_csv ();
   parameter CLOCK_SEMI_PERIOD = 5;
+  parameter CC_ID_BITS = 2;
 
   logic                 clk;
   logic                 rst;
@@ -16,7 +17,9 @@ module AXI_top_tb_multiple_tests_from_csv ();
   logic [REG_WIDTH-1:0] status_register;
   logic [REG_WIDTH-1:0] data_o_register;
 
-  AXI_top dut (
+  AXI_top #(
+      .CC_ID_BITS(CC_ID_BITS)
+  ) dut (
       .clk                      (clk),
       .rst                      (rst),
       .data_in_register         (data_in_register),
@@ -235,6 +238,10 @@ module AXI_top_tb_multiple_tests_from_csv ();
       write_code_file_into_memory(fp_code, start_code, end_code);
 
       start_string = end_code;
+      // Align CC_ID_BITS value of the start of the string
+      while (start_string[0+: CC_ID_BITS] != 0) begin
+        start_string += 1;
+      end
       //write string
       write_string_into_memory(input_str, start_string, end_string);
 
