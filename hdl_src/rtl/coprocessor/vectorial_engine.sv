@@ -263,13 +263,6 @@ module vectorial_engine #(
       // The input of the i-th FIFO is the output of the i-th arbiter
       fifos_in_data[i] = arbiter_out_data[i];
       fifos_in_write_enable[i] = arbiter_out_valid[i];
-
-      if (fifos_in_write_enable[i] && fifos_out_is_full[i] && !fifos_in_read_enable[i]) begin
-        $fatal(
-            $sformatf(
-                "FIFO %d is full while writing and not reading! cur_window_enable = %b",
-                i, cur_window_enable));
-      end
     end
   end
 
@@ -279,7 +272,7 @@ module vectorial_engine #(
     output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && (cpu_out_cc_id[FIFO_COUNT-1] == 0);
     output_pc_and_cc_id = {cpu_out_pc[FIFO_COUNT-1], cpu_out_cc_id[FIFO_COUNT-1]};
     assign accepts = |cpu_out_is_accepting;
-    assign full = &fifos_out_is_full;
+    assign full = |(fifos_out_is_full & fifos_in_write_enable & ~fifos_in_read_enable);
     assign running = |((fifos_out_valid && cur_window_enable) || cpu_out_is_running);
 
     // We are ready to receive if the first FIFO can receive
