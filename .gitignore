@@ -1,0 +1,4 @@
+build_w_*
+.vscode
+*.log
+*.jou

@@ -1,3 +1,9 @@
+'''
+    Generate a CSV file containing all combinations of inputs and regexes from inputs_filename and 
+    regexes_filename, and the result of the regexes applied to the inputs. The compiled regexes and
+    the output CSV file is ready to be used by AXI_top_tb_multiple_tests_from_csv.sv
+'''
+
 import os
 import re
 import csv
@@ -12,10 +18,14 @@ script_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(script_path, "..", "..", "cicero_compiler"))
 import re2compiler
 
+if len(sys.argv) != 4:
+    print("Usage: python generate.py <inputs_filename> <regexes_filename> <outdir_name>")
+    sys.exit(1)
 
-# Define the paths to the input and regex files
-input_path = os.path.join(script_path, "input_protomata_selected.txt")
-regex_path = os.path.join(script_path, "regexes.txt")
+input_path = sys.argv[1]
+regex_path = sys.argv[2]
+directory_path = sys.argv[3]
+
 
 # Read in the input and regex files
 with open(input_path, "r") as input_file:
@@ -23,9 +33,6 @@ with open(input_path, "r") as input_file:
 
 with open(regex_path, "r") as regex_file:
     regexes = regex_file.read().splitlines()
-
-# Define the path to the directory
-directory_path = os.path.join(script_path, COMPILED_REGEXES_DIR)
 
 # Check if the directory exists
 if not os.path.exists(directory_path):

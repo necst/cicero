@@ -3,6 +3,8 @@
 import AXI_package::*;
 import instruction_package::*;
 
+`define SIMULATION 1
+
 module AXI_top_tb_multiple_tests_from_csv ();
   parameter CLOCK_SEMI_PERIOD = 5;
   parameter CC_ID_BITS = 2;
@@ -175,7 +177,6 @@ module AXI_top_tb_multiple_tests_from_csv ();
     rst          <= 1'b0;
     cmd_register <= CMD_NOP;
 
-    $display("-- Starting testbench --");
     @(posedge clk);
     rst <= 1'b1;
     @(posedge clk);
@@ -192,6 +193,7 @@ module AXI_top_tb_multiple_tests_from_csv ();
     // Skip first line that contains column names
     $fgets(line, fp_csv);
 
+    $display("++++ BEGIN TESTBENCH ++++");
     while (!$feof(
         fp_csv
     )) begin
@@ -219,7 +221,7 @@ module AXI_top_tb_multiple_tests_from_csv ();
         end
       end
 
-      $display("++++ #%d regex_file_str: '%s'; expected_output_str: '%s'; input_str: '%s'",
+      $display("++++ %d regex_file_str: '%s'; expected_output_str: '%s'; input_str: '%s'",
                testNumber, regex_file_str, expected_output_str, input_str);
 
       fp_code = $fopen({base_path, "compiled_regexes/", regex_file_str}, "r");
@@ -261,6 +263,8 @@ module AXI_top_tb_multiple_tests_from_csv ();
       end
 
     end
+
+    $display("++++ END TESTBENCH ++++");
 
     $fclose(fp_csv);
     $finish(0);

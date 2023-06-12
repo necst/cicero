@@ -1,3 +1,5 @@
+import instruction_package::*;
+
 module vectorial_engine #(
     parameter PC_WIDTH               = 8,
     parameter LATENCY_COUNT_WIDTH    = 8,
@@ -69,9 +71,11 @@ module vectorial_engine #(
   logic [FIFO_COUNT-1:0] cpu_in_pc_valid;  // The input to the CPU is valid
   logic [FIFO_COUNT-1:0] cpu_in_can_send_output;  // Can the CPU send its output?
 
+  logic cpu_in_memory_is_split[FIFO_COUNT-1:0];  // The input PC is split
+
   // The output of each regex_cpu
 
-  logic [CC_ID_BITS-1:0] cpu_out_elaborating_chars[FIFO_COUNT-1:0];
+  logic [FIFO_COUNT-1:0] cpu_out_elaborating_chars[FIFO_COUNT-1:0];
   logic  cpu_out_ready_to_recv_pc[FIFO_COUNT-1:0]; // The CPU is ready to receive a new instruction
 
   logic cpu_out_pc_valid[FIFO_COUNT-1:0];  // The output of the CPU is valid
@@ -138,54 +142,48 @@ module vectorial_engine #(
   logic [MEMORY_ADDR_WIDTH-1:0] cache_out_addr[FIFO_COUNT-1:0];
   logic cache_in_ready[FIFO_COUNT-1:0];
 
-  if (CACHE_WIDTH_BITS <= 0) begin
-    $fatal(
-        "CACHE_WIDTH_BITS must be greater than 0 with this implementation"
-    );
-  end else begin
 
-    // For each CPU, we have a cache block. We the caches "miss", they need to be arbitrated
-    // Before accessing the outer memory.
+  // For each CPU, we have a cache block. We the caches "miss", they need to be arbitrated
+  // Before accessing the outer memory.
 
-    for (genvar i = 0; i < FIFO_COUNT; i++) begin
-      cache_block_directly_mapped_broadcast #(
-          .DWIDTH          (I_WIDTH),
-          .CACHE_WIDTH_BITS(CACHE_WIDTH_BITS),
-          .BLOCK_WIDTH_BITS(CACHE_BLOCK_WIDTH_BITS),
-          .ADDR_IN_WIDTH   (CPU_MEMORY_ADDR_WIDTH)
-      ) cpu_cache (
-          .clk          (clk),
-          .rst          (rst),
-          // Wiring the CPU to the cache
-          .addr_in_valid(cpu_out_memory_valid[i]),
-          .addr_in      (cpu_out_memory_addr[i]),
-          .addr_in_ready(cpu_in_memory_ready[i]),
-          .data_out     (cpu_in_memory_data[i]),
+  for (genvar i = 0; i < FIFO_COUNT; i++) begin
+    cache_block_directly_mapped_broadcast #(
+        .DWIDTH          (I_WIDTH),
+        .CACHE_WIDTH_BITS(CACHE_WIDTH_BITS),
+        .BLOCK_WIDTH_BITS(CACHE_BLOCK_WIDTH_BITS),
+        .ADDR_IN_WIDTH   (CPU_MEMORY_ADDR_WIDTH)
+    ) cpu_cache (
+        .clk          (clk),
+        .rst          (rst),
+        // Wiring the CPU to the cache
+        .addr_in_valid(cpu_out_memory_valid[i]),
+        .addr_in      (cpu_out_memory_addr[i]),
+        .addr_in_ready(cpu_in_memory_ready[i]),
+        .data_out     (cpu_in_memory_data[i]),
 
-          // Wiring the cache to the outer memory (through the arbiter)
-          .addr_out_valid      (cache_out_addr_valid[i]),
-          .addr_out            (cache_out_addr[i]),
-          .addr_out_ready      (cache_in_ready[i]),
-          .data_in             (memory_data),
-          .addr_broadcast_valid(memory_broadcast_valid),
-          .addr_broadcast      (memory_broadcast_addr)
-      );
-    end
-
-    arbiter_rr_n #(
-        .DWIDTH(MEMORY_ADDR_WIDTH),
-        .N(FIFO_COUNT)
-    ) arbiter_tree_to_cope_with_memory_contention (
-        .clk      (clk),
-        .rst      (rst),
-        .in_ready (cache_in_ready),
-        .in_data  (cache_out_addr),
-        .in_valid (cache_out_addr_valid),
-        .out_ready(memory_ready),
-        .out_data (memory_addr),
-        .out_valid(memory_valid)
+        // Wiring the cache to the outer memory (through the arbiter)
+        .addr_out_valid      (cache_out_addr_valid[i]),
+        .addr_out            (cache_out_addr[i]),
+        .addr_out_ready      (cache_in_ready[i]),
+        .data_in             (memory_data),
+        .addr_broadcast_valid(memory_broadcast_valid),
+        .addr_broadcast      (memory_broadcast_addr)
     );
   end
+
+  arbiter_rr_n #(
+      .DWIDTH(MEMORY_ADDR_WIDTH),
+      .N(FIFO_COUNT)
+  ) arbiter_tree_to_cope_with_memory_contention (
+      .clk      (clk),
+      .rst      (rst),
+      .in_ready (cache_in_ready),
+      .in_data  (cache_out_addr),
+      .in_valid (cache_out_addr_valid),
+      .out_ready(memory_ready),
+      .out_data (memory_addr),
+      .out_valid(memory_valid)
+  );
 
   /*
     End Memory Logic
@@ -195,15 +193,20 @@ module vectorial_engine #(
   always_comb begin
 
     for (int i = 0; i < FIFO_COUNT; i++) begin
-      cpu_in_pc[i]    = fifos_out_data[i][CC_ID_BITS+:PC_WIDTH];
+      cpu_in_pc[i] = fifos_out_data[i][CC_ID_BITS+:PC_WIDTH];
+
+      cpu_in_memory_is_split[i] = (cpu_in_memory_data[i][INSTRUCTION_TYPE_START:INSTRUCTION_TYPE_END] == SPLIT);
+
       cpu_in_cc_id[i] = fifos_out_data[i][0+:CC_ID_BITS];
 
+`ifdef SIMULATION
       if (cpu_in_pc_valid[i] && (cpu_in_cc_id[i] != i)) begin
         $fatal(
             $sformatf(
                 "CPU %d received an instruction with CC ID = %d, but it was expecting CC ID = %d",
                 i, cpu_in_cc_id[i], i));
       end
+`endif
 
       cpu_in_pc_valid[i]      = fifos_out_valid[i] && cur_window_enable[i];
 
@@ -234,10 +237,12 @@ module vectorial_engine #(
     arbiter_in0_valid[0] = cpu_out_pc_valid[0] && (cpu_out_cc_id[0] == 0);
     arbiter_in0_data[0]  = {cpu_out_pc[0], cpu_out_cc_id[0]};
 
+`ifdef SIMULATION
     // Assert input to the module hass cc id zero
     if (input_pc_valid && (input_pc_and_cc_id[0+:CC_ID_BITS] != 0)) begin
       $fatal("input_pc_valid while input_cc_id has non-zero CC ID!");
     end
+`endif
     arbiter_in1_valid[0] = input_pc_valid && (input_pc_and_cc_id[0+:CC_ID_BITS] == 0);
     arbiter_in1_data[0] = input_pc_and_cc_id;
     arbiter_in_can_send_output[0] = fifos_out_ready_to_recv[0];
@@ -251,10 +256,12 @@ module vectorial_engine #(
       arbiter_in_can_send_output[i] = fifos_out_ready_to_recv[i];
     end
 
+`ifdef SIMULATION
     // Assert output to the module has cc id zero
     if (output_pc_valid && (output_pc_and_cc_id[0+:CC_ID_BITS] != 0)) begin
       $fatal("output_pc_valid while output_pc_and_cc_id has non-zero CC ID!");
     end
+`endif
   end
 
   // Combinatory logic between arbiters and FIFOs
@@ -271,9 +278,9 @@ module vectorial_engine #(
     // Output of last CPU is sent to the outside
     output_pc_valid = cpu_out_pc_valid[FIFO_COUNT-1] && (cpu_out_cc_id[FIFO_COUNT-1] == 0);
     output_pc_and_cc_id = {cpu_out_pc[FIFO_COUNT-1], cpu_out_cc_id[FIFO_COUNT-1]};
-    assign accepts = |cpu_out_is_accepting;
-    assign full = |(fifos_out_is_full & fifos_in_write_enable & ~fifos_in_read_enable);
-    assign running = |((fifos_out_valid && cur_window_enable) || cpu_out_is_running);
+    accepts = |cpu_out_is_accepting;
+    full = |(fifos_out_is_full & fifos_in_write_enable & ~fifos_in_read_enable);
+    running = |((fifos_out_valid && cur_window_enable) || cpu_out_is_running);
 
     // We are ready to receive if the first FIFO can receive
     input_pc_ready = fifos_out_ready_to_recv[0];
