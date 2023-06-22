@@ -408,6 +408,7 @@ arg_parser.add_argument('-format'	        , type=str , help='regex input format'
 arg_parser.add_argument('-benchmark'        , type=str , help='name of the benchmark in execution'																					   , default='protomata')
 arg_parser.add_argument('-window_value'        , type=str , help='value of the window, 2^x '
                                                            , default='queue_1')
+arg_parser.add_argument('-output_name'        , type=str , help='override name of the output file', default=None)
 
 args = arg_parser.parse_args()
 
@@ -500,7 +501,8 @@ for r,l,e in results:
 	result_index[l][r].append(e)
 
 #open log file and log results.
-with open(f'measure_{args.benchmark}_{args.startreg}-{args.endreg}_{args.window_value}{bitstream_filename}{optimize_str}.csv', 'w', newline='') as csvfile:
+output_name = args.output_name if args.output_name else f'measure_{args.benchmark}_{args.startreg}-{args.endreg}_{args.window_value}{bitstream_filename}{optimize_str}.csv'
+with open(output_name, 'w', newline='') as csvfile:
 	fout = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
 
 	for l in result_index:

@@ -1,4 +1,4 @@
-build_w_*
+build_*
 .vscode
 *.log
 *.jou

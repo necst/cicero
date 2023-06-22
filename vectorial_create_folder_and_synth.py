@@ -1,11 +1,16 @@
+'''
+    This script copies the files from hdl_src/rtl to a different build folder for each window size,
+    and optionally runs the synthesis.
+'''
+
 import os
 import shutil
 import subprocess
 import sys
 import re
+import time
 
-j = [1]
-window = [1, 2, 3]
+WINDOWS = [1, 2]
 
 VIVADO_SOURCE = "/new_xilinx/software/Vivado/2019.2/settings64.sh"
 
@@ -22,6 +27,7 @@ CREATING = sys.argv[1] == "True"
 def is_square(n):
     return n > 0 and (n**0.5).is_integer()
 
+
 def copy_files(src_dir, dst_dir):
     for filename in os.listdir(src_dir):
         src_path = os.path.join(src_dir, filename)
@@ -35,11 +41,10 @@ def main():
 
     script_path = os.path.dirname(os.path.abspath(__file__))
 
-    for w in window:
+    for w in WINDOWS:
         print(f'++++ window={w} ++++')
 
-
-        window_folder = os.path.join(script_path, f"build_w_{w}")
+        window_folder = os.path.join(script_path, f"build_ccid_{w}")
         os.makedirs(window_folder, exist_ok=True)
 
         src_folder = os.path.join(window_folder, "src")
@@ -57,7 +62,7 @@ def main():
                 r"parameter CC_ID_BITS\s*=\s*[0-9]*", f"parameter CC_ID_BITS = {w}", content)
             with open(axi_top_file_path, "w") as f:
                 f.write(content)
-        
+
         tcl_path = os.path.join(script_path, "script.tcl")
         shutil.copy(tcl_path, src_folder)
 
@@ -66,7 +71,15 @@ def main():
             os.makedirs(build_folder, exist_ok=True)
             print('Logging synth to synth.log')
             with open(os.path.join(window_folder, 'synth.log'), "w") as f:
-                subprocess.run(["bash", "-c", f"source {VIVADO_SOURCE} && vivado -mode batch -source {tcl_path} -tclargs {build_folder} 1 {src_folder} single"], check=True, stdout=f)
+                start_time = time.time()
+
+                subprocess.run(
+                    ["bash", "-c", f"source {VIVADO_SOURCE} && vivado -mode batch -source {tcl_path} -tclargs {build_folder} 1 {src_folder} single"], check=True, stdout=f)
+
+                elapsed_time = time.time() - start_time
+                print(
+                    f"Elapsed time: {time.strftime('%H:%M:%S', time.gmtime(elapsed_time))}")
+
 
 if __name__ == "__main__":
     main()
