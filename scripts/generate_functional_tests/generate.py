@@ -8,23 +8,33 @@ import os
 import re
 import csv
 import sys
-
-COMPILED_REGEXES_DIR = "compiled_regexes"
+import subprocess
+import tqdm
 
 # Get the path of the script
 script_path = os.path.dirname(os.path.abspath(__file__))
 
-# Include re2compiler
-sys.path.append(os.path.join(script_path, "..", "..", "cicero_compiler"))
-import re2compiler
-
-if len(sys.argv) != 4:
-    print("Usage: python generate.py <inputs_filename> <regexes_filename> <outdir_name>")
+if len(sys.argv) != 6:
+    print("Usage: python generate.py <inputs_filename> <regexes_filename> <outdir_name> <compiler_path> <optimize_compilation = '1' or '0'>")
     sys.exit(1)
 
 input_path = sys.argv[1]
 regex_path = sys.argv[2]
 directory_path = sys.argv[3]
+compiler_path = sys.argv[4]
+optimize_compilation_str = sys.argv[5]
+
+if optimize_compilation_str == '1':
+    optimize_compilation = True
+elif optimize_compilation_str == '0':
+    optimize_compilation = False
+else:
+    print("<optimize_compilation> must be '1' or '0'>")
+    sys.exit(1)
+
+# Include re2compiler
+sys.path.append(compiler_path)
+import re2compiler
 
 
 # Read in the input and regex files
@@ -41,11 +51,10 @@ if not os.path.exists(directory_path):
 
 # Compile the regexes and write them to separate files
 compiled_regexes = []
-for i, regex_str in enumerate(regexes):
-    compiled_regex = re2compiler.compile(data=regex_str)
-    compiled_regex_path = os.path.join(script_path, COMPILED_REGEXES_DIR, f"regex_{i}.txt")
-    with open(compiled_regex_path, "w") as compiled_regex_file:
-        compiled_regex_file.write(compiled_regex)
+for i, regex_str in tqdm.tqdm(enumerate(regexes), desc="Compiling regexes", total=len(regexes)):
+    compiled_regex_path = os.path.join(script_path, directory_path, f"regex_{i}.txt")
+
+    re2compiler.compile(data=regex_str, o=compiled_regex_path, O1=optimize_compilation)
     compiled_regexes.append(compiled_regex_path)
 
 # Open the CSV file for writing
@@ -57,7 +66,7 @@ with open(csv_path, "w", newline="") as csv_file:
     writer.writerow(["input", "regex_file", "output"])
 
     # Loop through each combination of input and regex
-    for input_str in inputs:
+    for input_str in tqdm.tqdm(inputs, desc="Generating CSV by input", total=len(inputs)):
         for i, regex_str in enumerate(regexes):
             # Compile the regex
             regex = re.compile(regex_str)
