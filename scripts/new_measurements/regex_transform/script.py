@@ -1,5 +1,5 @@
 '''
-    This script filters and transforms the regexes from the Brill benchmark.
+    This script filters and transforms the regexes.
 
     Filters out regexes that contain a '$' sign in the middle, because they are not supported by the compilers
     Transforms {"*?", "+?", "??"} into {"*", "+", "?"}

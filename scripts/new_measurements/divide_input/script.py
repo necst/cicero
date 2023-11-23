@@ -1,7 +1,7 @@
 '''
     Given a file as input, divide its content into many lines, each of which of a given length.
 
-    Used to divide the Brill benchmark inpus into multiple lines
+    Used to divide the benchmark inputs into multiple lines
 '''
 
 import sys
