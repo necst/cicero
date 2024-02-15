@@ -16,8 +16,10 @@ OUTPUT_FILENAME = 'all_compiletime_compilesize.csv'
 
 BENCHMARKS = [
     # (Benchmark name, benchmark file)
-    ('brill', 'input/brill.regex'),
-    ('protomata', 'input/protomata.regex')
+    ('brill4', 'input/brill4.regex'),
+    ('protomata', 'input/protomata4.regex'),
+    ('powerEN4', 'input/powerEN4.regex'),
+    ('dotstar', 'input/dotstar4.regex')
 ]
 
 COMPILERS = [
@@ -51,6 +53,13 @@ def check_script_arguments():
         del re2compiler
         del sys.modules['re2compiler']
 
+def print_summary():
+    print('-------------------')
+    for (compiler_name, _) in COMPILERS:
+        for (benchmark_name, __) in BENCHMARKS:
+            for (optimization_name, ___) in OPTIMIZATIONS:
+                print(f'\t{compiler_name}-{benchmark_name}-{optimization_name}')
+    print('-------------------')
 
 def calculate_statistics(values):
     '''
@@ -67,6 +76,15 @@ def calculate_statistics(values):
 def main():
     # Before starting, make sure all the compilers paths are correct, and all input files are correct
     check_script_arguments()
+
+    print_summary()
+
+    print('Starting in 10 seconds...')
+    try:
+        time.sleep(10)
+    except KeyboardInterrupt:
+        print('Keyboard interrupt detected, quitting.')
+        quit(-1)
 
     output_file = open(OUTPUT_FILENAME, 'w')
     output_writer = csv.writer(output_file)
@@ -98,8 +116,11 @@ def main():
 
                 for regex in tqdm.tqdm(regexes, desc='Compiling regexes'):
                     time_before_compile = time.time()
-                    compiled_regex = re2compiler.compile(
-                        data=regex, O1=optimization[1])
+                    try:
+                        compiled_regex = re2compiler.compile(data=regex, O1=optimization[1])
+                    except:
+                        print(f'Error while compiling regex: "{regex}"')
+                        quit(1)
                     compiled_regexes_times.append(
                         time.time() - time_before_compile)
                     # Size is calculated as the number of lines

@@ -7,7 +7,7 @@
 import sys
 
 def divide_input(file_path, line_length):
-    with open(file_path, 'r') as f:
+    with open(file_path, 'rb') as f:
         content = f.read()
     lines = [content[i:i+line_length] for i in range(0, len(content), line_length)]
     return lines
@@ -20,6 +20,6 @@ if __name__ == '__main__':
     output_file = sys.argv[2]
     line_length = int(sys.argv[3])
     lines = divide_input(input_file, line_length)
-    with open(output_file, 'w') as f:
+    with open(output_file, 'wb') as f:
         for line in lines:
-            f.write(line + '\n')
+            f.write(line + b'\n')

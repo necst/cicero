@@ -3,9 +3,9 @@
 '''
 
 import csv
-import os
 import sys
 import csv
+import glob
 
 
 def aggregate_result(file_path: str, csv_writer: csv.writer) -> None:
@@ -42,14 +42,20 @@ def aggregate_result(file_path: str, csv_writer: csv.writer) -> None:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print(f'Usage: {sys.argv[0]} <target_dir> <output_file>')
+    if len(sys.argv) < 3:
+        print(f'Usage: {sys.argv[0]} <output_file> <csv_pattern>\n\tExample: {sys.argv[0]} output.csv "measurements/*.csv"')
         sys.exit(1)
-    target_dir = sys.argv[1]
-    csv_writer = csv.writer(open(sys.argv[2], 'w'))
+    output_file = sys.argv[1]
+    csv_pattern = sys.argv[2]
+    csv_files = glob.glob(csv_pattern)
+    csv_writer = csv.writer(open(output_file, 'w'))
+    print('-----------------------------------', file=sys.stderr)
+    print(f'Aggregating {len(csv_files)} CSV files:', file=sys.stderr)
+    for i, csv_file in enumerate(csv_files):
+        print(f'\t{i+1} - {csv_file}', file=sys.stderr)
+    print('-----------------------------------', file=sys.stderr)
     csv_writer.writerow(
-        ['file', 'total CC', 'timeout count', 'fifo_full count', 'other errors', 'Match=True count' , 'total rows'])
-    # Iterate over the CSV files in the directory
-    for filename in os.listdir(target_dir):
-        if filename.endswith('.csv'):
-            aggregate_result(os.path.join(target_dir, filename), csv_writer)
+        ['file', 'total CC', 'timeout count', 'fifo_full count', 'other errors', 'Match=True count', 'total rows'])
+    # Iterate over the CSV files
+    for csv_file in csv_files:
+        aggregate_result(csv_file, csv_writer)
