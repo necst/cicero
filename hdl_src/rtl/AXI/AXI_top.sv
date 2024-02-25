@@ -21,15 +21,29 @@ module AXI_top #(
     output logic [REG_WIDTH-1:0] status_register,
     output logic [REG_WIDTH-1:0] data_o_register
 );
+
+localparam CHARACTER_WIDTH           = 8;
+// This constant is also used in the engine, but is not properly propagated!
+localparam INSTRUCTION_SIZE          = 16;
+
+`define max(a,b) ((a) > (b) ? (a) : (b))
+
 logic rst_master;
 ///// AXI
 logic [REG_WIDTH-1:0]   status_register_next;
 
 ///// BRAM
-parameter BRAM_READ_WIDTH            = 64;
-parameter BRAM_READ_ADDR_WIDTH       = 9;
 parameter BRAM_WRITE_WIDTH           = 32;
 parameter BRAM_WRITE_ADDR_WIDTH      = 10;
+parameter BRAM_READ_WIDTH = `max(64, CHARACTER_WIDTH * (2 ** CC_ID_BITS));
+// Solve for x (=BRAM_READ_ADDR_WIDTH) in the equation:
+// 2^x * BRAM_READ_WIDTH = 2^BRAM_WRITE_ADDR_WIDTH * BRAM_WRITE_WIDTH
+// => x = log2(2^BRAM_WRITE_ADDR_WIDTH * BRAM_WRITE_WIDTH / BRAM_READ_WIDTH)
+parameter BRAM_READ_ADDR_WIDTH       = $clog2((2 ** BRAM_WRITE_ADDR_WIDTH) * BRAM_WRITE_WIDTH / BRAM_READ_WIDTH);
+
+if ( (2**BRAM_READ_ADDR_WIDTH) * BRAM_READ_WIDTH != (2**BRAM_WRITE_ADDR_WIDTH) * BRAM_WRITE_WIDTH )
+    $fatal("Addressable write space is different from addressable read space");
+
 
 localparam BYTE_ADDR_OFFSET_IN_REG   =  $clog2(BRAM_READ_WIDTH/REG_WIDTH);
 
@@ -47,10 +61,9 @@ localparam FIFO_COUNT_WIDTH          = 5;
 localparam CHANNEL_COUNT_WIDTH       = 4;
 localparam LATENCY_COUNT_WIDTH       = FIFO_COUNT_WIDTH + CC_ID_BITS;
 localparam CACHE_WIDTH_BITS          = 4;
-localparam CACHE_BLOCK_WIDTH_BITS    = 2;
+localparam CACHE_BLOCK_WIDTH_BITS    = `max(2, $clog2(BRAM_READ_WIDTH / INSTRUCTION_SIZE));
 localparam BASIC_BLOCK_PIPELINED     = 1;
 localparam PC_WIDTH                  = 9;
-localparam CHARACTER_WIDTH           = 8;
 
 
 logic                                   memory_addr_from_coprocessor_ready;

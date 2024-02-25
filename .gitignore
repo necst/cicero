@@ -1,4 +1,7 @@
 build_*
+builds
 .vscode
 *.log
 *.jou
+proj
+__pycache__
