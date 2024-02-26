@@ -355,7 +355,7 @@ module AXI_top_tb_from_compiled();
         
         //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
         start_string = end_code;
-        while(start_string[0+:2]!==0)
+        while(start_string[0+:CC_ID_BITS]!==0)
         begin
             start_string = start_string + 1;
         end 

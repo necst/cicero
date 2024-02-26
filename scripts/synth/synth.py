@@ -56,20 +56,23 @@ def copy_files(src_dir, dst_dir):
         elif os.path.isdir(src_path):
             copy_files(src_path, dst_dir)
 
-script_path = os.path.dirname(os.path.abspath(__file__))
+script_path = os.path.abspath(__file__)
+repo_path = script_path
+for i in range(3):
+    repo_path = os.path.dirname(repo_path)
 
 def process_configuration(configuration):
     try:
         cc_id_bits, bb_n, is_vectorial = configuration
         print(f'[cc_id_bits: {cc_id_bits}, bb_n: {bb_n}, is_vectorial: {is_vectorial}]: Starting...')
-        window_folder = os.path.join(script_path, 'builds', f"{'vect' if is_vectorial else 'base'}_cc_id_{cc_id_bits}_bb_n_{bb_n}")
+        window_folder = os.path.join(repo_path, 'builds', f"{'vect' if is_vectorial else 'base'}_cc_id_{cc_id_bits}_bb_n_{bb_n}")
         os.makedirs(window_folder, exist_ok=True)
 
         src_folder = os.path.join(window_folder, "src")
         os.makedirs(src_folder, exist_ok=True)
 
         if CREATING:
-            copy_files("hdl_src/rtl", src_folder)
+            copy_files(os.path.join(repo_path, 'hdl_src', 'rtl'), src_folder)
 
             axi_top_file_path = f"{src_folder}/AXI_top.sv"
             with open(axi_top_file_path, "r") as f:
@@ -89,7 +92,7 @@ def process_configuration(configuration):
                 with open(engine_interfaced_file_path, "w") as f:
                     f.write(content)
 
-        shutil.copy(os.path.join(script_path, "script.tcl"), window_folder)
+        shutil.copy(os.path.join(repo_path, "script.tcl"), window_folder)
         tcl_path = os.path.join(window_folder, "script.tcl")
 
         if SYNTHESIS:

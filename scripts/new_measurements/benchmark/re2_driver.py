@@ -40,7 +40,8 @@ class re2_driver(DefaultIP):
     debug = False
     verbose = False
     word_size_in_bytes = 4
-    window_size_in_chars = 8
+    # CC_ID_BITS max = 5 (because 2^5 = 32)
+    window_size_in_chars = 32
 
     def __init__(self, description):
         super().__init__(description=description)
