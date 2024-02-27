@@ -29,7 +29,17 @@ To test the correctness of the architecture, you can provide a set of inputs and
 
 To synthesize many configuration of the architecture at ones, use `scripts/synth/synth.py`. For each configuration, it will create a folder within the `builds` folder. You can specify the configurations you want to synthesize by updating `CONFIGURATIONS` into `scripts/synth/synth.py`. To start the synthesis, run `python3 scripts/synth/synth.py True True`.
 
-After the synthesis, you may want to copy the bitstreams to the FPGA board. An helper script is provided to automatically copy all the bitstreams into a zip file that can easily be copied to the board. For example, if you want to copy all the bitstreams in the `builds` directory and put the content in a file called `myzip.zip`, run `python3 scripts/synth/extract_bitstreams.py "builds/*" myzip.zip`
+After the synthesis, you may want to copy the bitstreams to the FPGA board. An helper script is provided to automatically copy all the bitstreams into a zip file that can easily be copied to the board. For example, if you want to copy all the bitstreams in the `builds` directory and put the content in a file called `myzip.zip`, run:
+
+```bash
+python3 scripts/synth/extract_bitstreams.py "builds/*" myzip.zip
+```
+
+You may also want to compare board usage and maximum theoretical clock frequency for each configuration. You can use `scripts/synth/extract_usage_and_timings.py` to output a CSV file that contains relevant information for each configuration you want. For example, you can run:
+
+```bash
+python3 scripts/synth/extract_usage_and_timings.py "builds/*" util_and_timings.csv
+```
 
 ## Run on board
 
