@@ -92,12 +92,11 @@ def measure(
                        for _ in range(regexes_count)]
 
     # STEP 3.2 Load strings
-    if inputs_count == -1:
-        string_inputs = open(strings_file_path, 'r').read().split('\n')[:-1]
-    else:
-        with open(strings_file_path) as input_file:
-            string_inputs = [next(input_file).strip('\n')
-                             for _ in range(inputs_count)]
+    with open(strings_file_path, 'rb') as file:
+        content = file.read()
+        string_inputs = content.split(b'\n')[:-1]
+        if inputs_count != -1:
+            string_inputs = string_inputs[:inputs_count]
 
     for regex_index, regex in enumerate(tqdm.tqdm(regexes, desc=progress_message)):
         # Step 4.0: Write in the CSV a line for the regex
