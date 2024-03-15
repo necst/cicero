@@ -6,6 +6,7 @@ import sys
 import csv
 import re
 import tqdm
+import time
 
 def main():
     
@@ -15,9 +16,17 @@ def main():
 
     CSV_INPUT_FILE = sys.argv[1]
     INPUTS_FILE = sys.argv[2]
-    with open(INPUTS_FILE, 'r') as f:
-        inputs = f.readlines()
-    
+    input_is_binary = False
+    try:
+        with open(INPUTS_FILE, 'r') as f:
+            inputs = f.readlines()
+    except Exception as e:
+        with open(INPUTS_FILE, 'rb') as f:
+            # Input is binary
+            input_is_binary = True
+            content = f.read()
+            inputs = content.split(b'\n')[:-1]
+
     with open(CSV_INPUT_FILE) as f:
         csv_lines_count = len(f.readlines())
 
@@ -30,7 +39,10 @@ def main():
         for row in tqdm.tqdm(csv_file, desc='Checking results', total=csv_lines_count):
             if len(row) == 1:
                 current_regex_index += 1
-                current_regex = re.compile(row[0])
+                if input_is_binary:
+                    current_regex = re.compile(row[0].encode())
+                else:
+                    current_regex = re.compile(row[0])
                 current_regex_string = row[0]
             elif len(row) == 3:
                 input_index = int(row[0])
@@ -47,9 +59,9 @@ def main():
 
                 if python_match_result != match_result:
                     incorrect_count += 1
-                    print(f"-----\nMatches={matches}\nCSV file had incorrect value!!!\nRegex[{current_regex_index}]='{current_regex_string}'\nInput[{input_index}]='{input_str}'\nExpected={python_match_result}; Actual={match_result}\n-----")
+                    print(f'-----\nMatches={matches}\nCSV file had incorrect value!!!\nRegex[{current_regex_index}]="{current_regex_string}"\nInput[{input_index}]="{input_str}"\nExpected={python_match_result}; Actual={match_result}\n-----')
             elif len(row) == 4:
-                'Error row, skip'
+                # Error row, skip
                 pass
             else:
                 print("Invalid row in csv: ", str(row))
