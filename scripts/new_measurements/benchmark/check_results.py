@@ -6,7 +6,7 @@ import sys
 import csv
 import re
 import tqdm
-import time
+
 
 def main():
     
@@ -34,6 +34,12 @@ def main():
     current_regex_string = None
     current_regex_index = -1
     incorrect_count = 0
+    
+    # Confusion matrix
+    true_positive_count = 0
+    true_negative_count = 0
+    false_positive_count = 0
+    false_negative_count = 0
     with open(CSV_INPUT_FILE) as f:
         csv_file = csv.reader(f)
         for row in tqdm.tqdm(csv_file, desc='Checking results', total=csv_lines_count):
@@ -57,6 +63,15 @@ def main():
                 matches = current_regex.findall(input_str)
                 python_match_result = len(matches) != 0
 
+                if python_match_result and match_result:
+                    true_positive_count += 1
+                elif python_match_result and not match_result:
+                    false_negative_count += 1   
+                elif not python_match_result and match_result:
+                    false_positive_count += 1
+                elif not python_match_result and not match_result:
+                    true_negative_count += 1
+
                 if python_match_result != match_result:
                     incorrect_count += 1
                     print(f'-----\nMatches={matches}\nCSV file had incorrect value!!!\nRegex[{current_regex_index}]="{current_regex_string}"\nInput[{input_index}]="{input_str}"\nExpected={python_match_result}; Actual={match_result}\n-----')
@@ -66,6 +81,18 @@ def main():
             else:
                 print("Invalid row in csv: ", str(row))
     print("Incorrect count = ", incorrect_count)
+
+    # Print confusion matrix
+    print(f'True positive: {true_positive_count}')
+    print(f'True negative: {true_negative_count}')
+    print(f'False positive: {false_positive_count}')
+    print(f'False negative: {false_negative_count}')
+    accuracy = float(true_positive_count + true_negative_count) / (true_positive_count + true_negative_count + false_positive_count + false_negative_count)
+    precision = float(true_positive_count) / (true_positive_count + false_positive_count)
+    recall = float(true_positive_count) / (true_positive_count + false_negative_count)
+    print(f'Accuracy: {accuracy}')
+    print(f'Precision: {precision}')
+    print(f'Recall: {recall}')
 
 if __name__ == '__main__':
     main()
