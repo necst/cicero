@@ -4,11 +4,12 @@
 
 import csv
 import matplotlib.pyplot as plt
-
+import os
 
 def do_box_plot(data_offsets: int, data_multiplier: int, title: str):
     # open the CSV file
-    with open('/home/andrea/src/cicero_scripts/measure_compiletime_compilesize/all_compiletime_compilesize.csv', 'r') as file:
+    script_path = os.path.dirname(os.path.realpath(__file__))
+    with open(os.path.join(script_path, 'all_compiletime_compilesize.csv'), 'r') as file:
         # create a CSV reader object
         reader = csv.reader(file)
 
@@ -30,7 +31,7 @@ def do_box_plot(data_offsets: int, data_multiplier: int, title: str):
             boxes.append(box)
 
     # create the box plot
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(20, 6))
 
     # add each box to the plot
     for i, box in enumerate(boxes, start=1):
@@ -40,6 +41,8 @@ def do_box_plot(data_offsets: int, data_multiplier: int, title: str):
 
     # show the plot
     plt.show()
+    # plt.savefig(title[:10] + '.png')
 
 do_box_plot(0, 1000, 'Compile time (ms) of a regex divided by compiler, benchmark, and with optimizations on/off')
 do_box_plot(7, 1, 'Compile size (in line of code) of a regex divided by compiler, benchmark, and with optimizations on/off')
+do_box_plot(14, 1, 'Code locality (sum of jump/split offsets) of a regex divided by compiler, benchmark, and with optimizations on/off')

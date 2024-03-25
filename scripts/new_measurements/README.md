@@ -25,7 +25,7 @@ The `alternate_regexes` folder contains the script that selects a subset of the 
 
 ### Benchmarking
 
-The `measure_compiletime_compilesize` folder contains the script to measure the compile time and compile size of the compiler for any set of regex. These should have been preprocessed by the `regex_transform` script. `plot.py` can be used to plot the results.
+The `measure_compiletime_compilesize` folder contains the script to measure the compile time, compile size, and code locality of the compiler for any set of regex. These should have been preprocessed by the `regex_transform` script. `plot.py` can be used to plot the results.
 
 The `benchmark` folder contains the scripts to run the benchmarks on the board and process the results. In particular:
 
