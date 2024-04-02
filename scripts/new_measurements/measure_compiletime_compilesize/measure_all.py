@@ -17,11 +17,10 @@ OUTPUT_FILENAME = 'all_compiletime_compilesize.csv'
 
 BENCHMARKS = [
     # (Benchmark name, benchmark file)
-    ('protomata4', 'input/protomata.regex'),
-    # ('brill', 'input/brill.regex'),
-    ('brill4', 'input/brill4.regex'),
-    # ('powerEN', 'input/powerEN.regex'),
-    # ('powerEN4', 'input/powerEN4.regex'),
+    ('protomata', '../regex_transform/output/protomata.regex'),
+    ('protomata4', '../alternate_regexes/output/protomata4.regex'),
+    ('brill', '../regex_transform/output/brill.regex'),
+    ('brill4', '../alternate_regexes/output/brill4.regex'),
 ]
 
 COMPILERS = [

@@ -37,8 +37,9 @@ def aggregate_result(file_path: str, csv_writer: csv.writer) -> None:
                 else:
                     total_sum += int(row[2])
 
+    avg_cc_re = total_sum / (total_rows - total_timeout - total_fifo_full - other_errors)
     csv_writer.writerow(
-        [file_path, total_sum, total_timeout, total_fifo_full, other_errors, match_success_count, total_rows])
+        [file_path, total_sum, avg_cc_re, total_timeout, total_fifo_full, other_errors, match_success_count, total_rows])
 
 
 if __name__ == '__main__':
@@ -47,7 +48,7 @@ if __name__ == '__main__':
         sys.exit(1)
     output_file = sys.argv[1]
     csv_pattern = sys.argv[2]
-    csv_files = glob.glob(csv_pattern)
+    csv_files = sorted(glob.glob(csv_pattern))
     csv_writer = csv.writer(open(output_file, 'w'))
     print('-----------------------------------', file=sys.stderr)
     print(f'Aggregating {len(csv_files)} CSV files:', file=sys.stderr)
@@ -55,7 +56,7 @@ if __name__ == '__main__':
         print(f'\t{i+1} - {csv_file}', file=sys.stderr)
     print('-----------------------------------', file=sys.stderr)
     csv_writer.writerow(
-        ['file', 'total CC', 'timeout count', 'fifo_full count', 'other errors', 'Match=True count', 'total rows'])
+        ['file', 'total CC', 'AVG CC/RE', 'timeout count', 'fifo_full count', 'other errors', 'Match=True count', 'total rows'])
     # Iterate over the CSV files
     for csv_file in csv_files:
         aggregate_result(csv_file, csv_writer)

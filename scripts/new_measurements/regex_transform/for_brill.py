@@ -54,8 +54,7 @@ def main():
             try:
                 re.compile(remove_slash)
             except re.error:
-                print(f'Skipping invalid regex: "{
-                      remove_slash}"\nOriginally it was: "{line[:-1]}"')
+                print(f'Skipping invalid regex: "{remove_slash}"\nOriginally it was: "{line[:-1]}"')
                 total_skipped += 1
                 continue
             outfile.write(remove_slash + '\n')
