@@ -39,7 +39,7 @@ for is_vectorial in [True]:
 VIVADO_SOURCE = "/new_xilinx/software/Vivado/2019.2/settings64.sh"
 
 if len(sys.argv) != 3:
-    print("Usage: python3 create_folder_and_synth.py <CREATING> <SYNTHESIS>")
+    print(f"Usage: {sys.argv[0]} <CREATING> <SYNTHESIS>")
     print("\tCREATING: True or False")
     print("\tSYNTHESIS: True or False")
     sys.exit(1)
@@ -92,8 +92,8 @@ def process_configuration(configuration):
                 with open(engine_interfaced_file_path, "w") as f:
                     f.write(content)
 
-        shutil.copy(os.path.join(repo_path, "script.tcl"), window_folder)
-        tcl_path = os.path.join(window_folder, "script.tcl")
+        shutil.copy(os.path.join(os.path.dirname(script_path), "vivado_synth.tcl"), window_folder)
+        tcl_path = os.path.join(window_folder, "vivado_synth.tcl")
 
         if SYNTHESIS:
             build_folder = os.path.join(window_folder, "u96_single_1")
