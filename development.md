@@ -43,9 +43,9 @@ python3 scripts/synth/extract_usage_and_timings.py "builds/*" util_and_timings.c
 
 ## Run on board
 
-First, you need to download the regexes and the inputs. Refer to `scripts/new_measurements/README.md` for specific instructions.
+First, you need to download the regexes and the inputs. Refer to `scripts/measurements/README.md` for specific instructions.
 
-To run on a board, you can use `scripts/new_measurements/benchmark/measure.py`. Make sure to be root, and have all the Python dependencies installed (`pip install rich tqdm` and `pynq`). The usage is the following:
+To run on a board, you can use `scripts/measurements/benchmark/measure.py`. Make sure to be root, and have all the Python dependencies installed (`pip install rich tqdm` and `pynq`). The usage is the following:
 
 ```bash
 Usage: measure.py <bitstream_file_path> <strings_file_path> <regexes_file_path> <output_file_path> <compiler_path> <regexes_count> <inputs_count>
@@ -67,20 +67,20 @@ For example:
 python3 measure.py /home/xilinx/src/higher_ccid_bitstreams/vect_cc_id_4_bb_n_1.bit protomata.input protomata.regex results.csv /home/xilinx/src/cicero_compiler_cpp/ 100 100
 ```
 
-To check the correctness of the results, use `scripts/new_measurements/benchmark/check_results.py`, by specifying the `.csv` file and the file with the inputs that was used, for example:
+To check the correctness of the results, use `scripts/measurements/benchmark/check_results.py`, by specifying the `.csv` file and the file with the inputs that was used, for example:
 
 ```bash
-python3 scripts/new_measurements/benchmark/check_results.py vect_cc_id_4_bb_n_9_brill_c++.csv ../scripts/new_measurements/benchmark/brill.input
+python3 scripts/measurements/benchmark/check_results.py vect_cc_id_4_bb_n_9_brill_c++.csv ../scripts/measurements/benchmark/brill.input
 ```
 
 ## Benchmark on board
 
-For benchmarking, we essentially execute `scripts/new_measurements/benchmark/measure.py` over all the desired bitstreams/regexes/inputs/compilers.
+For benchmarking, we essentially execute `scripts/measurements/benchmark/measure.py` over all the desired bitstreams/regexes/inputs/compilers.
 
-A wrapper script is provided, `scripts/new_measurements/benchmark/test_top.py`. First, update the constants in that script file to match the desired configurations you want to benchmark, and then execute it. A `.csv` file will be created alongside each `.bit` file for each compiler/benchmark.
+A wrapper script is provided, `scripts/measurements/benchmark/test_top.py`. First, update the constants in that script file to match the desired configurations you want to benchmark, and then execute it. A `.csv` file will be created alongside each `.bit` file for each compiler/benchmark.
 
-You can then use `scripts/new_measurements/benchmark/aggregate.py` to aggregate all the results of the benchmarks. For example, if you want the aggregated output in `output.csv` and all the `.csv` from previous step are in the `measurements` folder, run:
+You can then use `scripts/measurements/benchmark/aggregate.py` to aggregate all the results of the benchmarks. For example, if you want the aggregated output in `output.csv` and all the `.csv` from previous step are in the `measurements` folder, run:
 
 ```bash
-python3 scripts/new_measurements/benchmark/aggregate.py output.csv "measurements/*.csv"
+python3 scripts/measurements/benchmark/aggregate.py output.csv "measurements/*.csv"
 ```
