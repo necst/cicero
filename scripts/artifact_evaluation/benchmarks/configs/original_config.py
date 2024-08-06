@@ -1,7 +1,3 @@
-'''
-    Configuration file for a complete benchmark. Not used, kept as reference.
-'''
-
 import os
 
 # Number of regexes to run for each input (-1 for all)

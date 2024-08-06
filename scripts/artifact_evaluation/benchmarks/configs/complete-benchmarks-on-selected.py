@@ -19,11 +19,11 @@ BITSTEAM_FOLDER = os.path.join(script_dir, '..', '..', '..', 'bitstreams')
 # Bitstreams to use
 BITSTREAMS = [
     # 'bitstream file name (.bit file)'
-    'NEW 16x1.bit',
-    'NEW 32x1.bit',
-    'NEW 8x1.bit',
     'OLD 1x9.bit',
     'OLD 1x16.bit',
+    'NEW 8x1.bit',
+    'NEW 16x1.bit',
+    'NEW 32x1.bit',
 ]
 
 # Benchmart to run
