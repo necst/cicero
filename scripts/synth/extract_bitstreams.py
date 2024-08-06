@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     with zipfile.ZipFile(args.output_zip, 'w') as zf:
         for source, destination in copy_operations:
-            print(f"Copying '{source}' to '{destination}'")
+            print(f"Zipping '{source}' to '{destination}'")
             zf.write(source, arcname=destination)
     
     print(f'Zipped {len(copy_operations)} files to {args.output_zip}')

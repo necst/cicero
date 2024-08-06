@@ -3,6 +3,8 @@
     and optionally runs the synthesis.
 '''
 
+VIVADO_SOURCE = "/new_xilinx/software/Vivado/2019.2/settings64.sh"
+
 import os
 import shutil
 import subprocess
@@ -39,8 +41,6 @@ for cc_id_bits in [3, 4, 5]:
 # Add base (OLD) configurations with cc_id_bits = 3
 for bb_n in [1, 4, 9, 16, 32]:
     CONFIGURATIONS.append((3, bb_n, False))
-
-VIVADO_SOURCE = "/new_xilinx/software/Vivado/2019.2/settings64.sh"
 
 if len(sys.argv) != 3:
     print(f"Usage: {sys.argv[0]} <CREATING> <SYNTHESIS>")

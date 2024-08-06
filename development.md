@@ -35,10 +35,10 @@ After the synthesis, you may want to copy the bitstreams to the FPGA board. An h
 python3 scripts/synth/extract_bitstreams.py "builds/*" myzip.zip
 ```
 
-You may also want to compare board usage and maximum theoretical clock frequency for each configuration. You can use `scripts/synth/extract_usage_and_timings.py` to output a CSV file that contains relevant information for each configuration you want. For example, you can run:
+You may also want to compare board usage, Total On-Chip Power (W), and maximum theoretical clock frequency for each configuration. You can use `scripts/synth/extract_usage_and_timings.py` to output a CSV file that contains relevant information for each configuration you want. For example, you can run:
 
 ```bash
-python3 scripts/synth/extract_usage_and_timings.py "builds/*" util_and_timings.csv
+python3 scripts/synth/extract_usage_and_timings.py "builds/*" cicero_confs_usage_power.csv
 ```
 
 ## Run on board

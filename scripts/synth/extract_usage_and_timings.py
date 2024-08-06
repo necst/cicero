@@ -1,6 +1,7 @@
 '''
     This script automatically extracts from the build directories the maximum clock frequency,
-    and the board utilization percentages of CLB LUTs, CLB Registers, and Block RAM Tiles.
+    Total On-Chip Power (W), and the board utilization percentages of CLB LUTs, CLB Registers,
+    and Block RAM Tiles.
 '''
 
 import os
@@ -27,7 +28,6 @@ def find_single_file(pattern, path):
             print(f'\t{match}')
         raise Exception()
 
-    
     return matches[0]
 
 def extract_file_section(file_content, begin_section, end_section):
@@ -41,19 +41,20 @@ def extract_file_section(file_content, begin_section, end_section):
         raise Exception()
     return file_content[begin_index:end_index]
 
-def extract_from_table(file_lines, row_name):
+def extract_from_table(file_lines, row_name, columns_in_row, target_column_index):
     for line in file_lines:
         if row_name in line:
             splitted_line = line.split('|')
-            if len(splitted_line) != 7:
-                print(f"The line does not contain a correct number of elements ({len(splitted_line)} != 7)")
+            if len(splitted_line) != columns_in_row:
+                print(f"The line does not contain a correct number of elements ({len(splitted_line)} != {columns_in_row})")
                 raise Exception()
-            return splitted_line[5].strip()
+            return splitted_line[target_column_index].strip()
 
 def synth_res_zynq(build_folder):
 
     timing_file = find_single_file("*_timing_summary_postroute_physopted.rpt", build_folder)
     util_file = find_single_file("*_utilization_placed.rpt", build_folder)
+    power_file = find_single_file("*wrapper_power_routed.rpt", build_folder)
 
     # Find Worst Negative Slack (WNS) and clock period
     with open(timing_file, 'r') as file:
@@ -99,11 +100,15 @@ def synth_res_zynq(build_folder):
 
     with open(util_file, 'r') as file:
         file_lines = file.read().split('\n')
-        CLB_LUTS = extract_from_table(file_lines, "CLB LUTs")
-        CLB_REG = extract_from_table(file_lines, "CLB Registers")
-        BRAM = extract_from_table(file_lines, "Block RAM Tile")
+        CLB_LUTS = extract_from_table(file_lines, "CLB LUTs", 7, 5)
+        CLB_REG = extract_from_table(file_lines, "CLB Registers", 7, 5)
+        BRAM = extract_from_table(file_lines, "Block RAM Tile", 7, 5)
 
-    return clock_max_frequency, CLB_LUTS, CLB_REG, BRAM
+    with open(power_file, 'r') as file:
+        file_lines = file.read().split('\n')
+        total_power = extract_from_table(file_lines, "Total On-Chip Power (W)", 4, 1)
+
+    return CLB_LUTS, CLB_REG, BRAM, total_power, clock_max_frequency
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
@@ -119,12 +124,12 @@ if __name__ == "__main__":
     rows = []
     for directory in directories:
         try:
-            clock_max_frequency, CLB_LUTS, CLB_REG, BRAM = synth_res_zynq(directory)
-            rows.append([os.path.basename(directory), clock_max_frequency, CLB_LUTS, CLB_REG, BRAM])
+            CLB_LUTS, CLB_REG, BRAM, total_power, clock_max_frequency = synth_res_zynq(directory)
+            rows.append([os.path.basename(directory), CLB_LUTS, CLB_REG, BRAM, total_power, clock_max_frequency])
         except Exception as e:
             print(f"Error while processing {directory}, skipping...")
+            print(e)
     with open(output_csv, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Build Directory", "Clock Max Frequency (MHz)", "CLB LUTS (%)", "CLB REG (%)", "BRAM (%)"])
+        writer.writerow(["Build Directory", "CLB LUTS (%)", "CLB REG (%)", "BRAM (%)", "Total On-Chip Power (W)", "Clock Max Frequency (MHz)"])
         writer.writerows(rows)
-
