@@ -31,10 +31,14 @@ CONFIGURATIONS = [
     # (cc_id_bits, bb_n, is_vectorial)
 ]
 
-for is_vectorial in [True]:
-    for cc_id_bits in [4, 5]:
-        for bb_n in [1, 4, 9, 16]:
-            CONFIGURATIONS.append((cc_id_bits, bb_n, is_vectorial))
+# Add vectorial (NEW) configurations
+for cc_id_bits in [3, 4, 5]:
+    for bb_n in [1, 4, 9, 16]:
+        CONFIGURATIONS.append((cc_id_bits, bb_n, True))
+
+# Add base (OLD) configurations with cc_id_bits = 3
+for bb_n in [1, 4, 9, 16, 32]:
+    CONFIGURATIONS.append((3, bb_n, False))
 
 VIVADO_SOURCE = "/new_xilinx/software/Vivado/2019.2/settings64.sh"
 
@@ -61,11 +65,17 @@ repo_path = script_path
 for i in range(3):
     repo_path = os.path.dirname(repo_path)
 
+def get_configuration_name(cc_id_bits, bb_n, is_vectorial):
+    if is_vectorial:
+        return  f"NEW {2**cc_id_bits}x{bb_n}"
+    else:
+        return f"OLD 1x{bb_n}"
+
 def process_configuration(configuration):
     try:
         cc_id_bits, bb_n, is_vectorial = configuration
         print(f'[cc_id_bits: {cc_id_bits}, bb_n: {bb_n}, is_vectorial: {is_vectorial}]: Starting...')
-        window_folder = os.path.join(repo_path, 'builds', f"{'vect' if is_vectorial else 'base'}_cc_id_{cc_id_bits}_bb_n_{bb_n}")
+        window_folder = os.path.join(repo_path, 'builds', get_configuration_name(cc_id_bits, bb_n, is_vectorial))
         os.makedirs(window_folder, exist_ok=True)
 
         src_folder = os.path.join(window_folder, "src")
@@ -124,17 +134,19 @@ def main():
 
     # Print rich table with configurations
     table = Table(title="Configurations")
+    table.add_column('Name', style="bold")
     table.add_column("cc_id_bits", style="cyan")
     table.add_column("bb_n", style="magenta")
     table.add_column("is_vectorial", style="green")
     for cc_id_bits, bb_n, is_vectorial in CONFIGURATIONS:
-        table.add_row(str(cc_id_bits), str(bb_n), str(is_vectorial))
+        table.add_row(get_configuration_name(cc_id_bits, bb_n, is_vectorial), str(cc_id_bits), str(bb_n), str(is_vectorial))
     console = Console()
     console.print(table)
 
-    print(f'MAX_WORKERS: {MAX_WORKERS}; CREATING: {CREATING}; SYNTHESIS: {SYNTHESIS}\nStarting in 10 seconds...')
+    print(f'MAX_WORKERS: {MAX_WORKERS}; CREATING: {CREATING}; SYNTHESIS: {SYNTHESIS}')
 
     if SYNTHESIS:
+        print('Starting in 10 seconds...')
         try:
             time.sleep(10)
         except KeyboardInterrupt:
