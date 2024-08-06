@@ -1,8 +1,8 @@
 '''
     This script is meant to run benchmarks for Cicero.
-    Provide:
+    Provide below:
         - A folder containing the bitstreams
-        - List of 
+        - List of bitstreams to use
         - A list of benchmarks to run (inputs, and regexes files: one per line)
         - A list of compilers to use
 
@@ -14,6 +14,8 @@ import sys
 import measure
 import time
 import csv
+from rich.console import Console
+from rich.table import Table
 
 # Number of regexes to run for each input (-1 for all)
 REGEX_COUNT = -1
@@ -21,35 +23,31 @@ REGEX_COUNT = -1
 INPUT_COUNT = -1
 
 # Folder containing the bitstreams
-BITSTEAM_FOLDER = '/home/xilinx/src/vect_bitstreams'
+script_dir = os.path.dirname(os.path.abspath(__file__))
+BITSTEAM_FOLDER = os.path.join(script_dir, '..', '..', '..', 'bitstreams')
 
 # Bitstreams to use
 BITSTREAMS = [
-    # 'bitstream file name'
-    'basic_ccid_3_engine_8.bit',
-    'vectorial_w_3.bit',
-    #'basic_ccid_3_engine_4.bit',
-    #'vectorial_w_2.bit',
-    #'basic_ccid_3_engine_1.bit',
-    #'vectorial_w_1.bit'
+    # 'bitstream file name (.bit file)'
+    # 'OLD 1x1.bit',
 ]
+import glob
+BITSTREAMS = [os.path.basename(f) for f in glob.glob(os.path.join(BITSTEAM_FOLDER, '*.bit'))]
 
 # Benchmart to run
 BENCHMARKS = [
     # ('benchmark_name', 'input_strings_path', 'input_regexes_path')
-    ('brill', 'brill.input', 'brill.regex'),
-    # ('protomata', 'protomata.input', 'protomata.regex')
+    ('brill', 'INs/autozoo_brill.input', 'REs/autozoo_brill.regex'),
+    ('protomata', 'INs/autozoo_protomata.input', 'REs/autozoo_protomata.regex'),
+    ('brill4', 'INs/autozoo_brill.input', 'REs/autozoo_brill4.regex'),
+    ('protomata4', 'INs/autozoo_protomata.input', 'REs/autozoo_protomata4.regex'),
 ]
 
 COMPILERS = [
     # (Compiler name, compiler path)
-    #('pyt', '../../../cicero_compiler_py')
-    ('c++', '../../../cicero_compiler_cpp')
+    ('OLD_PYT', os.path.join(script_dir, '..', '..', '..', 'cicero_compiler')),
+    ('NEW_CPP', os.path.join(script_dir, '..', '..', '..', 'cicero_compiler_cpp')),
 ]
-
-if len(COMPILERS) != 1:
-    print("FIXME: For some reason, trying to use more than one compiler at a time does not work, only the first one is used.")
-    quit(1)
 
 # Before starting, make sure all the compilers paths are correct, and all input files are correct
 def check_script_arguments() -> bool:
@@ -71,7 +69,12 @@ def check_script_arguments() -> bool:
             print(f'Could not import cicero compiler from {compiler_path}')
             return False
         # Try a little compilation
-        re2compiler.compile(data='this|that', O1=True)
+        try:
+            re2compiler.compile(data='this|that', O1=True)
+        except Exception as e:
+            print('???? Could not compile a simple regex ????')
+            print(e)
+            return False
         sys.path.pop()
         del re2compiler
         del sys.modules['re2compiler']
@@ -96,21 +99,29 @@ def check_script_arguments() -> bool:
 
 def print_summary():
     # Print all the combinations of benchmarks, compilers, and bitstreams
-    print('-------------------')
-    print(f'Regex count: {REGEX_COUNT}; Input count: {INPUT_COUNT}')
+    table = Table(title="Benchmarks")
+    table.add_column('Name', style="bold")
+    table.add_column("Compiler", style="cyan")
+    table.add_column("Architecture", style="magenta")
     for (compiler_name, _) in COMPILERS:
         for (benchmark_name, _, __) in BENCHMARKS:
             for filename in BITSTREAMS:
                 if not filename.endswith('.bit'):
                     continue
-                print(f"{benchmark_name} with {compiler_name} on {filename}")
-    print('-------------------')
+                table.add_row(benchmark_name, compiler_name, filename)
+    console = Console()
+    console.print(table)
 
 
 def main():
+    # Check user is root
+    if os.geteuid() != 0:
+        print("Please run as root")
+        quit(1)
     if not check_script_arguments():
         print("Fix script arguments before running")
         quit(1)
+
     print_summary()
     print("Starting in 10 seconds...")
     sys.stdout.flush()

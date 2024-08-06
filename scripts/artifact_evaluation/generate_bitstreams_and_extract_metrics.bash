@@ -2,6 +2,9 @@
 # regarding the configuration into a CSV file and pack the bitstreams
 # into a ZIP.
 
+# CD to dir of this file
+cd "$(dirname "$0")"
+
 # Generate the bitstreams
 echo "-- [1/3] Generating bitstreams"
 python3 ../synth/synth.py True True
