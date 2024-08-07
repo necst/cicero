@@ -10,7 +10,7 @@ import os
 # Number of regexes to run for each input (-1 for all)
 REGEX_COUNT = 200
 # Number of inputs to match (-1 for all)
-INPUT_COUNT = 200
+INPUT_COUNT = 10000
 
 # Folder containing the bitstreams
 script_dir = os.path.dirname(os.path.abspath(__file__))
