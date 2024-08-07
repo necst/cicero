@@ -9,9 +9,9 @@
 import os
 
 # Number of regexes to run for each input (-1 for all)
-REGEX_COUNT = 10000
+REGEX_COUNT = 200
 # Number of inputs to match (-1 for all)
-INPUT_COUNT = 10000
+INPUT_COUNT = 200
 
 # Folder containing the bitstreams
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,8 +23,6 @@ BITSTREAMS = [
     'OLD 1x9.bit',
     'OLD 1x16.bit',
 ]
-import glob
-BITSTREAMS = [os.path.basename(f) for f in glob.glob(os.path.join(BITSTEAM_FOLDER, '*.bit'))]
 
 # Benchmart to run
 BENCHMARKS = [
