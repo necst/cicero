@@ -8,7 +8,7 @@ import csv
 import glob
 
 
-def aggregate_result(file_path: str, csv_writer: csv.writer) -> None:
+def aggregate_result(file_path: str):
     total_rows = 0
     total_sum = 0
     total_timeout = 0
@@ -38,8 +38,7 @@ def aggregate_result(file_path: str, csv_writer: csv.writer) -> None:
                     total_sum += int(row[2])
 
     avg_cc_re = total_sum / (total_rows - total_timeout - total_fifo_full - other_errors)
-    csv_writer.writerow(
-        [file_path, total_sum, avg_cc_re, total_timeout, total_fifo_full, other_errors, match_success_count, total_rows])
+    return [file_path, total_sum, avg_cc_re, total_timeout, total_fifo_full, other_errors, match_success_count, total_rows]
 
 
 if __name__ == '__main__':
@@ -59,4 +58,4 @@ if __name__ == '__main__':
         ['file', 'total CC', 'AVG CC/RE', 'timeout count', 'fifo_full count', 'other errors', 'Match=True count', 'total rows'])
     # Iterate over the CSV files
     for csv_file in csv_files:
-        aggregate_result(csv_file, csv_writer)
+        csv_writer.writerow(aggregate_result(csv_file))
