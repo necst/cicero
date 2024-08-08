@@ -5,3 +5,4 @@ builds
 *.jou
 proj
 __pycache__
+debug*.dot

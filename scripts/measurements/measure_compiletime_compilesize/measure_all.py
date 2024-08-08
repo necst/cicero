@@ -15,18 +15,22 @@ from enum import Enum
 
 OUTPUT_FILENAME = 'all_compiletime_compilesize.csv'
 
+script_path = os.path.dirname(os.path.realpath(__file__))
+project_root = os.path.abspath(os.path.join(script_path, os.pardir, os.pardir, os.pardir))
+REs_dir = os.path.join(script_path, os.pardir, 'benchmark', 'REs')
+
 BENCHMARKS = [
     # (Benchmark name, benchmark file)
-    ('protomata', '../regex_transform/output/protomata.regex'),
-    ('protomata4', '../alternate_regexes/output/protomata4.regex'),
-    ('brill', '../regex_transform/output/brill.regex'),
-    ('brill4', '../alternate_regexes/output/brill4.regex'),
+    ('protomata', os.path.join(REs_dir, 'autozoo_protomata.regex')),
+    ('brill', os.path.join(REs_dir, 'autozoo_brill.regex')),
+    ('protomata4', os.path.join(REs_dir, 'autozoo_protomata4.regex')),
+    ('brill4', os.path.join(REs_dir, 'autozoo_brill4.regex')),
 ]
 
 COMPILERS = [
     # (Compiler name, compiler path)
-    ('c++', '/home/andrea/src/cicero_compiler_cpp'),
-    ('python', '/home/andrea/src/cicero/cicero_compiler')
+    ('NEW_CPP', os.path.join(project_root, 'cicero_compiler_cpp')),
+    ('OLD_PYT', os.path.join(project_root, 'cicero_compiler')),
 ]
 
 OPTIMIZATIONS = [
@@ -163,8 +167,8 @@ def main():
                         compiled_regex = re2compiler.compile(
                             data=regex, O1=optimization[1])
                     except:
-                        print(f'Error while compiling regex: "{regex}"')
-                        quit(1)
+                        print(f'Error while compiling regex (regex is probably too large to fit cicero memory): "{regex}"')
+                        continue
                     compiled_regexes_times.append(
                         time.time() - time_before_compile)
                     # Size is calculated as the number of lines
