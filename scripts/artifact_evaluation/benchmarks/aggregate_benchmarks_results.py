@@ -105,7 +105,7 @@ def check_benchmark_results_existance(results_dir, arcs_configuration, REs_count
     return all_results_exist
 
 
-def plot_grouped_bar(groups, legend_labels, plot_path, plot_title, y_label='', figsize=(10, 10)):
+def plot_grouped_bar(groups, legend_labels, plot_path, plot_title, y_label='', figsize=(10, 10), y_logscale=False):
     plt.clf()
     plt.figure(figsize=figsize)
 
@@ -122,6 +122,8 @@ def plot_grouped_bar(groups, legend_labels, plot_path, plot_title, y_label='', f
 
     if y_label != '':
         plt.ylabel(y_label)
+    if y_logscale:
+        plt.yscale('log')
     plt.xticks([x + W * (num_bar_per_group - 1) /
                2 for x in range(num_bar_per_group)], legend_labels)
     plt.legend()
