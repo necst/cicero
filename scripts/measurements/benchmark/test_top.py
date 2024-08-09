@@ -81,6 +81,7 @@ def print_summary():
                 table.add_row(benchmark_name, compiler_name, filename)
     console = Console()
     console.print(table)
+    console.print(f'REGEX_COUNT: {REGEX_COUNT}; INPUT_COUNT: {INPUT_COUNT}')
 
 
 def main():

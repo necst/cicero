@@ -192,7 +192,7 @@ class re2_driver(DefaultIP):
         while (status == RE2_COPROCESSOR_STATUS.RUNNING):
             status = self.read_status()
             count += 1
-            if count > 3:
+            if count > 10:
                 raise Exception('Error while waiting', status)
 
         if (status == RE2_COPROCESSOR_STATUS.ERROR):
