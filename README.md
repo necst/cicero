@@ -32,7 +32,7 @@ The compiler's code can be found [here](https://github.com/necst/cicero_compiler
 
 ![cicero-engine](./figures/cicero-engine.png)
 
-The Cicero architecture features a sliding window of input character. Each character in the window is addressed by a `CC_ID_BITS`-bits wide pointer, as such the window contains `2^CC_ID_BITS` characters.
+The Cicero architecture features a sliding window of input characters. Each character in the window is addressed by a `CC_ID_BITS`-bits wide pointer, as such the window contains `2^CC_ID_BITS` characters.
 The Cicero architecture is composed of multiple *engines*, which can be combined together in ring or torus topologies. Execution threads are distributed among engines by a load balancing infrastructure. However, during our studies we found out that an architecture configuration with a single engine is more efficient.
 Each engine packs as many FIFOs and CICERO-cores as number of characters in the input window.
 
