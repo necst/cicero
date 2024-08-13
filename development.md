@@ -64,20 +64,20 @@ Where:
 For example:
 
 ```bash
-python3 measure.py /home/xilinx/src/higher_ccid_bitstreams/vect_cc_id_4_bb_n_1.bit protomata.input protomata.regex results.csv /home/xilinx/src/cicero_compiler_cpp/ 100 100
+python3 measure.py /path/to/bitstream.bit protomata.input protomata.regex results.csv /path/to/cicero_compiler_cpp/ 100 100
 ```
 
 To check the correctness of the results, use `scripts/measurements/benchmark/check_results.py`, by specifying the `.csv` file and the file with the inputs that was used, for example:
 
 ```bash
-python3 scripts/measurements/benchmark/check_results.py vect_cc_id_4_bb_n_9_brill_c++.csv ../scripts/measurements/benchmark/brill.input
+python3 scripts/measurements/benchmark/check_results.py results.csv brill.input
 ```
 
 ## Benchmark on board
 
 For benchmarking, we essentially execute `scripts/measurements/benchmark/measure.py` over all the desired bitstreams/regexes/inputs/compilers.
 
-A wrapper script is provided, `scripts/measurements/benchmark/test_top.py`. First, update the constants in that script file to match the desired configurations you want to benchmark, and then execute it. A `.csv` file will be created alongside each `.bit` file for each compiler/benchmark.
+A wrapper script is provided, `scripts/measurements/benchmark/test_top.py`. First, update the constants in `scripts/measurements/benchmark/bench_config.py` to match the desired configurations you want to benchmark, and then execute `test_top.py`. A `.csv` file will be created alongside each `.bit` file for each compiler/benchmark.
 
 You can then use `scripts/measurements/benchmark/aggregate.py` to aggregate all the results of the benchmarks. For example, if you want the aggregated output in `output.csv` and all the `.csv` from previous step are in the `measurements` folder, run:
 
