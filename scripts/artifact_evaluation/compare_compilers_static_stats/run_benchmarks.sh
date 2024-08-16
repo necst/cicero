@@ -1,10 +1,13 @@
 #!/bin/bash
 set -e
 
-# cd to script's directory
+# cd to script's directory, and then root of project
 cd "$(dirname "$0")"
+cd ..
+cd ..
+cd ..
 
-proj_root="../../.."
+proj_root="$(pwd)"
 
 # STEP1: Build container
 docker build -t cicero_compilers_benchmarks $proj_root/cicero_compiler_cpp/Docker
