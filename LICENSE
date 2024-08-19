@@ -1,5 +1,12 @@
 MIT License
 
+New CICERO architecture and MLIR compiler CGO'25
+Copyright (c)  [2024] [Andrea Somaini, Filippo Carloni, Giovanni Agosta, Marco Domenico Santambrogio, Davide Conficconi]
+
+CICERO sw simulator
+Copyright (c)  [2024] [Valentina Sona, Andrea Somaini, Filippo Carloni, Davide Conficconi]
+
+CASES'21 revision
 Copyright (c)  [2022] [Daniele Parravicini Davide Conficconi Emanuele Del Sozzo Christian Pilato Marco Domenico Santambrogio]
    
 Permission is hereby granted, free of charge, to any person obtaining a copy
