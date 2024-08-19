@@ -3,8 +3,12 @@
 import AXI_package::*;
 import instruction_package::*;
 
+`define SIMULATION 1
+
 module AXI_top_tb_from_compiled();
     parameter CLOCK_SEMI_PERIOD = 5  ;
+    parameter CC_ID_BITS =        2  ;
+    parameter BB_N = 1;
 
     logic                             clk;
     logic                             rst; 
@@ -17,7 +21,10 @@ module AXI_top_tb_from_compiled();
     logic [REG_WIDTH-1:0]   status_register;
     logic [REG_WIDTH-1:0]   data_o_register;
 
-    AXI_top dut(
+    AXI_top #(
+      .BB_N(BB_N),
+      .CC_ID_BITS(CC_ID_BITS)
+    ) dut (
     .clk                        ( clk                       ),
     .rst                        ( rst                       ),
     .data_in_register           ( data_in_register          ),
@@ -327,7 +334,7 @@ module AXI_top_tb_from_compiled();
             @(posedge clk);
         
         //1.write code
-        fp_code= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_22_regex.out","r");
+        fp_code= $fopen("/home/users/andrea.somaini/src/cicero/scripts/generate_single/regex.txt","r");
         if (fp_code==0)
         begin
             $display("Could not open file '%s' for reading","code.csv");
@@ -339,7 +346,7 @@ module AXI_top_tb_from_compiled();
         write_file(fp_code, start_code , end_code );
         
         //2, write string
-        fp_string= $fopen("C:\\Users\\danie\\Documents\\GitHub\\regex_coprocessor_safe\\scripts\\sim\\protomata_1_string.csv","r");
+        fp_string= $fopen("/home/users/andrea.somaini/src/cicero/scripts/generate_single/input.csv","r");
         if (fp_string==0)
         begin
             $display("Could not open file '%s' for reading","string_ok.csv");
@@ -348,7 +355,7 @@ module AXI_top_tb_from_compiled();
         
         //when writing 32bits in a bram that support 16bit reading, address has to be aligned at 2 bytes.
         start_string = end_code;
-        while(start_string[0+:2]!==0)
+        while(start_string[0+:CC_ID_BITS]!==0)
         begin
             start_string = start_string + 1;
         end 
@@ -370,7 +377,7 @@ module AXI_top_tb_from_compiled();
             @(posedge clk);
             
         $dumpfile("test.vcd");
-        $dumpvars;
+        $dumpvars(0, AXI_top_tb_from_compiled);
 
         start(/*start_code,*/ start_string, end_string-1);
         

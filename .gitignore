@@ -1,0 +1,8 @@
+build_*
+builds
+.vscode
+*.log
+*.jou
+proj
+__pycache__
+debug*.dot

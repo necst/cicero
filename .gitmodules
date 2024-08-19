@@ -1,3 +1,6 @@
 [submodule "cicero_compiler"]
 	path = cicero_compiler
 	url = https://github.com/necst/cicero_compiler.git
+[submodule "cicero_compiler_cpp"]
+	path = cicero_compiler_cpp
+	url = https://github.com/necst/cicero_compiler_cpp

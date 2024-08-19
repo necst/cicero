@@ -335,18 +335,21 @@ module regex_cpu_pipelined #(
     assign EXE2_output_pc_and_cc_id   = {EXE2_output_pc, EXE2_output_cc_id				 };
     
 
-    //round robin arbiter for EXE1_output
-    arbiter_2_rr #(
+    /*
+     * Fixed arbiter to select the output of the two exe stages
+     * higher priority to EXE2 to fix a bug where EXE2 is not granted (hence stalled)
+     * hence EXE1 is then stalled too, but granted by the arbiter which means that 
+     * EXE1 is still writing its output.
+     */
+    arbiter_2_fixed #(
         .DWIDTH(PC_WIDTH+CC_ID_BITS                           )
     ) arbiter_output_pc_port (
-        .clk       ( clk                                      ),
-        .rst       ( rst                                      ),
-        .in_0_ready( EXE1_output_pc_ready                     ),
-        .in_0_data ( EXE1_output_pc_and_cc_id                 ),
-        .in_0_valid( EXE1_output_pc_valid                     ),
-        .in_1_ready( EXE2_output_pc_ready                     ),
-        .in_1_data ( EXE2_output_pc_and_cc_id                 ),
-        .in_1_valid( EXE2_output_pc_valid                     ),
+        .in_1_ready( EXE1_output_pc_ready                     ),
+        .in_1_data ( EXE1_output_pc_and_cc_id                 ),
+        .in_1_valid( EXE1_output_pc_valid                     ),
+        .in_0_ready( EXE2_output_pc_ready                     ),
+        .in_0_data ( EXE2_output_pc_and_cc_id                 ),
+        .in_0_valid( EXE2_output_pc_valid                     ),
         .out_ready ( output_pc_ready                          ),
         .out_data  ( output_pc_and_cc_id                      ),
         .out_valid ( output_pc_valid                          )
