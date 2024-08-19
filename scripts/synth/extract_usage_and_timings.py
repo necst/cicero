@@ -106,7 +106,7 @@ def synth_res_zynq(build_folder):
 
     with open(power_file, 'r') as file:
         file_lines = file.read().split('\n')
-        total_power = extract_from_table(file_lines, "Total On-Chip Power (W)", 4, 1)
+        total_power = extract_from_table(file_lines, "Total On-Chip Power (W)", 4, 2)
 
     return CLB_LUTS, CLB_REG, BRAM, total_power, clock_max_frequency
 
