@@ -1,5 +1,4 @@
-# CICERO: A Domain-Specific Architecture for Efficient Regular Expression Matching
-
+# CICERO: A Domain-Specific Architecture for Efficient Regular Expression Matching [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.13340217.svg)](https://doi.org/10.5281/zenodo.13340217)
 Code regarding Parravicini et al. 2021 paper can be found [here](https://github.com/necst/cicero/releases/tag/CASES21), and the old readme [here](https://github.com/necst/cicero/blob/feature/cgo25/CASES.md)
 
 Cicero is a domain specific architecture that can be employed to perform exact regular expression (RE) matching using FPGAs.
