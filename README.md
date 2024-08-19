@@ -52,7 +52,7 @@ See [development.md](./development.md)
 ## Acknowledgment
 
 This work has financial support from ICSC – Centro Nazionale di Ricerca in High Performance Computing, Big Data and Quantum Computing, funded by European Union – NextGenerationEU.
-The authors are grateful to the CGO 2025's anonymous reviewer feedback, the AMD University Program support, and [Valentina Sona](https://github.com/ValentinaSona) for working on the original Cicero architecture simulator.
+The authors are grateful to the CGO 2025's anonymous reviewer feedback, the AMD University Program support, and [Valentina Sona](https://github.com/ValentinaSona) for working on the [original Cicero architecture simulator](https://github.com/necst/SoftwareCICERO/).
 
 ## Paper Citation
 
