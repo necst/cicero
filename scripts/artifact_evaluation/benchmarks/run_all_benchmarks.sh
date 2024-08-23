@@ -12,6 +12,14 @@ BENCHMARKS=(
     "complete-benchmarks-on-selected.py"
 )
 
+# Make sure cicero_compiler_cpp was built
+ciceroc_bin="$script_dir/../../../cicero_compiler_cpp/build/ciceroc"
+if [ ! -f $ciceroc_bin ]; then
+    echo "$ciceroc_bin not found"
+    echo "cicero_compiler_cpp must be built. Please follow latest instructions in scripts/artifact_evaluation/AE.md for building it."
+    exit 1
+fi
+
 # Run the benchmarks
 for benchmark in "${BENCHMARKS[@]}"; do
     echo "Running benchmark $benchmark"
